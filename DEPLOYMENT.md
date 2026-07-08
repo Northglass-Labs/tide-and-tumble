@@ -38,11 +38,13 @@ The Vercel project predates this repo. Concretely:
 > **Option A — re-point the existing project (recommended; keeps the domain & URL):**
 > 1. Vercel dashboard → project `obx-tides` → **Settings → Git** → disconnect
 >    `Misc-Projects` and connect **`tomstetson/tide-and-tumble`**.
-> 2. **Settings → General → Root Directory** → change from `obx-tides/` to **`./`** (empty/root).
-> 3. Redeploy. The `tideandtumble.app` domain and all history stay attached.
+> 2. **Settings → Build and Deployment → Root Directory** (NOT the "Project Name" field on
+>    the General page) → change from `obx-tides` to **empty** (blank = repo root). The app
+>    now lives at the repo root, so there is no subfolder. Leave it blank; don't type `./`.
+> 3. Save, then redeploy. The `tideandtumble.app` domain and all history stay attached.
 >
 > **Option B — new project:** import `tomstetson/tide-and-tumble` as a new Vercel project
-> (root `./`), then **move** the `tideandtumble.app` domain from `obx-tides` to it
+> (Root Directory blank = repo root), then **move** the `tideandtumble.app` domain from `obx-tides` to it
 > (Vercel → old project → Domains → remove; new project → Domains → add). You'll get a new
 > `*.vercel.app` alias.
 >
@@ -94,7 +96,7 @@ Once the Vercel project's Git connection points at this repo:
 | Build Command | `next build` (default) |
 | Install Command | `npm install` (default) |
 | Output | (default — Next.js) |
-| Root Directory | `./` for this repo (see §2) |
+| Root Directory | **empty / blank** for this repo — app is at the repo root (see §2). Set under Settings → Build and Deployment. |
 | Node.js Version | 20.x or newer |
 
 No Environment Variables are needed in any environment (Production/Preview/Development).
