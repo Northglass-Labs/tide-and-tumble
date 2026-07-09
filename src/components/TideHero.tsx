@@ -5,6 +5,8 @@ import { useCallback, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { TideNow } from "@/lib/tides";
 import Sprite from "./Sprite";
+import Surfer from "./Surfer";
+import Gull from "./Gull";
 import WaterSparkles from "./WaterSparkles";
 import AnimatedEmoji from "./AnimatedEmoji";
 
@@ -227,11 +229,12 @@ export default function TideHero({ now }: { now: TideNow }) {
           </>
         )}
 
-        {/* A gull gliding across the sky on a banking arc, wings flapping */}
-        <g style={A("birdFly 24s var(--ease-bob) infinite")}>
-          <g style={A("flap 0.5s var(--ease-flap) infinite", "center")}>
-            <Sprite name="seagull" size={24} />
-          </g>
+        {/* A hand-drawn gull gliding across the sky, wings flapping at the
+            shoulder. The transform attribute is the reduced-motion parking
+            spot — the CSS flight animation overrides it whenever motion is
+            allowed (without it the gull froze clipped at the 0,0 corner). */}
+        <g transform="translate(84,52)" style={A("birdFly 24s var(--ease-bob) infinite")}>
+          <Gull size={26} />
         </g>
 
         {/* Parallax dune silhouettes on the horizon (far → near) */}
@@ -281,15 +284,54 @@ export default function TideHero({ now }: { now: TideNow }) {
             transition: reduce ? undefined : "transform 1.4s var(--ease-glide)",
           }}
         >
-          <g style={A("wave 9s linear infinite")} opacity="0.95">
-            <path d={waveTopPath(0)} fill="url(#water)" />
+          {/* — Ocean surface, back to front —
+              A back-swell peeks above the crest moving the OPPOSITE way, the
+              main body rolls with a shorter open-water wavelength, and a bright
+              foam scallop + drifting flecks ride the crest. Cross-moving layers
+              are what make it read as ocean swell instead of a lake. */}
+          <g transform="translate(0,-5)" style={{ ...A("wave 16s linear infinite reverse"), opacity: 0.5 }}>
+            <path d={waveTopPath(2, 6, VB_W / 3)} className="fill-seafoam" />
           </g>
-          <g style={{ ...A("wave 6s linear infinite"), opacity: 0.45 }}>
-            <path d={waveTopPath(14)} className="fill-seafoam" />
+          <g style={A("wave 8s linear infinite")} opacity="0.95">
+            <path d={waveTopPath(0, 5.5, VB_W / 4)} fill="url(#water)" />
           </g>
-          {/* Foam streak drifting along the crest */}
-          <g style={{ ...A("wave 12s linear infinite"), opacity: 0.5 }}>
-            <path d={foamPath()} className="fill-white" />
+          <g transform="translate(0,10)" style={{ ...A("wave 5.5s linear infinite"), opacity: 0.35 }}>
+            <path d={waveTopPath(14, 4.5, VB_W / 4)} className="fill-seafoam" />
+          </g>
+          {/* Foam scallop hugging the crest + broken foam flecks below it */}
+          <g style={{ ...A("wave 9.5s linear infinite"), opacity: 0.75 }}>
+            <path d={foamPath(5, VB_W / 4, 3.2)} className="fill-white" />
+          </g>
+          <g style={{ ...A("wave 7s linear infinite"), opacity: 0.45 }}>
+            {[30, 150, 265, 420, 545, 660].map((fx, i) => (
+              <rect key={fx} x={fx} y={7 + (i % 3) * 3} width={14 + (i % 3) * 6} height="2.4" rx="1.2" fill="#ffffff" />
+            ))}
+          </g>
+          {/* Whitecaps winking across open water */}
+          {[
+            [70, 16, 0],
+            [180, 24, -2.4],
+            [305, 14, -4.8],
+            [355, 30, -7.2],
+          ].map(([wx, wy, delay]) => (
+            <path
+              key={wx}
+              d={`M ${wx} ${wy} q 5 -3 10 0`}
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.4"
+              className="ocean-whitecap"
+              style={reduce ? undefined : { animationDelay: `${delay}s` }}
+            />
+          ))}
+          {/* Deep swell shadows — slow internal texture so the body isn't flat */}
+          <g transform="translate(0,30)" style={{ ...A("wave 26s linear infinite"), opacity: 0.16 }}>
+            <path d={waveTopPath(1, 9, VB_W / 2)} className="fill-ocean-deep" />
+          </g>
+          <g transform="translate(0,62)" style={{ ...A("wave 38s linear infinite reverse"), opacity: 0.12 }}>
+            <path d={waveTopPath(3, 11, VB_W / 2)} className="fill-ocean-abyss" />
           </g>
 
           {/* Ambient jellyfish, pulsing */}
@@ -352,14 +394,22 @@ export default function TideHero({ now }: { now: TideNow }) {
             </g>
           </g>
 
-          {/* Surfer rides the surface, rocking gently — tap for surf slang */}
-          <g transform="translate(206,10)">
+          {/* Surfer — our hand-drawn character. Carves the surface with board
+              spray on a moving tide; mellows out (no spray, slow carve) on
+              slack water. Tap for surf slang. */}
+          <g transform="translate(206,8)">
             <g style={A("bob 3s var(--ease-bob) infinite")}>
-              <g style={A("surf 4.5s var(--ease-swim) infinite", "bottom center")}>
-                <Boop who="surfer" lines={SURFER_QUIPS}>
-                  <Sprite name="surfer" size={56} facing={rising ? 1 : -1} />
-                </Boop>
-              </g>
+              <Boop who="surfer" lines={SURFER_QUIPS}>
+                <Surfer
+                  size={62}
+                  facing={rising ? 1 : -1}
+                  energy={
+                    now.phase === "high-slack" || now.phase === "low-slack"
+                      ? "chill"
+                      : "cruise"
+                  }
+                />
+              </Boop>
             </g>
           </g>
 
@@ -384,7 +434,7 @@ export default function TideHero({ now }: { now: TideNow }) {
                 <g transform={`translate(150,${SAND_Y + 14})`}>
                   <Sprite name="crab" size={40} />
                 </g>
-                <g transform={`translate(350,${SAND_Y + 16})`}>
+                <g transform={`translate(304,${SAND_Y + 16})`}>
                   <Sprite name="octopus" size={38} />
                 </g>
               </>
@@ -443,7 +493,12 @@ export default function TideHero({ now }: { now: TideNow }) {
 
       {/* Tide-direction indicator — an always-visible cue near the surfer that
           shows, at a glance, whether the water is coming in or going out. */}
-      <TideDirection rising={rising} rate={now.rate} reduce={!!reduce} />
+      <TideDirection
+        rising={rising}
+        rate={now.rate}
+        slack={now.phase === "high-slack" || now.phase === "low-slack"}
+        reduce={!!reduce}
+      />
 
       {/* Easter-egg speech bubble — pops up when you tap a critter */}
       {quip && (
@@ -468,7 +523,8 @@ export default function TideHero({ now }: { now: TideNow }) {
           {isLow && (
             <>
               <AnimatedEmoji code="1f980" label="crab" style={pos(38, 90, 13)} />
-              <AnimatedEmoji code="1f419" label="octopus" style={pos(86, 90, 12)} />
+              {/* 76% keeps the octopus clear of the lighthouse at ~89% */}
+              <AnimatedEmoji code="1f419" label="octopus" style={pos(76, 90, 12)} />
             </>
           )}
         </div>
@@ -523,13 +579,20 @@ function pos(leftPct: number, topPct: number, widthPct: number): CSSProperties {
 function TideDirection({
   rising,
   rate,
+  slack,
   reduce,
 }: {
   rising: boolean;
   rate: number;
+  slack: boolean;
   reduce: boolean;
 }) {
-  const label = rising ? "Coming in" : "Going out";
+  const label = slack ? "Slack tide" : rising ? "Coming in" : "Going out";
+  const sub = slack
+    ? rising
+      ? "about to turn · was coming in"
+      : "about to turn · was going out"
+    : `${Math.abs(rate).toFixed(1)} ft/hr`;
   const flow = rising ? "flowUp" : "flowDown";
   // Chevron points up for incoming, down for outgoing.
   const chevron = rising ? "5,7 10,2 15,7" : "5,2 10,7 15,2";
@@ -543,37 +606,60 @@ function TideDirection({
         style={{ width: 20, height: 22 }}
         aria-hidden="true"
       >
-        {[0, 1, 2].map((i) => (
-          <svg
-            key={i}
-            width="20"
-            height="9"
-            viewBox="0 0 20 9"
-            className="absolute left-0"
-            style={{
-              top: rising ? `${i * 6}px` : `${(2 - i) * 6}px`,
-              ...(reduce
-                ? { opacity: i === 1 ? 1 : 0.35 }
-                : {
-                    animation: `${flow} 1.5s ease-in-out ${i * 0.22}s infinite`,
-                  }),
-            }}
-          >
-            <polyline
-              points={chevron}
+        {slack ? (
+          // calm water at the turn: two gentle swells instead of directional chevrons
+          <svg width="20" height="22" viewBox="0 0 20 22" className="absolute left-0">
+            <path
+              d="M2 9 q2.5 -3 5 0 t5 0 t5 0"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.4"
+              strokeWidth="2"
               strokeLinecap="round"
-              strokeLinejoin="round"
+              style={reduce ? undefined : { animation: "slackSway 2.6s ease-in-out infinite" }}
+            />
+            <path
+              d="M2 15 q2.5 -3 5 0 t5 0 t5 0"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.45"
+              style={reduce ? undefined : { animation: "slackSway 2.6s ease-in-out -1.3s infinite" }}
             />
           </svg>
-        ))}
+        ) : (
+          [0, 1, 2].map((i) => (
+            <svg
+              key={i}
+              width="20"
+              height="9"
+              viewBox="0 0 20 9"
+              className="absolute left-0"
+              style={{
+                top: rising ? `${i * 6}px` : `${(2 - i) * 6}px`,
+                ...(reduce
+                  ? { opacity: i === 1 ? 1 : 0.35 }
+                  : {
+                      animation: `${flow} 1.5s ease-in-out ${i * 0.22}s infinite`,
+                    }),
+              }}
+            >
+              <polyline
+                points={chevron}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ))
+        )}
       </span>
       <span className="flex flex-col leading-tight">
         <span className="text-[0.82rem] font-semibold tracking-tight">{label}</span>
         <span className="text-[0.62rem] font-medium uppercase tracking-wide opacity-80">
-          {Math.abs(rate).toFixed(1)} ft/hr
+          {sub}
         </span>
       </span>
     </div>
@@ -607,31 +693,34 @@ function Fish({
  * A closed path whose top edge is a seamless sine wave (period = VB_W), drawn
  * 2×VB_W wide so a −50% translateX loops without a seam.
  */
-function waveTopPath(phaseShift: number): string {
+function waveTopPath(
+  phaseShift: number,
+  amp = 7,
+  seg = VB_W / 2,
+): string {
   const width = VB_W * 2;
-  const amp = 7;
-  const seg = VB_W / 2;
   let d = `M 0 0`;
-  for (let x = 0; x < width; x += seg) {
+  let i = 0;
+  for (let x = 0; x < width - 0.01; x += seg, i++) {
     const cx = x + seg / 2;
-    const dir = (x / seg) % 2 === 0 ? -1 : 1;
-    d += ` Q ${cx} ${dir * amp + Math.sin(phaseShift) * 2} ${x + seg} 0`;
+    const dir = i % 2 === 0 ? -1 : 1;
+    d += ` Q ${cx.toFixed(1)} ${(dir * amp + Math.sin(phaseShift) * 2).toFixed(1)} ${(x + seg).toFixed(1)} 0`;
   }
   d += ` L ${width} ${VB_H} L 0 ${VB_H} Z`;
   return d;
 }
 
 /** A thin foam ribbon just under the crest, seam-looping like the waves. */
-function foamPath(): string {
+function foamPath(amp = 6, seg = VB_W / 2, thick = 4): string {
   const width = VB_W * 2;
-  const seg = VB_W / 2;
   let d = `M 0 2`;
-  for (let x = 0; x < width; x += seg) {
+  let i = 0;
+  for (let x = 0; x < width - 0.01; x += seg, i++) {
     const cx = x + seg / 2;
-    const dir = (x / seg) % 2 === 0 ? -1 : 1;
-    d += ` Q ${cx} ${dir * 6 + 2} ${x + seg} 2`;
+    const dir = i % 2 === 0 ? -1 : 1;
+    d += ` Q ${cx.toFixed(1)} ${(dir * amp + 2).toFixed(1)} ${(x + seg).toFixed(1)} 2`;
   }
-  d += ` L ${width} 6 L 0 6 Z`;
+  d += ` L ${width} ${2 + thick} L 0 ${2 + thick} Z`;
   return d;
 }
 

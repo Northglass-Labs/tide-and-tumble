@@ -138,6 +138,160 @@
   transform-origin: center;
   animation: statFoamBob 2.3s ease-in-out infinite;
 }
+
+/* --- The hand-drawn surfer (Surfer.tsx) --- */
+@keyframes surferCarve {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4.5deg);
+  }
+}
+.surfer-carve {
+  transform-box: fill-box;
+  transform-origin: center 78%;
+  animation: surferCarve 4.6s var(--ease-swim, ease-in-out) infinite;
+}
+@keyframes surferLean {
+  0%,
+  100% {
+    transform: rotate(2deg);
+  }
+  50% {
+    transform: rotate(-2.5deg);
+  }
+}
+.surfer-body {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: surferLean 4.6s ease-in-out infinite;
+}
+@keyframes surferHair {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+}
+.surfer-hair {
+  transform-box: fill-box;
+  transform-origin: right center;
+  animation: surferHair 1.1s ease-in-out infinite;
+}
+@keyframes surferBlink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  95.5% {
+    transform: scaleY(0.12);
+  }
+}
+.surfer-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: surferBlink 4.4s linear infinite;
+}
+@keyframes surferSpray {
+  0% {
+    transform: translate(0, 0) scale(0.5);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.9;
+  }
+  60% {
+    transform: translate(-6px, -9px) scale(1);
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate(-9px, -13px) scale(0.75);
+    opacity: 0;
+  }
+}
+.surfer-spray {
+  animation: surferSpray 1.5s ease-out infinite;
+}
+/* frozen droplets look like dirt — hide them entirely without motion */
+@media (prefers-reduced-motion: reduce) {
+  .surfer-sprayGroup {
+    display: none;
+  }
+}
+@keyframes surferWake {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleX(1.18);
+    opacity: 0.35;
+  }
+}
+.surfer-wake {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: surferWake 2.2s ease-in-out infinite;
+}
+
+/* --- Ocean whitecaps: brief glints of breaking chop on open water --- */
+@keyframes whitecapWink {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  12% {
+    opacity: 0.75;
+  }
+  55% {
+    opacity: 0.35;
+    transform: translateX(-10px);
+  }
+  78% {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+.ocean-whitecap {
+  animation: whitecapWink 7.2s ease-in-out infinite;
+}
+
+/* --- Hand-drawn gull (Gull.tsx): wings flap around the shoulder joint --- */
+@keyframes gullFlapNear {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(26deg);
+  }
+}
+.gull-wing-near {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: gullFlapNear 0.7s var(--ease-flap, ease-in-out) infinite;
+}
+@keyframes gullFlapFar {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-18deg);
+  }
+}
+.gull-wing-far {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: gullFlapFar 0.7s var(--ease-flap, ease-in-out) infinite;
+}
 @keyframes shimmer {
   0%,
   100% {
@@ -392,6 +546,15 @@
   0% { transform: translateY(7px); opacity: 0; }
   40% { opacity: 1; }
   100% { transform: translateY(-8px); opacity: 0; }
+}
+@keyframes slackSway {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-2.5px);
+  }
 }
 @keyframes flowDown {
   0% { transform: translateY(-7px); opacity: 0; }

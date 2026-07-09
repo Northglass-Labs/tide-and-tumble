@@ -20,6 +20,14 @@ no attribution required (credited here anyway). Full text in `kenney-license.txt
 `beachball.svg`, `sandcastle.svg`, and `lighthouse.svg` were hand-drawn for this
 project in the same flat style and are released under the project's license.
 
+The **surfer** is an original character drawn as inline SVG in
+`src/components/Surfer.tsx` (2026-07-09, replacing the Fluent emoji sprite
+`surfer.svg`, which was removed).
+
+The **gull** is likewise original inline SVG (`src/components/Gull.tsx`,
+2026-07-09) — it replaces `seagull.svg`, which was actually Fluent's red
+cardinal `bird` asset, mislabeled during the original import.
+
 ```
 MIT License
 
