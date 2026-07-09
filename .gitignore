@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .claude/
+
+# Working design specs (superpowers) — kept local; the durable decision lives in docs/adr/
+docs/superpowers/
