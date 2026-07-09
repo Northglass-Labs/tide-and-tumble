@@ -107,8 +107,10 @@ const EXPOSURE_COPY: Record<Exposure, string> = {
 export function beachIntro(beach: Beach, week: BeachWeek | null): string {
   const range =
     week && week.weekMax > week.weekMin
-      ? ` Tides here typically swing between about ${fmtFt(week.weekMin)} ft and ${fmtFt(week.weekMax)} ft (MLLW) this week.`
+      ? ` Tides here swing between about ${fmtFt(week.weekMin)} ft and ${fmtFt(week.weekMax)} ft (MLLW) over the next ${week.days.length} days.`
       : "";
+  const tableSpan =
+    week && week.days.length > 7 ? `${week.days.length}-day tide forecast` : "seven days of highs and lows";
   const src =
     beach.type === "R"
       ? "a harmonic NOAA reference station, so predictions come straight from its own published constituents"
@@ -117,7 +119,7 @@ export function beachIntro(beach: Beach, week: BeachWeek | null): string {
     `${beach.label}, ${beach.state} sits in the ${beach.region} region. ` +
     `Its tide predictions come from the ${beach.stationName} station (NOAA ${noaaId(beach)}), ${src}. ` +
     `This spot is ${EXPOSURE_COPY[beach.exposure]}.${range} ` +
-    `The chart above is live, and the table below covers the next seven days of highs and lows with heights, ` +
+    `The chart above is live, and the ${tableSpan} below lists every high and low with heights, ` +
     `plus sunrise, sunset, and the moon — everything you need to time a beach day, a surf session, or a low-tide walk.`
   );
 }
@@ -156,7 +158,7 @@ export function beachFaq(beach: Beach, week: BeachWeek | null): FaqItem[] {
   if (week && week.weekMax > week.weekMin) {
     faqs.push({
       q: `How big are the tides in ${beach.label}?`,
-      a: `Over the next week, ${beach.label} ranges from about ${fmtFt(week.weekMin)} ft at the lowest lows to ${fmtFt(week.weekMax)} ft at the highest highs (MLLW datum). ${
+      a: `Over the next ${week.days.length} days, ${beach.label} ranges from about ${fmtFt(week.weekMin)} ft at the lowest lows to ${fmtFt(week.weekMax)} ft at the highest highs (MLLW datum). ${
         today ? `The moon is currently ${today.moonName.toLowerCase()} — tides run largest near full and new moons (spring tides) and smallest near the quarters (neap tides).` : ""
       }`,
     });
