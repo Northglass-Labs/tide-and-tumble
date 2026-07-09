@@ -27,10 +27,16 @@ fresh Claude Code session (or a human) can take over cold.
 | Framework preset | Next.js (builds from the repo root) |
 | Custom domain | `tideandtumble.app` (Cloudflare DNS, grey-cloud; `obx-tides.vercel.app` 308-redirects) |
 
-> **Deploy reliability note:** Vercel's Git auto-deploy has been unreliable on this
-> project — merging to `main` does not always trigger a production build. **Deploy
-> explicitly after merging** (see §3), and confirm the production alias moved to the new
-> commit via the Vercel API.
+> **Auto-deploy — fixed 2026-07-09.** Pushing to `main` now triggers a production
+> deploy automatically (and PRs get preview deploys). The earlier unreliability was the
+> repo's move to the `Northglass-Labs` org: the Vercel GitHub App was installed on the
+> personal account, not the org, so GitHub stopped sending Vercel push events — and the
+> Vercel project's Git link was stale (`org: tomstetson`). Fixed by installing the Vercel
+> App on `Northglass-Labs` (org-wide) and re-linking the project via the API
+> (`POST /v10/projects/obx-tides/link` → `Northglass-Labs/tide-and-tumble`). If auto-deploy
+> ever regresses, re-check both (app installed on the org + link points at the org repo);
+> explicit API deploys (`POST /v13/deployments` with the stable `repoId`) always work as a
+> fallback.
 
 ---
 
