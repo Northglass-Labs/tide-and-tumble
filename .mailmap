@@ -1,0 +1,4 @@
+# Canonicalize commit authorship to the Northglass public identity (per HomeLab ADR-043).
+# No personal email appears in this repo — see the Public Identity Rule.
+Tom Stetson <tomstetson@users.noreply.github.com> <tomstetson@users.noreply.github.com>
+Tom Stetson <tomstetson@users.noreply.github.com> Tom <tomstetson@users.noreply.github.com>

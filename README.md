@@ -7,6 +7,8 @@ whether the tide is rolling **in** or slipping **out**, in a hand-tuned
 little surfers, sea turtles, fish, a whale, a sweeping lighthouse, and creatures
 that swim and sway with the real tide.
 
+A **[Northglass Labs](https://northglass.io)** product — a small tool, built well.
+
 **Live:** https://tideandtumble.app · (`obx-tides.vercel.app` 308-redirects here)
 
 Built for opening on your phone at the beach.
@@ -158,10 +160,22 @@ setup, and the exact steps to ship a change.
 
 ## Credits & licensing
 
-All shipped assets are cleanly licensed for a public deploy:
+Bundled assets are cleanly licensed:
 
 - **Sprites:** Microsoft Fluent Emoji (MIT) and Kenney Fish Pack (CC0), plus original
-  flat art authored for this project. See `public/sprites/CREDITS.md`.
+  hand-drawn art authored for this project (the surfer, gull, and UI icons are
+  original inline SVG). See `public/sprites/CREDITS.md`.
 - **Animated emoji:** Google Noto Emoji (Apache-2.0). See `public/emoji/`.
 - **Audio:** a public-domain ocean-waves excerpt ([Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Waves.ogg)),
   layered under a fully procedural Web Audio soundscape. See `public/audio/CREDITS.md`.
+- **Data:** tides from NOAA CO-OPS, marine conditions from NDBC, beach advisories and
+  UV from the National Weather Service — all US public-domain. **Not for navigation.**
+
+The Tide & Tumble source code and original artwork are **© Northglass LLC, all rights
+reserved** (see [LICENSE](./LICENSE)); bundled third-party assets keep their own
+licenses above.
+
+## Privacy & contact
+
+No accounts, no cookies, no tracking, no analytics — see the [privacy policy](https://tideandtumble.app/privacy).
+Questions: **hello@northglass.io**.

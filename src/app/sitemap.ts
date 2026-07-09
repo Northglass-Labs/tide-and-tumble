@@ -8,6 +8,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 1,
     },
+    {
+      url: `${SITE_URL}/privacy`,
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
     ...REGIONS.map((r) => ({
       url: `${SITE_URL}/regions/${r.slug}`,
       changeFrequency: "weekly" as const,

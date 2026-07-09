@@ -17,39 +17,20 @@ fresh Claude Code session (or a human) can take over cold.
 
 ---
 
-## 2. Current hosting state (read this first)
-
-The Vercel project predates this repo. Concretely:
+## 2. Current hosting state
 
 | Thing | Value |
 |---|---|
 | Vercel team / scope | `tom-stetsons-projects` |
-| Vercel project name | `obx-tides` |
-| Production alias | `obx-tides.vercel.app` |
-| Framework preset | Next.js |
-| **Git repo it currently builds from** | `tomstetson/Misc-Projects` |
-| **Root Directory setting** | `obx-tides/` (the app was a subfolder there) |
-| Custom domain attached | `tideandtumble.app` |
+| Vercel project name | `obx-tides` (predates the rename; the URL is the custom domain) |
+| Production URL | `https://tideandtumble.app` |
+| Framework preset | Next.js (builds from the repo root) |
+| Custom domain | `tideandtumble.app` (Cloudflare DNS, grey-cloud; `obx-tides.vercel.app` 308-redirects) |
 
-> **⚠️ Migration action required.** This new repo (`tomstetson/tide-and-tumble`) puts the
-> app at the **repo root**, not in an `obx-tides/` subfolder. Before Git-based deploys
-> from this repo will work, do **one** of the following:
->
-> **Option A — re-point the existing project (recommended; keeps the domain & URL):**
-> 1. Vercel dashboard → project `obx-tides` → **Settings → Git** → disconnect
->    `Misc-Projects` and connect **`tomstetson/tide-and-tumble`**.
-> 2. **Settings → Build and Deployment → Root Directory** (NOT the "Project Name" field on
->    the General page) → change from `obx-tides` to **empty** (blank = repo root). The app
->    now lives at the repo root, so there is no subfolder. Leave it blank; don't type `./`.
-> 3. Save, then redeploy. The `tideandtumble.app` domain and all history stay attached.
->
-> **Option B — new project:** import `tomstetson/tide-and-tumble` as a new Vercel project
-> (Root Directory blank = repo root), then **move** the `tideandtumble.app` domain from `obx-tides` to it
-> (Vercel → old project → Domains → remove; new project → Domains → add). You'll get a new
-> `*.vercel.app` alias.
->
-> Option A is less disruptive. Until this is done, CLI deploys from this repo (§3) still
-> work and will publish to the `obx-tides` project regardless of the Git connection.
+> **Deploy reliability note:** Vercel's Git auto-deploy has been unreliable on this
+> project — merging to `main` does not always trigger a production build. **Deploy
+> explicitly after merging** (see §3), and confirm the production alias moved to the new
+> commit via the Vercel API.
 
 ---
 
@@ -167,7 +148,7 @@ old `obx-tides.vercel.app` to it in Vercel → project → Domains.
 - **`main`** — production. After the §2 migration, pushing here auto-deploys to prod.
 - **Feature branches** — `feature/<slug>` (or `claude/<slug>`); open a PR into `main`.
   Vercel posts a preview URL on each PR. Keep PRs as drafts until the preview looks right.
-- This repo was imported from `tomstetson/Misc-Projects` (subfolder `obx-tides/`). Earlier
+- This repo began as a subfolder in a personal monorepo and was extracted to its own repo. Earlier
   history lives there; this repo starts clean at the import commit.
 
 ---
