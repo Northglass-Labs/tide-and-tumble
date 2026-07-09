@@ -239,6 +239,36 @@
   transform-origin: center;
   animation: surferWake 2.2s ease-in-out infinite;
 }
+
+/* --- Hand-drawn gull (Gull.tsx): wings flap around the shoulder joint --- */
+@keyframes gullFlapNear {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(26deg);
+  }
+}
+.gull-wing-near {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: gullFlapNear 0.7s var(--ease-flap, ease-in-out) infinite;
+}
+@keyframes gullFlapFar {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-18deg);
+  }
+}
+.gull-wing-far {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: gullFlapFar 0.7s var(--ease-flap, ease-in-out) infinite;
+}
 @keyframes shimmer {
   0%,
   100% {
@@ -493,6 +523,15 @@
   0% { transform: translateY(7px); opacity: 0; }
   40% { opacity: 1; }
   100% { transform: translateY(-8px); opacity: 0; }
+}
+@keyframes slackSway {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-2.5px);
+  }
 }
 @keyframes flowDown {
   0% { transform: translateY(-7px); opacity: 0; }

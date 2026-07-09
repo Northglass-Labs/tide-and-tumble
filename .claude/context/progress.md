@@ -1,12 +1,12 @@
 # Task State
 
 ## In Progress
-- 30-day tide forecast section on beach pages (claude/monthly-tide-forecast)
+- Wow pass (claude/wow-pass-surfer, PR #3): surfer DONE; next = animation-state audit (5 palettes x tide states x reduced-motion), then icon-language unification (sun/moon rows, DayStrip)
 
 ## Blocked
-- GSC property: needs Tom to add domain property + paste TXT token
+- GSC property: needs Tom (add domain property, paste TXT token)
 
 ## Next Up
-1. Wow animation pass + hand-drawn surfer (own branch, after forecast merges)
-2. Favorites/shareable links; offline; NWS advisories (backlog 2-4)
-3. Scale beaches beyond curated 40 once recipe proven
+1. PR #2 (30-day forecast) + PR #3 (surfer) awaiting Tom review/merge
+2. Animation audit + icon unification (wow pass 2/3, 3/3)
+3. Favorites/shareable links; offline; NWS advisories; scale beyond 40 beaches

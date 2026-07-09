@@ -6,6 +6,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { TideNow } from "@/lib/tides";
 import Sprite from "./Sprite";
 import Surfer from "./Surfer";
+import Gull from "./Gull";
 import WaterSparkles from "./WaterSparkles";
 import AnimatedEmoji from "./AnimatedEmoji";
 
@@ -228,11 +229,12 @@ export default function TideHero({ now }: { now: TideNow }) {
           </>
         )}
 
-        {/* A gull gliding across the sky on a banking arc, wings flapping */}
-        <g style={A("birdFly 24s var(--ease-bob) infinite")}>
-          <g style={A("flap 0.5s var(--ease-flap) infinite", "center")}>
-            <Sprite name="seagull" size={24} />
-          </g>
+        {/* A hand-drawn gull gliding across the sky, wings flapping at the
+            shoulder. The transform attribute is the reduced-motion parking
+            spot — the CSS flight animation overrides it whenever motion is
+            allowed (without it the gull froze clipped at the 0,0 corner). */}
+        <g transform="translate(84,52)" style={A("birdFly 24s var(--ease-bob) infinite")}>
+          <Gull size={26} />
         </g>
 
         {/* Parallax dune silhouettes on the horizon (far → near) */}
@@ -393,7 +395,7 @@ export default function TideHero({ now }: { now: TideNow }) {
                 <g transform={`translate(150,${SAND_Y + 14})`}>
                   <Sprite name="crab" size={40} />
                 </g>
-                <g transform={`translate(350,${SAND_Y + 16})`}>
+                <g transform={`translate(304,${SAND_Y + 16})`}>
                   <Sprite name="octopus" size={38} />
                 </g>
               </>
@@ -452,7 +454,12 @@ export default function TideHero({ now }: { now: TideNow }) {
 
       {/* Tide-direction indicator — an always-visible cue near the surfer that
           shows, at a glance, whether the water is coming in or going out. */}
-      <TideDirection rising={rising} rate={now.rate} reduce={!!reduce} />
+      <TideDirection
+        rising={rising}
+        rate={now.rate}
+        slack={now.phase === "high-slack" || now.phase === "low-slack"}
+        reduce={!!reduce}
+      />
 
       {/* Easter-egg speech bubble — pops up when you tap a critter */}
       {quip && (
@@ -477,7 +484,8 @@ export default function TideHero({ now }: { now: TideNow }) {
           {isLow && (
             <>
               <AnimatedEmoji code="1f980" label="crab" style={pos(38, 90, 13)} />
-              <AnimatedEmoji code="1f419" label="octopus" style={pos(86, 90, 12)} />
+              {/* 76% keeps the octopus clear of the lighthouse at ~89% */}
+              <AnimatedEmoji code="1f419" label="octopus" style={pos(76, 90, 12)} />
             </>
           )}
         </div>
@@ -532,13 +540,20 @@ function pos(leftPct: number, topPct: number, widthPct: number): CSSProperties {
 function TideDirection({
   rising,
   rate,
+  slack,
   reduce,
 }: {
   rising: boolean;
   rate: number;
+  slack: boolean;
   reduce: boolean;
 }) {
-  const label = rising ? "Coming in" : "Going out";
+  const label = slack ? "Slack tide" : rising ? "Coming in" : "Going out";
+  const sub = slack
+    ? rising
+      ? "about to turn · was coming in"
+      : "about to turn · was going out"
+    : `${Math.abs(rate).toFixed(1)} ft/hr`;
   const flow = rising ? "flowUp" : "flowDown";
   // Chevron points up for incoming, down for outgoing.
   const chevron = rising ? "5,7 10,2 15,7" : "5,2 10,7 15,2";
@@ -552,37 +567,60 @@ function TideDirection({
         style={{ width: 20, height: 22 }}
         aria-hidden="true"
       >
-        {[0, 1, 2].map((i) => (
-          <svg
-            key={i}
-            width="20"
-            height="9"
-            viewBox="0 0 20 9"
-            className="absolute left-0"
-            style={{
-              top: rising ? `${i * 6}px` : `${(2 - i) * 6}px`,
-              ...(reduce
-                ? { opacity: i === 1 ? 1 : 0.35 }
-                : {
-                    animation: `${flow} 1.5s ease-in-out ${i * 0.22}s infinite`,
-                  }),
-            }}
-          >
-            <polyline
-              points={chevron}
+        {slack ? (
+          // calm water at the turn: two gentle swells instead of directional chevrons
+          <svg width="20" height="22" viewBox="0 0 20 22" className="absolute left-0">
+            <path
+              d="M2 9 q2.5 -3 5 0 t5 0 t5 0"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.4"
+              strokeWidth="2"
               strokeLinecap="round"
-              strokeLinejoin="round"
+              style={reduce ? undefined : { animation: "slackSway 2.6s ease-in-out infinite" }}
+            />
+            <path
+              d="M2 15 q2.5 -3 5 0 t5 0 t5 0"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.45"
+              style={reduce ? undefined : { animation: "slackSway 2.6s ease-in-out -1.3s infinite" }}
             />
           </svg>
-        ))}
+        ) : (
+          [0, 1, 2].map((i) => (
+            <svg
+              key={i}
+              width="20"
+              height="9"
+              viewBox="0 0 20 9"
+              className="absolute left-0"
+              style={{
+                top: rising ? `${i * 6}px` : `${(2 - i) * 6}px`,
+                ...(reduce
+                  ? { opacity: i === 1 ? 1 : 0.35 }
+                  : {
+                      animation: `${flow} 1.5s ease-in-out ${i * 0.22}s infinite`,
+                    }),
+              }}
+            >
+              <polyline
+                points={chevron}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ))
+        )}
       </span>
       <span className="flex flex-col leading-tight">
         <span className="text-[0.82rem] font-semibold tracking-tight">{label}</span>
         <span className="text-[0.62rem] font-medium uppercase tracking-wide opacity-80">
-          {Math.abs(rate).toFixed(1)} ft/hr
+          {sub}
         </span>
       </span>
     </div>
