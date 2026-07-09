@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { TideNow } from "@/lib/tides";
 import Sprite from "./Sprite";
+import Surfer from "./Surfer";
 import WaterSparkles from "./WaterSparkles";
 import AnimatedEmoji from "./AnimatedEmoji";
 
@@ -352,14 +353,22 @@ export default function TideHero({ now }: { now: TideNow }) {
             </g>
           </g>
 
-          {/* Surfer rides the surface, rocking gently — tap for surf slang */}
-          <g transform="translate(206,10)">
+          {/* Surfer — our hand-drawn character. Carves the surface with board
+              spray on a moving tide; mellows out (no spray, slow carve) on
+              slack water. Tap for surf slang. */}
+          <g transform="translate(206,8)">
             <g style={A("bob 3s var(--ease-bob) infinite")}>
-              <g style={A("surf 4.5s var(--ease-swim) infinite", "bottom center")}>
-                <Boop who="surfer" lines={SURFER_QUIPS}>
-                  <Sprite name="surfer" size={56} facing={rising ? 1 : -1} />
-                </Boop>
-              </g>
+              <Boop who="surfer" lines={SURFER_QUIPS}>
+                <Surfer
+                  size={62}
+                  facing={rising ? 1 : -1}
+                  energy={
+                    now.phase === "high-slack" || now.phase === "low-slack"
+                      ? "chill"
+                      : "cruise"
+                  }
+                />
+              </Boop>
             </g>
           </g>
 
