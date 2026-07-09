@@ -19,6 +19,7 @@ import {
   type BeachDay,
 } from "@/lib/seo";
 import { fetchMarine, type Marine } from "@/lib/marine";
+import { fetchBeachSafety, type BeachSafety } from "@/lib/alerts";
 import { noaaId } from "@/lib/stations";
 import { fmtClock, fmtDayLabel, stationNow, type Extremum } from "@/lib/tides";
 
@@ -142,6 +143,11 @@ export default async function BeachTidePage({ params }: Props) {
   try {
     marine = await fetchMarine({ noaaId: noaaId(beach), lat: beach.lat, lng: beach.lng });
   } catch {}
+  let safety: BeachSafety = { alerts: [], ripRisk: null, uvIndex: null, source: null };
+  try {
+    safety = await fetchBeachSafety(beach.lat, beach.lng);
+  } catch {}
+  const alerts = safety.alerts;
 
   const today = week?.days[0];
   const faq = beachFaq(beach, week);
@@ -173,6 +179,30 @@ export default async function BeachTidePage({ params }: Props) {
           &amp; moon, and surf conditions for {beach.label}.
         </p>
       </header>
+
+      {/* Beach safety advisories (NWS) — server-rendered, real per-beach relevance */}
+      {alerts.length > 0 && (
+        <section className="px-5 pt-2">
+          {alerts.map((a) => (
+            <div
+              key={a.id}
+              className="mb-2 rounded-2xl border border-coral/40 bg-coral-soft/25 px-4 py-2.5"
+            >
+              <p className="flex items-center gap-1.5 font-display text-sm font-bold text-coral">
+                <span aria-hidden="true">⚠️</span> {a.event} — {beach.label}
+              </p>
+              {a.summary && (
+                <p className="mt-0.5 font-body text-xs leading-snug text-ink-soft">
+                  {a.summary}
+                </p>
+              )}
+              <p className="mt-0.5 font-body text-[10px] text-ink-soft/70">
+                Active advisory from the National Weather Service.
+              </p>
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* The live, whimsical app — seeded to this beach */}
       <TideApp initialStation={beach} seeded />
@@ -239,9 +269,14 @@ export default async function BeachTidePage({ params }: Props) {
                 </>
               )}
             </p>
-            {marine.source && (
+            {safety.uvIndex && (
+              <p className="mt-1 font-body text-sm text-ink">
+                UV index today: <strong>{safety.uvIndex}</strong>.
+              </p>
+            )}
+            {(marine.source || safety.source) && (
               <p className="mt-0.5 font-body text-[11px] text-ink-soft/80">
-                Source: {marine.source}
+                Source: {[marine.source, safety.source].filter(Boolean).join(" · ")}
               </p>
             )}
           </section>

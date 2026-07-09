@@ -15,8 +15,12 @@ import {
   STATIONS,
   findStation,
   activeFromNoaa,
+  noaaId,
   type ActiveStation,
 } from "@/lib/stations";
+import { BEACHES, SITE_URL } from "@/lib/slugs";
+import { getRecents, pushRecent } from "@/lib/recents";
+import type { BeachAlert } from "@/lib/alerts";
 import type { Marine } from "@/lib/marine";
 import { statusLine, phaseLabel, shellingHint } from "@/lib/copy";
 import { sunTimes, moonPhase, moonTimes } from "@/lib/sun";
@@ -77,6 +81,16 @@ function computePhase(
   return "day";
 }
 
+/** EPA UV-index color scale (Low→Extreme). */
+function uvColor(level: string): string {
+  const l = level.toLowerCase();
+  if (l.includes("extreme")) return "#8b5cf6";
+  if (l.includes("very high")) return "#ef4444";
+  if (l.includes("high")) return "#f97316";
+  if (l.includes("moderate")) return "#eab308";
+  return "#22c55e"; // Low / unknown
+}
+
 /** minutes-since-midnight for a "H:MM AM/PM" string */
 function clockToMinutes(s: string | null): number | null {
   if (!s) return null;
@@ -112,18 +126,76 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
   const [theme, setTheme] = useState<Phase>("day");
   const [themeAuto, setThemeAuto] = useState(true);
 
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<BeachAlert[]>([]);
+  const [uvIndex, setUvIndex] = useState<string | null>(null);
+
   const selectStation = useCallback((s: ActiveStation) => {
     setStation(s);
     setDayOffset(0);
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(s));
     } catch {}
+    pushRecent(s);
   }, []);
+
+  /** Best shareable URL for a beach: its SEO page if curated, else a self-contained home link. */
+  const shareUrl = useCallback((s: ActiveStation): string => {
+    const curated = BEACHES.find((b) => noaaId(b) === noaaId(s));
+    if (curated) return `${SITE_URL}/tides/${curated.slug}`;
+    const q = new URLSearchParams({
+      beach: s.id,
+      lat: String(s.lat),
+      lng: String(s.lng),
+      n: s.label,
+    });
+    return `${SITE_URL}/?${q.toString()}`;
+  }, []);
+
+  const share = useCallback(async () => {
+    const url = shareUrl(station);
+    const title = `${station.label} tide chart`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text: `${title} · Tide & Tumble`, url });
+        return;
+      }
+    } catch {
+      return; // user cancelled the native sheet
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMsg("Link copied!");
+      setTimeout(() => setShareMsg(null), 1800);
+    } catch {
+      setShareMsg(url);
+      setTimeout(() => setShareMsg(null), 4000);
+    }
+  }, [station, shareUrl]);
 
   // Restore last-picked beach, or auto-locate the nearest beach on first visit.
   // Seeded pages skip both — they must always show their own beach.
   useEffect(() => {
     if (seeded) return;
+    // Shareable deep link: ?beach=<id> (+ lat/lng/n for non-curated beaches).
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const bid = p.get("beach");
+      if (bid) {
+        const curated = findStation(bid) ?? BEACHES.find((b) => noaaId(b) === bid);
+        if (curated) {
+          selectStation(curated);
+          return;
+        }
+        const lat = parseFloat(p.get("lat") ?? "");
+        const lng = parseFloat(p.get("lng") ?? "");
+        const label = p.get("n");
+        if (Number.isFinite(lat) && Number.isFinite(lng) && label) {
+          selectStation({ id: bid, label, stationName: label, lat, lng });
+          return;
+        }
+      }
+    } catch {}
     let saved: string | null = null;
     try {
       saved = localStorage.getItem(LS_KEY);
@@ -191,6 +263,24 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
       .then((r) => (r.ok ? r.json() : null))
       .then((m) => {
         if (!cancelled && m) setMarine(m as Marine);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [station]);
+
+  // Beach safety (NWS): formal alerts + daily rip-current risk + UV index.
+  useEffect(() => {
+    let cancelled = false;
+    setAlerts([]);
+    setUvIndex(null);
+    fetch(`/api/alerts?lat=${station.lat}&lng=${station.lng}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d) return;
+        if (d.alerts) setAlerts(d.alerts as BeachAlert[]);
+        if (d.uvIndex) setUvIndex(d.uvIndex as string);
       })
       .catch(() => {});
     return () => {
@@ -296,20 +386,61 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
           </header>
         )}
 
-        {/* Beach selector */}
-        <button
-          onClick={() => setPickerOpen(true)}
-          className="mx-5 mb-1 flex items-center justify-between rounded-2xl bg-shell/70 px-4 py-2.5 shadow-[var(--shadow-float)] active:scale-[0.99]"
-        >
-          <span className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
-            🏖️ {station.label}
-          </span>
-          <span className="font-body text-sm text-ocean">change ›</span>
-        </button>
+        {/* Beach selector + share */}
+        <div className="mx-5 mb-1 flex items-center gap-2">
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="flex flex-1 items-center justify-between rounded-2xl bg-shell/70 px-4 py-2.5 shadow-[var(--shadow-float)] active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
+              🏖️ {station.label}
+            </span>
+            <span className="font-body text-sm text-ocean">change ›</span>
+          </button>
+          <button
+            onClick={share}
+            className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-shell/70 text-ocean shadow-[var(--shadow-float)] active:scale-95"
+            aria-label={`Share ${station.label} tide chart`}
+            title="Share this beach"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.6" y1="10.5" x2="15.4" y2="6.5" />
+              <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
+            </svg>
+            {shareMsg && (
+              <span className="absolute -bottom-7 right-0 z-10 whitespace-nowrap rounded-lg bg-ink px-2 py-1 text-[11px] font-body text-white shadow">
+                {shareMsg}
+              </span>
+            )}
+          </button>
+        </div>
         <p className="mb-2 px-6 font-body text-[11px] text-ink-soft/80">
           {station.stationName}
           {station.note ? ` · ${station.note}` : ""}
         </p>
+
+        {/* Beach safety advisories (NWS) */}
+        {alerts.length > 0 && (
+          <div className="mx-5 mb-2 space-y-1.5">
+            {alerts.map((a) => (
+              <div
+                key={a.id}
+                className="rounded-2xl border border-coral/40 bg-coral-soft/25 px-3.5 py-2 font-body"
+              >
+                <p className="flex items-center gap-1.5 text-sm font-bold text-coral">
+                  <span aria-hidden="true">⚠️</span> {a.event}
+                </p>
+                {a.summary && (
+                  <p className="mt-0.5 text-xs leading-snug text-ink-soft">{a.summary}</p>
+                )}
+                <p className="mt-0.5 text-[10px] text-ink-soft/70">Source: NWS</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Day switcher (30-day window) */}
         <DayStrip
@@ -508,6 +639,16 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
                 <MoonDisc fraction={moon.fraction} size={17} />
                 {moon.name} · {Math.round(moon.illumination * 100)}% lit
               </span>
+              {isToday && uvIndex && (
+                <span className="col-span-2 flex items-center gap-1.5 text-ink-soft/90">
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ background: uvColor(uvIndex) }}
+                  />
+                  UV index · {uvIndex}
+                </span>
+              )}
             </div>
             {isToday && marine?.source && (
               <p className="mt-2 text-[10px] text-ink-soft/60">

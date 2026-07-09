@@ -7,6 +7,7 @@ import {
   activeFromNoaa,
   type ActiveStation,
 } from "@/lib/stations";
+import { getRecents } from "@/lib/recents";
 
 const MapPicker = dynamic(() => import("./MapPicker"), {
   ssr: false,
@@ -34,6 +35,8 @@ export default function BeachPicker({
   const [zip, setZip] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Read once per open; recents rarely change while the sheet is up.
+  const [recents] = useState<ActiveStation[]>(() => (open ? getRecents() : []));
 
   if (!open) return null;
 
@@ -176,6 +179,28 @@ export default function BeachPicker({
           <p className="mb-3 rounded-xl bg-sky-bottom px-3 py-2 text-sm font-body text-ink-soft">
             {status}
           </p>
+        )}
+
+        {/* Recently viewed — quick pick */}
+        {mode === "list" && recents.filter((r) => r.id !== currentId).length > 0 && (
+          <div className="mb-3">
+            <h3 className="mb-1.5 px-1 font-display text-xs font-bold uppercase tracking-wide text-ocean-deep">
+              Recent
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {recents
+                .filter((r) => r.id !== currentId)
+                .map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => pick(r)}
+                    className="rounded-full bg-seafoam/50 px-3 py-1.5 font-body text-sm font-semibold text-ocean-abyss transition active:scale-95"
+                  >
+                    {r.label}
+                  </button>
+                ))}
+            </div>
+          </div>
         )}
 
         {mode === "map" ? (
