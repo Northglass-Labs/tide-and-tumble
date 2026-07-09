@@ -284,15 +284,54 @@ export default function TideHero({ now }: { now: TideNow }) {
             transition: reduce ? undefined : "transform 1.4s var(--ease-glide)",
           }}
         >
-          <g style={A("wave 9s linear infinite")} opacity="0.95">
-            <path d={waveTopPath(0)} fill="url(#water)" />
+          {/* — Ocean surface, back to front —
+              A back-swell peeks above the crest moving the OPPOSITE way, the
+              main body rolls with a shorter open-water wavelength, and a bright
+              foam scallop + drifting flecks ride the crest. Cross-moving layers
+              are what make it read as ocean swell instead of a lake. */}
+          <g transform="translate(0,-5)" style={{ ...A("wave 16s linear infinite reverse"), opacity: 0.5 }}>
+            <path d={waveTopPath(2, 6, VB_W / 3)} className="fill-seafoam" />
           </g>
-          <g style={{ ...A("wave 6s linear infinite"), opacity: 0.45 }}>
-            <path d={waveTopPath(14)} className="fill-seafoam" />
+          <g style={A("wave 8s linear infinite")} opacity="0.95">
+            <path d={waveTopPath(0, 5.5, VB_W / 4)} fill="url(#water)" />
           </g>
-          {/* Foam streak drifting along the crest */}
-          <g style={{ ...A("wave 12s linear infinite"), opacity: 0.5 }}>
-            <path d={foamPath()} className="fill-white" />
+          <g transform="translate(0,10)" style={{ ...A("wave 5.5s linear infinite"), opacity: 0.35 }}>
+            <path d={waveTopPath(14, 4.5, VB_W / 4)} className="fill-seafoam" />
+          </g>
+          {/* Foam scallop hugging the crest + broken foam flecks below it */}
+          <g style={{ ...A("wave 9.5s linear infinite"), opacity: 0.75 }}>
+            <path d={foamPath(5, VB_W / 4, 3.2)} className="fill-white" />
+          </g>
+          <g style={{ ...A("wave 7s linear infinite"), opacity: 0.45 }}>
+            {[30, 150, 265, 420, 545, 660].map((fx, i) => (
+              <rect key={fx} x={fx} y={7 + (i % 3) * 3} width={14 + (i % 3) * 6} height="2.4" rx="1.2" fill="#ffffff" />
+            ))}
+          </g>
+          {/* Whitecaps winking across open water */}
+          {[
+            [70, 16, 0],
+            [180, 24, -2.4],
+            [305, 14, -4.8],
+            [355, 30, -7.2],
+          ].map(([wx, wy, delay]) => (
+            <path
+              key={wx}
+              d={`M ${wx} ${wy} q 5 -3 10 0`}
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.4"
+              className="ocean-whitecap"
+              style={reduce ? undefined : { animationDelay: `${delay}s` }}
+            />
+          ))}
+          {/* Deep swell shadows — slow internal texture so the body isn't flat */}
+          <g transform="translate(0,30)" style={{ ...A("wave 26s linear infinite"), opacity: 0.16 }}>
+            <path d={waveTopPath(1, 9, VB_W / 2)} className="fill-ocean-deep" />
+          </g>
+          <g transform="translate(0,62)" style={{ ...A("wave 38s linear infinite reverse"), opacity: 0.12 }}>
+            <path d={waveTopPath(3, 11, VB_W / 2)} className="fill-ocean-abyss" />
           </g>
 
           {/* Ambient jellyfish, pulsing */}
@@ -654,31 +693,34 @@ function Fish({
  * A closed path whose top edge is a seamless sine wave (period = VB_W), drawn
  * 2×VB_W wide so a −50% translateX loops without a seam.
  */
-function waveTopPath(phaseShift: number): string {
+function waveTopPath(
+  phaseShift: number,
+  amp = 7,
+  seg = VB_W / 2,
+): string {
   const width = VB_W * 2;
-  const amp = 7;
-  const seg = VB_W / 2;
   let d = `M 0 0`;
-  for (let x = 0; x < width; x += seg) {
+  let i = 0;
+  for (let x = 0; x < width - 0.01; x += seg, i++) {
     const cx = x + seg / 2;
-    const dir = (x / seg) % 2 === 0 ? -1 : 1;
-    d += ` Q ${cx} ${dir * amp + Math.sin(phaseShift) * 2} ${x + seg} 0`;
+    const dir = i % 2 === 0 ? -1 : 1;
+    d += ` Q ${cx.toFixed(1)} ${(dir * amp + Math.sin(phaseShift) * 2).toFixed(1)} ${(x + seg).toFixed(1)} 0`;
   }
   d += ` L ${width} ${VB_H} L 0 ${VB_H} Z`;
   return d;
 }
 
 /** A thin foam ribbon just under the crest, seam-looping like the waves. */
-function foamPath(): string {
+function foamPath(amp = 6, seg = VB_W / 2, thick = 4): string {
   const width = VB_W * 2;
-  const seg = VB_W / 2;
   let d = `M 0 2`;
-  for (let x = 0; x < width; x += seg) {
+  let i = 0;
+  for (let x = 0; x < width - 0.01; x += seg, i++) {
     const cx = x + seg / 2;
-    const dir = (x / seg) % 2 === 0 ? -1 : 1;
-    d += ` Q ${cx} ${dir * 6 + 2} ${x + seg} 2`;
+    const dir = i % 2 === 0 ? -1 : 1;
+    d += ` Q ${cx.toFixed(1)} ${(dir * amp + 2).toFixed(1)} ${(x + seg).toFixed(1)} 2`;
   }
-  d += ` L ${width} 6 L 0 6 Z`;
+  d += ` L ${width} ${2 + thick} L 0 ${2 + thick} Z`;
   return d;
 }
 

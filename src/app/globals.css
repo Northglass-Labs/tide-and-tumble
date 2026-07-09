@@ -240,6 +240,29 @@
   animation: surferWake 2.2s ease-in-out infinite;
 }
 
+/* --- Ocean whitecaps: brief glints of breaking chop on open water --- */
+@keyframes whitecapWink {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  12% {
+    opacity: 0.75;
+  }
+  55% {
+    opacity: 0.35;
+    transform: translateX(-10px);
+  }
+  78% {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+.ocean-whitecap {
+  animation: whitecapWink 7.2s ease-in-out infinite;
+}
+
 /* --- Hand-drawn gull (Gull.tsx): wings flap around the shoulder joint --- */
 @keyframes gullFlapNear {
   0%,
