@@ -25,6 +25,7 @@ import TideCurve from "@/components/TideCurve";
 import BeachPicker from "@/components/BeachPicker";
 import DayStrip from "@/components/DayStrip";
 import AmbientToggle from "@/components/AmbientToggle";
+import StatIcon from "@/components/StatIcon";
 
 const MAX_DAY_OFFSET = 30; // 30-day forward window
 
@@ -461,12 +462,12 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
             {isToday && marine && (marine.waterTempF != null || marine.windMph != null || marine.surfFt != null) && (
               <div className="mb-3 grid grid-cols-3 gap-2">
                 <Stat
-                  icon="🌡️"
+                  icon={<StatIcon kind="water" />}
                   label="Water"
                   value={marine.waterTempF != null ? `${Math.round(marine.waterTempF)}°F` : "—"}
                 />
                 <Stat
-                  icon="💨"
+                  icon={<StatIcon kind="wind" />}
                   label="Wind"
                   value={
                     marine.windMph != null
@@ -476,7 +477,7 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
                   hint={marine.windMph != null ? "mph" : undefined}
                 />
                 <Stat
-                  icon="🌊"
+                  icon={<StatIcon kind="surf" />}
                   label="Surf"
                   value={marine.surfFt != null ? `${marine.surfFt.toFixed(1)} ft` : "—"}
                   hint={
@@ -525,14 +526,14 @@ function Stat({
   value,
   hint,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   value: string;
   hint?: string;
 }) {
   return (
     <div className="flex flex-col items-center rounded-2xl bg-sky-bottom/60 px-2 py-2.5 text-center">
-      <span className="text-lg leading-none">{icon}</span>
+      <span className="grid h-6 place-items-center leading-none">{icon}</span>
       <span className="mt-1 font-display text-base font-bold leading-tight text-ink">
         {value}
       </span>
