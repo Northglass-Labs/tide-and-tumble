@@ -102,13 +102,16 @@ export default function TideCurve({ day }: { day: TideDay }) {
           className="stroke-coral"
           strokeWidth="1.5"
         />
+        {/* two staggered ripple rings expanding from the dot, like a drip in water.
+            (transform-box: fill-box + origin center — the ring scales IN PLACE;
+            reduced-motion freezes them into a single soft halo.) */}
+        <circle cx={nowX} cy={nowY} r="5" className="tide-now-ripple" />
         <circle
           cx={nowX}
           cy={nowY}
-          r="8"
-          className="fill-coral [animation:pulseRing_2s_ease-out_infinite]"
-          style={{ transformOrigin: `${nowX}px ${nowY}px`, transformBox: "fill-box" }}
-          opacity="0.35"
+          r="5"
+          className="tide-now-ripple"
+          style={{ animationDelay: "-1.4s" }}
         />
         <circle cx={nowX} cy={nowY} r="4.5" className="fill-coral" stroke="white" strokeWidth="1.5" />
 

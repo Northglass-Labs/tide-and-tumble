@@ -61,15 +61,82 @@
     transform: translateX(115vw);
   }
 }
-@keyframes pulseRing {
+/* --- Tide-curve "now" marker: soft water-ripple rings expanding in place --- */
+@keyframes nowRipple {
   0% {
-    transform: scale(0.6);
-    opacity: 0.7;
+    transform: scale(0.35);
+    opacity: 0.8;
+  }
+  70% {
+    opacity: 0.22;
   }
   100% {
-    transform: scale(2.2);
+    transform: scale(2.7);
     opacity: 0;
   }
+}
+.tide-now-ripple {
+  fill: none;
+  stroke: var(--color-coral);
+  stroke-width: 1.6px;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nowRipple 2.8s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+}
+
+/* --- Conditions-card stat icons (StatIcon.tsx): water / wind / surf --- */
+@keyframes statMercury {
+  0%,
+  100% {
+    transform: scaleY(0.72);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.stat-mercury {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: statMercury 3.4s ease-in-out infinite;
+}
+@keyframes gustFlow {
+  to {
+    stroke-dashoffset: -125;
+  }
+}
+/* Dasharray only when motion is allowed — reduced-motion users get solid gusts.
+   Mostly-solid stroke with a small traveling gap: reads as a full gust line with
+   a breath of wind moving through it (a big gap makes the icon look broken). */
+@media (prefers-reduced-motion: no-preference) {
+  .stat-gust {
+    stroke-dasharray: 100 25;
+    animation: gustFlow 2.6s linear infinite;
+  }
+}
+@keyframes statWaveSlide {
+  to {
+    transform: translateX(14px);
+  }
+}
+.stat-wave-front {
+  animation: statWaveSlide 2.4s linear infinite;
+}
+.stat-wave-back {
+  animation: statWaveSlide 4.6s linear infinite reverse;
+}
+@keyframes statFoamBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.4px);
+  }
+}
+.stat-foam {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: statFoamBob 2.3s ease-in-out infinite;
 }
 @keyframes shimmer {
   0%,

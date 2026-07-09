@@ -105,10 +105,23 @@ No Environment Variables are needed in any environment (Production/Preview/Devel
 
 ## 4. Custom domain & DNS — `tideandtumble.app`
 
-**Status:** registered at **Namecheap**; **already added** to the Vercel `obx-tides`
-project. It only needs DNS records pointing at Vercel. `.app` is HTTPS-only (HSTS
-preload) — Vercel provisions the TLS certificate automatically once DNS resolves; do
-**not** set up any certificate yourself.
+**Status (updated 2026-07-09):** DNS is now **configured via Cloudflare** (the preferred
+path below). Done:
+- Cloudflare zone `tideandtumble.app` created (account `a76970…`; assigned NS
+  `sydney.ns.cloudflare.com` / `wells.ns.cloudflare.com`).
+- Records added, **both grey-cloud / DNS-only (NOT proxied)**: `A @ → 76.76.21.21` and
+  `CNAME www → cname.vercel-dns.com`. Verified served by Cloudflare's NS directly.
+- Namecheap nameservers switched from the default parking NS to the Cloudflare pair
+  (via Namecheap API `domains.dns.setCustom`, `Updated: true`).
+
+**Remaining (hands-off / auto):** NS delegation is propagating through the `.app` registry
+(Cloudflare zone shows `pending` until it detects its NS are live — minutes to a few hours).
+Once public resolvers return `76.76.21.21`, **Vercel auto-issues the TLS cert** (the domain
+is already attached to `obx-tides`) — do **not** set up a certificate yourself. The only
+step needing a human is Vercel CLI auth (the prior token is dead) if you want to run
+`vercel domains inspect` or add the `obx-tides.vercel.app → tideandtumble.app` redirect.
+
+`.app` is HTTPS-only (HSTS preload).
 
 ### Records to create
 

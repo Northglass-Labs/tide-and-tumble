@@ -19,9 +19,14 @@ const pacifico = Pacifico({
 });
 
 export const metadata: Metadata = {
-  title: "Tide & Tumble — OBX Tides",
+  metadataBase: new URL("https://tideandtumble.app"),
+  title: {
+    default: "Tide & Tumble — US Beach Tide Charts",
+    template: "%s | Tide & Tumble",
+  },
   description:
-    "A whimsical tide chart for the Outer Banks. See when the tide rolls in or slips out — with surfers, sea turtles, and crabs that swim along.",
+    "A whimsical, live tide chart for US beaches — the Outer Banks, Jersey Shore, Cape Fear coast, and more. See when the tide rolls in or slips out, with surfers, sea turtles, and crabs that swim along.",
+  alternates: { canonical: "/" },
   applicationName: "Tide & Tumble",
   appleWebApp: {
     capable: true,
