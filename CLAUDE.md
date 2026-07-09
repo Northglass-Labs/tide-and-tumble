@@ -26,3 +26,15 @@ APIs at request time.
 
 **Workflow:** feature branch → PR into `main` → Vercel preview URL → merge → prod. See
 `DEPLOYMENT.md` §5.
+
+**Northglass Labs product (public).** Repo is `github.com/Northglass-Labs/tide-and-tumble`
+(public since 2026-07-09; all-rights-reserved © Northglass LLC — see `docs/adr/002`).
+Public identity: contact **hello@northglass.io**, git authorship the GitHub noreply —
+**no personal email in any committed artifact** (Public Identity Rule). Privacy policy at
+`/privacy` links to the parent `northglass.io/privacy`. Listed on `northglass.io/tools`.
+
+**Hosting facts live in the homelab, not here** —
+`~/Projects/02-Personal/HomeLab/hosting/tide-and-tumble.md` is authoritative for the
+Vercel project, the `tideandtumble.app` Cloudflare zone, DNS, and Search Console. Notable
+gotcha: **Vercel Git auto-deploy is unreliable — deploy explicitly via the Vercel REST API
+after merging** and confirm the prod alias moved (see the hosting doc).
