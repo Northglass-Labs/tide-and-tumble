@@ -114,14 +114,17 @@ path below). Done:
 - Namecheap nameservers switched from the default parking NS to the Cloudflare pair
   (via Namecheap API `domains.dns.setCustom`, `Updated: true`).
 
-**Remaining (hands-off / auto):** NS delegation is propagating through the `.app` registry
-(Cloudflare zone shows `pending` until it detects its NS are live — minutes to a few hours).
-Once public resolvers return `76.76.21.21`, **Vercel auto-issues the TLS cert** (the domain
-is already attached to `obx-tides`) — do **not** set up a certificate yourself. The only
-step needing a human is Vercel CLI auth (the prior token is dead) if you want to run
-`vercel domains inspect` or add the `obx-tides.vercel.app → tideandtumble.app` redirect.
+**Live since 2026-07-09.** `https://tideandtumble.app` serves the production build with a
+valid auto-issued Vercel TLS cert, and `obx-tides.vercel.app` **308-redirects** to it.
+(During bring-up, Cloudflare's public resolver cached the old Namecheap parking delegation
+long after other resolvers updated, which both won the parallel-DoH race on home devices and
+stalled Let's Encrypt validation; purging the `1.1.1.1` cache + force-issuing the cert via the
+Vercel API cleared it.) `.app` is HTTPS-only (HSTS preload) — Vercel handles the cert; never
+set one up by hand.
 
-`.app` is HTTPS-only (HSTS preload).
+**Vercel CLI auth:** a token lives in 1Password (Agent vault, item `vercel token
+homelab-macmini`). The CLI can hang headless — prefer the Vercel REST API
+(`https://api.vercel.com`, `Authorization: Bearer <token>`) for scripted checks.
 
 ### Records to create
 

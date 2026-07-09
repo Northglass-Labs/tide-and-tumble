@@ -7,7 +7,7 @@ whether the tide is rolling **in** or slipping **out**, in a hand-tuned
 little surfers, sea turtles, fish, a whale, a sweeping lighthouse, and creatures
 that swim and sway with the real tide.
 
-**Live:** https://obx-tides.vercel.app · (soon: https://tideandtumble.app)
+**Live:** https://tideandtumble.app · (`obx-tides.vercel.app` 308-redirects here)
 
 Built for opening on your phone at the beach.
 
@@ -106,8 +106,14 @@ Tide predictions courtesy of NOAA CO-OPS. **Not for navigation.**
 ```
 src/
   app/
-    page.tsx            # orchestrator: beach selection, live tide state, theme
-    layout.tsx          # fonts + PWA metadata
+    page.tsx            # home: the interactive app + a crawlable beach directory
+    tides/[slug]/       # SSG per-beach pages (/tides/nags-head): tide chart,
+      page.tsx          #   30-day forecast table, marine, FAQ, breadcrumb JSON-LD
+    regions/[slug]/     # SSG region hubs (/regions/outer-banks-nc)
+      page.tsx
+    sitemap.ts          # every beach + region URL
+    robots.ts           # allow all → sitemap
+    layout.tsx          # fonts + PWA metadata + metadataBase/title template
     manifest.ts         # web app manifest (Add to Home Screen)
     globals.css         # theme tokens + all keyframes (5 time-of-day palettes)
     api/
@@ -116,6 +122,8 @@ src/
       marine/route.ts   # ?station=&lat=&lng= → water temp / wind / surf
   lib/
     stations.ts         # curated beaches + region grouping + nearest lookup
+    slugs.ts            # permanent per-beach URL slugs + region registry (SEO)
+    seo.ts              # server-side builders: 7/30-day table, intro, FAQ copy
     nearest.ts          # nationwide nearest via bundled NOAA dataset
     tides.ts            # NOAA fetch, cosine interpolation, tide-state model
     marine.ts           # nationwide NDBC buoy + CO-OPS marine conditions
@@ -124,16 +132,19 @@ src/
     noaa-stations.json  # ~3,500 NOAA stations (bundled)
     ndbc-stations.json  # 869 NDBC met buoys (bundled)
   components/
-    TideHero.tsx        # the animated scene: water tank, creatures, tide-direction
-                        # badge, tappable Easter eggs, lighthouse beacon
-    TideCurve.tsx       # 24-hour tide curve with live "now" marker
+    TideApp.tsx         # the interactive orchestrator (seeds per-beach on SEO pages)
+    TideHero.tsx        # the animated scene: rolling ocean, creatures, tide badge
+    Surfer.tsx          # original hand-drawn surfer (carves/sprays with the tide)
+    Gull.tsx            # original hand-drawn gliding gull
+    StatIcon.tsx        # animated water/wind/surf icons (conditions card)
+    TideCurve.tsx       # 24-hour tide curve with live "now" ripple marker
     DayStrip.tsx        # 30-day day switcher
     BeachPicker.tsx     # location / ZIP / list / map selector
     MapPicker.tsx       # react-leaflet map (client-only)
     AnimatedEmoji.tsx   # Noto Lottie loader (client-only)
     AmbientToggle.tsx   # procedural Web Audio + PD ocean layer
     WaterSparkles.tsx   # canvas water glints
-    Sprite.tsx          # renders a sprite SVG inside the scene
+    Sprite.tsx          # renders a downloaded sprite SVG inside the scene
 public/
   sprites/              # Fluent Emoji (MIT) + Kenney (CC0) + original flat art
   emoji/                # Noto animated emoji Lottie JSON (Apache-2.0)
