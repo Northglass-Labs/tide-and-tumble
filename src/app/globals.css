@@ -263,6 +263,13 @@
   animation: whitecapWink 7.2s ease-in-out infinite;
 }
 
+/* --- Sky icons (SkyIcon.tsx): sun rays breathe gently --- */
+@keyframes skyRays {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.sky-rays { animation: skyRays 3s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
 /* --- Hand-drawn gull (Gull.tsx): wings flap around the shoulder joint --- */
 @keyframes gullFlapNear {
   0%,

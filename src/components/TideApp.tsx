@@ -26,6 +26,7 @@ import BeachPicker from "@/components/BeachPicker";
 import DayStrip from "@/components/DayStrip";
 import AmbientToggle from "@/components/AmbientToggle";
 import StatIcon from "@/components/StatIcon";
+import { Sunrise, Sunset, Moonrise, Moonset, MoonDisc } from "@/components/SkyIcon";
 
 const MAX_DAY_OFFSET = 30; // 30-day forward window
 
@@ -489,12 +490,22 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
               </div>
             )}
             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 font-body text-sm text-ink-soft">
-              <span>🌅 Sunrise · {sun.sunrise ?? "—"}</span>
-              <span>🌇 Sunset · {sun.sunset ?? "—"}</span>
-              <span>🌙 Moonrise · {moonRS.rise ?? (moonRS.alwaysUp ? "up all day" : "—")}</span>
-              <span>🌘 Moonset · {moonRS.set ?? (moonRS.alwaysDown ? "down all day" : "—")}</span>
+              <span className="flex items-center gap-1.5">
+                <Sunrise /> Sunrise · {sun.sunrise ?? "—"}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Sunset /> Sunset · {sun.sunset ?? "—"}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Moonrise /> Moonrise ·{" "}
+                {moonRS.rise ?? (moonRS.alwaysUp ? "up all day" : "—")}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Moonset /> Moonset ·{" "}
+                {moonRS.set ?? (moonRS.alwaysDown ? "down all day" : "—")}
+              </span>
               <span className="col-span-2 mt-0.5 flex items-center gap-1.5 text-ink-soft/90">
-                <span className="text-base">{moon.emoji}</span>
+                <MoonDisc fraction={moon.fraction} size={17} />
                 {moon.name} · {Math.round(moon.illumination * 100)}% lit
               </span>
             </div>
@@ -504,7 +515,7 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
               </p>
             )}
             <p className="mt-1 text-[10px] text-ink-soft/50">
-              Art: Microsoft Fluent Emoji (MIT) · animated Google Noto Emoji (Apache-2.0)
+              Sprites: Microsoft Fluent Emoji (MIT) · animated Google Noto Emoji (Apache-2.0)
             </p>
           </section>
         )}

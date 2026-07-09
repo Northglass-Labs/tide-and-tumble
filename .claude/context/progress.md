@@ -1,12 +1,17 @@
 # Task State
 
 ## In Progress
-- Wow pass (claude/wow-pass-surfer, PR #3): surfer DONE; next = animation-state audit (5 palettes x tide states x reduced-motion), then icon-language unification (sun/moon rows, DayStrip)
+- _None_ — everything live on tideandtumble.app; Google Search Console property verified + sitemap submitted 2026-07-09.
 
 ## Blocked
-- GSC property: needs Tom (add domain property, paste TXT token)
+- _None_
 
 ## Next Up
-1. PR #2 (30-day forecast) + PR #3 (surfer) awaiting Tom review/merge
-2. Animation audit + icon unification (wow pass 2/3, 3/3)
-3. Favorites/shareable links; offline; NWS advisories; scale beyond 40 beaches
+1. Watch GSC indexing over the next 1-2 weeks (coverage + first "<beach> tide chart" impressions)
+2. Icon-language unification: sun/moon rows + DayStrip to the hand-drawn set (last wow-pass slice)
+3. Backlog: favorites/shareable ?beach= links, offline SW, NWS rip-current/advisory/UV overlays
+4. Scale beyond curated 40 beaches once GSC shows the recipe ranking
+
+## Notes
+- GSC: Domain property sc-domain:tideandtumble.app, verified via apex TXT (google-site-verification=...BQvjiy0r5kg) added in Cloudflare zone. Do NOT delete that TXT record or verification is lost. Declined the Cloudflare-OAuth verify path (would grant Google standing DNS access) in favor of manual TXT.
+- Vercel Git auto-deploy is unreliable on this project; deploy explicitly after merges (Vercel REST API from the homelab-macmini token in 1P Agent vault).
