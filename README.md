@@ -180,4 +180,3 @@ licenses above.
 No accounts, no cookies, no tracking, no analytics — see the [privacy policy](https://tideandtumble.app/privacy).
 Questions: **hello@northglass.io**.
 
-<!-- auto-deploy verification: 3837468 -->
