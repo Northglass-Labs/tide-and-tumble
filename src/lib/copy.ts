@@ -1,4 +1,4 @@
-import type { Phase, TideNow } from "./tides";
+import type { TideNow } from "./tides";
 
 // Playful-but-honest status lines. Multiple per state so it never feels robotic.
 const LINES: Record<string, string[]> = {
@@ -25,7 +25,7 @@ const LINES: Record<string, string[]> = {
     "High tide o'clock. The sea has fully committed 💯",
   ],
   "falling-early": [
-    "Tide's slipping out to sea 🐚",
+    "Tide's slipping out — the beach is opening up 🐚",
     "The water's starting to pull back 🌾",
     "Ebb tide — the beach is waking up 🦀",
     "The ocean's leaving, but it'll text you later 📱",
@@ -80,25 +80,7 @@ export function statusLine(now: TideNow, atMs: number): string {
   return options[idx];
 }
 
-/** Short chip label for the state. */
-export function phaseLabel(phase: Phase): string {
-  switch (phase) {
-    case "rising":
-      return "Rising";
-    case "falling":
-      return "Falling";
-    case "high-slack":
-      return "High slack";
-    case "low-slack":
-      return "Low slack";
-  }
-}
-
-export function shellingHint(now: TideNow): string | null {
-  // Best shelling is around low tide, especially the falling approach to low.
-  if (now.phase === "low-slack") return "Prime shelling window right now 🐚";
-  if (now.direction === "falling" && now.nextLow) {
-    return "Beach is opening up — good shelling ahead 🐚";
-  }
-  return null;
-}
+// phaseLabel + shellingHint were removed in the "one voice per layer" pass:
+// the scene badge owns the direction word, the headline pool carries the
+// activity flavor (each state's lines already mention shelling/tide pools/
+// sandcastles where apt), and shelling quips live on the tappable surfer.

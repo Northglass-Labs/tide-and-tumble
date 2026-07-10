@@ -119,9 +119,9 @@ export default function TideHero({ now }: { now: TideNow }) {
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         className="block w-full"
         role="img"
-        aria-label={`Tide is ${now.direction}, water at ${Math.round(
-          level * 100,
-        )} percent of today's range`}
+        aria-label={`Beach scene: tide is ${now.direction} at ${now.height.toFixed(
+          1,
+        )} feet, water at ${Math.round(level * 100)} percent of today's range`}
       >
         <defs>
           <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
@@ -399,7 +399,10 @@ export default function TideHero({ now }: { now: TideNow }) {
               slack water. Tap for surf slang. */}
           <g transform="translate(206,8)">
             <g style={A("bob 3s var(--ease-bob) infinite")}>
-              <Boop who="surfer" lines={SURFER_QUIPS}>
+              <Boop
+                who="surfer"
+                lines={isLow ? [...SURFER_QUIPS, ...SURFER_LOW_TIDE_QUIPS] : SURFER_QUIPS}
+              >
                 <Surfer
                   size={62}
                   facing={rising ? 1 : -1}
@@ -495,7 +498,6 @@ export default function TideHero({ now }: { now: TideNow }) {
           shows, at a glance, whether the water is coming in or going out. */}
       <TideDirection
         rising={rising}
-        rate={now.rate}
         slack={now.phase === "high-slack" || now.phase === "low-slack"}
         reduce={!!reduce}
       />
@@ -542,6 +544,15 @@ const SURFER_QUIPS = [
   "The tide's my ride 😎",
   "Wipeout... but make it stylish 💫",
 ];
+// Extra surfer lines at low tide — the shelling whimsy that used to be a
+// persistent hint line now lives here, tap-invited (research says persistent
+// character copy is the Clippy pattern; invited copy is the delightful kind).
+const SURFER_LOW_TIDE_QUIPS = [
+  "Prime shelling right now 🐚",
+  "Tide pools are popping — go look! ⭐",
+  "Found any good shells yet? 👀",
+  "No waves... guess I'll beachcomb 🩴",
+];
 const WHALE_QUIPS = [
   "Thar she blows! 🐋",
   "I'm having a whale of a time 🐳",
@@ -578,21 +589,21 @@ function pos(leftPct: number, topPct: number, widthPct: number): CSSProperties {
  */
 function TideDirection({
   rising,
-  rate,
   slack,
   reduce,
 }: {
   rising: boolean;
-  rate: number;
   slack: boolean;
   reduce: boolean;
 }) {
   const label = slack ? "Slack tide" : rising ? "Coming in" : "Going out";
+  // Direction word only — the numbers (height, ft/hr) live in the chips below
+  // the scene. Slack keeps its sub-line: "about to turn" is said nowhere else.
   const sub = slack
     ? rising
       ? "about to turn · was coming in"
       : "about to turn · was going out"
-    : `${Math.abs(rate).toFixed(1)} ft/hr`;
+    : null;
   const flow = rising ? "flowUp" : "flowDown";
   // Chevron points up for incoming, down for outgoing.
   const chevron = rising ? "5,7 10,2 15,7" : "5,2 10,7 15,2";
@@ -658,9 +669,11 @@ function TideDirection({
       </span>
       <span className="flex flex-col leading-tight">
         <span className="text-[0.82rem] font-semibold tracking-tight">{label}</span>
-        <span className="text-[0.62rem] font-medium uppercase tracking-wide opacity-80">
-          {sub}
-        </span>
+        {sub && (
+          <span className="text-[0.62rem] font-medium uppercase tracking-wide opacity-80">
+            {sub}
+          </span>
+        )}
       </span>
     </div>
   );

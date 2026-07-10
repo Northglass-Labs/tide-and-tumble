@@ -22,7 +22,7 @@ import { BEACHES, SITE_URL } from "@/lib/slugs";
 import { getRecents, pushRecent } from "@/lib/recents";
 import type { BeachAlert } from "@/lib/alerts";
 import type { Marine } from "@/lib/marine";
-import { statusLine, phaseLabel, shellingHint } from "@/lib/copy";
+import { statusLine } from "@/lib/copy";
 import { sunTimes, moonPhase, moonTimes } from "@/lib/sun";
 import TideHero from "@/components/TideHero";
 import TideCurve from "@/components/TideCurve";
@@ -560,11 +560,10 @@ export default function TideApp({
             <p className="font-display text-2xl font-semibold leading-tight text-ink">
               {statusLine(day.now, focusMs)}
             </p>
+            {/* One voice per layer: the scene badge says the direction word,
+                these chips say the numbers, the headline above carries ALL the
+                whimsy (activity hints live in its line pool now). */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Chip>
-                {day.now.direction === "rising" ? "↑" : "↓"}{" "}
-                {phaseLabel(day.now.phase)}
-              </Chip>
               <Chip>{fmtFt(day.now.height)} ft</Chip>
               <Chip>
                 {Math.abs(day.now.rate) < 0.05
@@ -575,11 +574,6 @@ export default function TideApp({
                 ft/hr
               </Chip>
             </div>
-            {shellingHint(day.now) && (
-              <p className="mt-2 font-body text-sm text-ocean">
-                {shellingHint(day.now)}
-              </p>
-            )}
           </section>
         )}
       </div>
