@@ -20,12 +20,21 @@ APIs at request time.
   animation lib — it clobbers child transforms. Nest groups instead (static outer,
   animated inner).
 - **Every animation needs a `prefers-reduced-motion` static fallback.**
+- **Status copy is "one voice per layer"** (`docs/adr/003`): scene badge = direction
+  word, ONE whimsical headline (pool in `src/lib/copy.ts`), chips = numbers, creature
+  tap-quips = invited whimsy. Never add a second persistent status line.
+- **Theme-dependent styling goes through CSS custom properties** (`--star-op`,
+  `--beam-op`, `--color-surface`, night-only classes like `.ocean-foam-bio`) — the
+  SVG/JSX markup stays identical across all five palettes. UI tint surfaces use
+  `bg-surface`, never `bg-sky-bottom` (dark at night → illegible).
+- **Playwright testing gotcha:** the service worker intercepts `/api/tides`, hiding it
+  from `page.route()` — unregister the SW in the page first when route-mocking tides.
 - **Only add CC0 / MIT / Apache / public-domain assets** and record them in the relevant
   `public/**/CREDITS.md` — this is a public deploy.
 - `npm run build` must pass before any deploy.
 
-**Workflow:** feature branch → PR into `main` → Vercel preview URL → merge → prod. See
-`DEPLOYMENT.md` §5.
+**Workflow:** feature branch → PR into `main` → Vercel preview URL → merge → prod
+(auto-deploys on push to `main`). See `DEPLOYMENT.md` §5.
 
 **Northglass Labs product (public).** Repo is `github.com/Northglass-Labs/tide-and-tumble`
 (public since 2026-07-09; all-rights-reserved © Northglass LLC — see `docs/adr/002`).

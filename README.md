@@ -11,7 +11,8 @@ A **[Northglass Labs](https://northglass.io)** product — a small tool, built w
 
 **Live:** https://tideandtumble.app · (`obx-tides.vercel.app` 308-redirects here)
 
-Built for opening on your phone at the beach.
+Built for opening on your phone at the beach — with a proper two-column dashboard
+on desktop.
 
 ---
 
@@ -23,20 +24,29 @@ Built for opening on your phone at the beach.
   stations nationwide.
 - **Tide-direction at a glance** — a badge by the surfer shows **"Coming in"** with
   chevrons flowing shoreward on a rising tide, or **"Going out"** flowing seaward on
-  the ebb, plus the live rate (ft/hr). No day-switching required to feel the trend.
+  the ebb. One fact per layer: the badge says the direction, the chips below say the
+  numbers, and a single whimsical headline carries the personality (see
+  `docs/adr/003`).
 - **Tiny Wings-style animated scene** — a multi-stop sky with a big soft sun, parallax
   dune silhouettes, water sparkles, and creatures with organic motion (birds glide and
   bank, fish dart with wiggling tails, jellyfish pulse, a whale glides deep at high
   tide, a lighthouse beacon sweeps and glows at dusk/night).
 - **Whimsy & Easter eggs** — tap the surfer, whale, turtle, or beach ball for a pun in
   a speech bubble; tap the sun three times and it puts its sunglasses on 😎.
-- **Live tide state** — a hero "water tank" fills to the current tide level; creatures
-  swim toward shore on a rising tide and drift seaward on the ebb. Crabs and sea stars
-  appear on the exposed sand at low tide; a dolphin leaps as the flood nears high.
+- **Live tide state** — the scene fills to the current tide level over a real sand
+  bank: a falling tide exposes actual beach (wet-sand edge, tide pools, shells), a
+  rising one swallows it back. Creatures swim toward shore on the flood and drift
+  seaward on the ebb; crabs and sea stars appear at low tide; a dolphin leaps as the
+  flood nears high. At night the surf glows with bioluminescence and the occasional
+  shooting star crosses the star field.
 - **Real numbers** — current height, rate of change, next high & next low with
-  countdowns, and a 24-hour tide curve with a live "now" marker.
-- **Any day, 30-day window** — a scrollable day strip (or swipe the hero) to preview
-  tides, curve, and conditions for any upcoming day.
+  countdowns, and a 24-hour tide curve with a live "now" marker, day/night shading,
+  and sun/moon markers at sunrise and sunset.
+- **Any day, 30-day window** — a scrollable day strip, a native calendar picker, or
+  swipe the hero to preview tides, curve, and conditions for any upcoming day. Full
+  and new-moon days carry a spring-tide dot (the biggest tides). NWS beach advisories
+  (rip current risk) stay visible on every day — full banner today, a compact
+  "Today:" pill while previewing other days.
 - **Live marine conditions** — ocean water temperature, wind (speed + direction), and
   surf/wave height with period, per beach.
 - **Day → dawn → golden → dusk → night** palette that follows the sun for the selected
