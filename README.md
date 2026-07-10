@@ -33,12 +33,12 @@ on desktop.
   tide, a lighthouse beacon sweeps and glows at dusk/night).
 - **Whimsy & Easter eggs** — tap the surfer, whale, turtle, or beach ball for a pun in
   a speech bubble; tap the sun three times and it puts its sunglasses on 😎.
-- **Live tide state** — the scene fills to the current tide level over a real sand
-  bank: a falling tide exposes actual beach (wet-sand edge, tide pools, shells), a
-  rising one swallows it back. Creatures swim toward shore on the flood and drift
-  seaward on the ebb; crabs and sea stars appear at low tide; a dolphin leaps as the
-  flood nears high. At night the surf glows with bioluminescence and the occasional
-  shooting star crosses the star field.
+- **Live tide state** — a true beach perspective: sand at your feet, ocean to the
+  horizon. The surf line slides down the frame on the flood (waves creep toward the
+  sandcastle) and back toward the horizon on the ebb, exposing wide flats with tide
+  pools and shells. The surfer rides the break wherever it goes; a whale cruises the
+  deep at high tide; a dolphin leaps near the horizon. At night the surf glows with
+  bioluminescence and the occasional shooting star crosses the star field.
 - **Real numbers** — current height, rate of change, next high & next low with
   countdowns, and a 24-hour tide curve with a live "now" marker, day/night shading,
   and sun/moon markers at sunrise and sunset.

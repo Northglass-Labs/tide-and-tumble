@@ -30,8 +30,8 @@ APIs at request time.
 - **Playwright testing gotcha:** the service worker intercepts `/api/tides`, hiding it
   from `page.route()` — and it re-registers on every page load with `clients.claim()`,
   so a one-time unregister doesn't stick. To force a tide state for screenshots, skip
-  the data layer entirely: set the water group's inline `translateY` directly
-  (96 = high, 250 = low).
+  the data layer entirely: set the sand apron's inline `translateY` directly
+  (216 = dead low, 300 = king tide — it's the only inline-translateY group).
 - **Only add CC0 / MIT / Apache / public-domain assets** and record them in the relevant
   `public/**/CREDITS.md` — this is a public deploy.
 - `npm run build` must pass before any deploy.

@@ -13,9 +13,12 @@ import AnimatedEmoji from "./AnimatedEmoji";
 
 const VB_W = 400;
 const VB_H = 340;
-const WATER_TOP_HIGH = 96; // level = 1 (full)
-const WATER_TOP_LOW = 250; // level = 0 (empty)
-const SAND_Y = 300;
+// Beach perspective: bottom of frame = the sand at your feet, horizon at top.
+// The OCEAN is static (horizon → frame bottom); the SAND APRON slides over it
+// with the tide. High tide pushes the surf line DOWN toward the viewer.
+const HORIZON = 148; // ocean meets sky
+const SHORE_LOW = 216; // surf line at dead low — wide flats
+const SHORE_HIGH = 300; // surf line at max high — waves near your feet
 
 // Fixed star field (x, y, radius, twinkle?) — faded in on dusk/night.
 const STARS: [number, number, number, boolean][] = [
@@ -39,7 +42,7 @@ export default function TideHero({ now }: { now: TideNow }) {
   const rising = now.direction === "rising";
   const level = now.level;
 
-  const waterTop = WATER_TOP_LOW - level * (WATER_TOP_LOW - WATER_TOP_HIGH);
+  const shoreY = SHORE_LOW + level * (SHORE_HIGH - SHORE_LOW);
   const isLow = level < 0.3;
   const nearHigh = rising && level > 0.72;
   // Fluent fish/turtle face left by default → flip to face shoreward when rising.
@@ -257,67 +260,60 @@ export default function TideHero({ now }: { now: TideNow }) {
           <Gull size={26} />
         </g>
 
-        {/* Parallax dune silhouettes on the horizon (far → near) */}
-        <g style={{ ...A("wave 200s linear infinite"), filter: "blur(1.4px)", opacity: 0.8 }}>
-          <path d={dunePath(120, 14, 300, 172)} fill="url(#duneFar)" />
+        {/* Distant coastline — low dune silhouettes hugging the horizon, like
+            the shore curving away up the beach. The ocean laps their base. */}
+        <g style={{ ...A("wave 200s linear infinite"), filter: "blur(1.2px)", opacity: 0.55 }}>
+          <path d={dunePath(134, 7, 300, HORIZON + 3)} fill="url(#duneFar)" />
         </g>
-        <g style={{ ...A("wave 120s linear infinite"), filter: "blur(0.5px)", opacity: 0.9 }}>
-          <path d={dunePath(132, 18, 240, 182)} fill="url(#duneMid)" />
-        </g>
-        <g style={A("wave 70s linear infinite")}>
-          <path d={dunePath(144, 22, 190, 194)} fill="url(#duneNear)" />
+        <g style={{ ...A("wave 120s linear infinite"), opacity: 0.7 }}>
+          <path d={dunePath(141, 8, 220, HORIZON + 3)} fill="url(#duneMid)" />
         </g>
 
-        {/* The beach — a sand bank running from the dune line all the way to
-            the sea floor, BEHIND the water. As the tide falls, the water slides
-            down this bank and real sand appears (no more sky-void seam). */}
-        <path
-          d={`M 0 198 Q 60 191 140 195 T 280 193 T ${VB_W} 196 L ${VB_W} ${VB_H} L 0 ${VB_H} Z`}
-          fill="url(#beach)"
-        />
-        {/* Beach detail on the flats: tide pools that emerge at low water,
-            plus pebbles and a couple of shells. Underwater they read as
-            seabed texture; exposed they make low tide worth the walk. */}
-        <g aria-hidden="true">
-          <ellipse cx="92" cy="236" rx="26" ry="6.5" className="fill-seafoam" opacity="0.5" />
-          <ellipse cx="92" cy="236" rx="18" ry="4" fill="url(#water)" opacity="0.55" />
-          <ellipse cx="296" cy="244" rx="20" ry="5" className="fill-seafoam" opacity="0.45" />
-          <ellipse cx="296" cy="244" rx="13" ry="3" fill="url(#water)" opacity="0.5" />
-          <ellipse cx="180" cy="228" rx="4" ry="1.8" className="fill-sand-deep" opacity="0.75" />
-          <ellipse cx="214" cy="240" rx="3" ry="1.4" className="fill-sand-deep" opacity="0.6" />
-          <ellipse cx="330" cy="226" rx="3.4" ry="1.5" className="fill-sand-deep" opacity="0.7" />
-          {/* two tiny shells */}
-          <path d="M 148 246 a 3 3 0 0 1 6 0 l -3 1.6 Z" fill="#f7ede0" opacity="0.9" />
-          <path d="M 252 231 a 2.6 2.6 0 0 1 5.2 0 l -2.6 1.4 Z" fill="#ffd9d1" opacity="0.85" />
+        {/* THE OCEAN — static, horizon to frame bottom. The sand apron
+            (later in paint order) slides over it with the tide, so the surf
+            line is simply the sand's top edge. Lighter at the horizon,
+            deepening toward the viewer. */}
+        <rect x="0" y={HORIZON} width={VB_W} height={VB_H - HORIZON} fill="url(#water)" />
+        <rect x="0" y={HORIZON} width={VB_W} height="14" fill="#ffffff" opacity="0.14" />
+        <line x1="0" y1={HORIZON} x2={VB_W} y2={HORIZON} stroke="#ffffff" opacity="0.3" strokeWidth="1" />
+        {/* rolling wave lines, closer-spaced near the horizon (perspective),
+            cross-moving so it reads as swell instead of a lake */}
+        <g transform={`translate(0,${HORIZON + 13})`} style={{ ...A("wave 17s linear infinite reverse"), opacity: 0.3 }}>
+          <path d={foamPath(2, VB_W / 3, 1.6)} className="fill-white" />
         </g>
-        {/* Sea-floor band (deepest sand, stays underwater) */}
-        <rect x="0" y={SAND_Y} width={VB_W} height={VB_H - SAND_Y} className="fill-sand" />
-        <rect x="0" y={SAND_Y} width={VB_W} height="7" className="fill-sand-deep opacity-60" />
+        <g transform={`translate(0,${HORIZON + 32})`} style={{ ...A("wave 13s linear infinite"), opacity: 0.26 }}>
+          <path d={foamPath(3, VB_W / 3.5, 2.2)} className="fill-white" />
+        </g>
+        <g transform={`translate(0,${HORIZON + 58})`} style={{ ...A("wave 10s linear infinite reverse"), opacity: 0.22 }}>
+          <path d={foamPath(4, VB_W / 4, 3)} className="fill-white" />
+        </g>
+        {/* deep swell shading toward the viewer */}
+        <g transform={`translate(0,${HORIZON + 78})`} style={{ ...A("wave 26s linear infinite"), opacity: 0.14 }}>
+          <path d={waveTopPath(1, 9, VB_W / 2)} className="fill-ocean-deep" />
+        </g>
+        <g transform={`translate(0,${HORIZON + 116})`} style={{ ...A("wave 38s linear infinite reverse"), opacity: 0.1 }}>
+          <path d={waveTopPath(3, 11, VB_W / 2)} className="fill-ocean-abyss" />
+        </g>
+        {/* Whitecaps winking on the open water */}
+        {[
+          [70, 170, 0],
+          [180, 186, -2.4],
+          [305, 174, -4.8],
+          [140, 202, -7.2],
+        ].map(([wx, wy, delay]) => (
+          <path
+            key={wx}
+            d={`M ${wx} ${wy} q 5 -3 10 0`}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="2"
+            strokeLinecap="round"
+            opacity="0.4"
+            className="ocean-whitecap"
+            style={reduce ? undefined : { animationDelay: `${delay}s` }}
+          />
+        ))}
 
-        {/* Coral + Kenney seaweed rooted on the sand, swaying from the base */}
-        <g transform="translate(112,286)">
-          <g style={A("sway 5s ease-in-out infinite", "bottom center")}>
-            <Sprite name="coral" size={48} />
-          </g>
-        </g>
-        <g transform="translate(88,290)">
-          <g style={A("sway 4.4s ease-in-out -1s infinite", "bottom center")}>
-            <Sprite name="kenney_seaweed_green" size={40} />
-          </g>
-        </g>
-        <g transform="translate(320,288)">
-          <g style={A("sway 6s ease-in-out infinite reverse", "bottom center")}>
-            <Sprite name="coral" size={40} />
-          </g>
-        </g>
-        <g transform="translate(346,291)">
-          <g style={A("sway 5.2s ease-in-out -2s infinite reverse", "bottom center")}>
-            <Sprite name="kenney_seaweed_pink" size={34} />
-          </g>
-        </g>
-        {/* Kenney rocks nestled on the sea floor */}
-        <g transform="translate(160,297)"><Sprite name="kenney_rock" size={30} /></g>
-        <g transform="translate(298,299)"><Sprite name="kenney_rock" size={22} facing={-1} /></g>
 
         {/* The lighthouse pier — a little wooden pier runs in from off-frame
             right on stilts, and our hand-drawn lighthouse lives out at its
@@ -327,24 +323,24 @@ export default function TideHero({ now }: { now: TideNow }) {
         <g>
           {/* pilings: deck down into the seabed */}
           {[340, 367.5, 393.5].map((px) => (
-            <rect key={px} x={px} y="98" width="4.5" height="198" rx="2" fill="#8a6544" />
+            <rect key={px} x={px} y="180" width="4.5" height="130" rx="2" fill="#8a6544" />
           ))}
           {/* cross-braces (upper third — above most waterlines) */}
           <g stroke="#7e5a40" strokeWidth="1.8" strokeLinecap="round" opacity="0.85">
-            <line x1="343" y1="112" x2="369" y2="164" />
-            <line x1="369" y1="112" x2="343" y2="164" />
-            <line x1="370" y1="118" x2="395" y2="168" />
-            <line x1="395" y1="118" x2="370" y2="168" />
+            <line x1="343" y1="196" x2="369" y2="248" />
+            <line x1="369" y1="196" x2="343" y2="248" />
+            <line x1="370" y1="202" x2="395" y2="252" />
+            <line x1="395" y1="202" x2="370" y2="252" />
           </g>
           {/* deck boards */}
-          <rect x="336" y="96" width="68" height="5.5" rx="1.5" fill="#a8795a" stroke="#7e5a40" strokeWidth="0.7" />
+          <rect x="336" y="178" width="68" height="5.5" rx="1.5" fill="#a8795a" stroke="#7e5a40" strokeWidth="0.7" />
           {[348, 360, 372, 384, 396].map((px) => (
-            <line key={px} x1={px} y1="96.6" x2={px} y2="101" stroke="#7e5a40" strokeWidth="0.6" opacity="0.5" />
+            <line key={px} x1={px} y1="178.6" x2={px} y2="183" stroke="#7e5a40" strokeWidth="0.6" opacity="0.5" />
           ))}
 
           {/* Beam: two opposite soft cones rotating from the lantern (0,-64
               in lighthouse-local coords → (372, 32) here) */}
-          <g transform="translate(372,32)" style={{ mixBlendMode: "screen" }}>
+          <g transform="translate(372,114)" style={{ mixBlendMode: "screen" }}>
             <g style={A("beacon 9s linear infinite", "center")}>
               <polygon points="0,0 150,-30 150,30" fill="url(#beam)" />
               <polygon points="0,0 -150,-30 -150,30" fill="url(#beam)" />
@@ -352,167 +348,102 @@ export default function TideHero({ now }: { now: TideNow }) {
           </g>
 
           {/* the lighthouse itself — tap it for keeper wisdom */}
-          <g transform="translate(372,96)">
+          <g transform="translate(372,178)">
             <Boop who="lighthouse" lines={LIGHTHOUSE_QUIPS}>
               <Lighthouse size={80} />
             </Boop>
           </g>
         </g>
 
-        {/* Water body — level animates via CSS transition; translucent for depth */}
-        <g
-          style={{
-            transform: `translateY(${waterTop}px)`,
-            transition: reduce ? undefined : "transform 1.4s var(--ease-glide)",
-          }}
-        >
-          {/* Wet-sand edge — the dark damp band right where the water meets
-              the beach. It rides (and tweens) with the water group; opacity
-              fades it out when the waterline is up over the dunes at high
-              tide, where a "wet sand" line would make no sense. */}
-          <rect
-            x="0"
-            y="-7"
-            width={VB_W}
-            height="9"
-            className="fill-sand-deep"
-            style={{
-              opacity: Math.max(0, Math.min(1, (waterTop - 196) / 20)) * 0.55,
-              transition: reduce ? undefined : "opacity 1.4s var(--ease-glide)",
-            }}
-          />
-          {/* — Ocean surface, back to front —
-              A back-swell peeks above the crest moving the OPPOSITE way, the
-              main body rolls with a shorter open-water wavelength, and a bright
-              foam scallop + drifting flecks ride the crest. Cross-moving layers
-              are what make it read as ocean swell instead of a lake. */}
-          <g transform="translate(0,-5)" style={{ ...A("wave 16s linear infinite reverse"), opacity: 0.5 }}>
-            <path d={waveTopPath(2, 6, VB_W / 3)} className="fill-seafoam" />
-          </g>
-          <g style={A("wave 8s linear infinite")} opacity="0.95">
-            <path d={waveTopPath(0, 5.5, VB_W / 4)} fill="url(#water)" />
-          </g>
-          <g transform="translate(0,10)" style={{ ...A("wave 5.5s linear infinite"), opacity: 0.35 }}>
-            <path d={waveTopPath(14, 4.5, VB_W / 4)} className="fill-seafoam" />
-          </g>
-          {/* Foam scallop hugging the crest + broken foam flecks below it */}
-          <g style={{ ...A("wave 9.5s linear infinite"), opacity: 0.75 }}>
-            <path d={foamPath(5, VB_W / 4, 3.2)} className="fill-white ocean-foam-bio" />
-          </g>
-          <g style={{ ...A("wave 7s linear infinite"), opacity: 0.45 }}>
-            {[30, 150, 265, 420, 545, 660].map((fx, i) => (
-              <rect key={fx} x={fx} y={7 + (i % 3) * 3} width={14 + (i % 3) * 6} height="2.4" rx="1.2" fill="#ffffff" className="ocean-foam-bio" />
-            ))}
-          </g>
-          {/* Whitecaps winking across open water */}
-          {[
-            [70, 16, 0],
-            [180, 24, -2.4],
-            [305, 14, -4.8],
-            [355, 30, -7.2],
-          ].map(([wx, wy, delay]) => (
-            <path
-              key={wx}
-              d={`M ${wx} ${wy} q 5 -3 10 0`}
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="2"
-              strokeLinecap="round"
-              opacity="0.4"
-              className="ocean-whitecap"
-              style={reduce ? undefined : { animationDelay: `${delay}s` }}
-            />
-          ))}
-          {/* Deep swell shadows — slow internal texture so the body isn't flat */}
-          <g transform="translate(0,30)" style={{ ...A("wave 26s linear infinite"), opacity: 0.16 }}>
-            <path d={waveTopPath(1, 9, VB_W / 2)} className="fill-ocean-deep" />
-          </g>
-          <g transform="translate(0,62)" style={{ ...A("wave 38s linear infinite reverse"), opacity: 0.12 }}>
-            <path d={waveTopPath(3, 11, VB_W / 2)} className="fill-ocean-abyss" />
-          </g>
-
+        {/* Out in the water: creatures seen through the surface, slightly
+            ghosted. They live in the always-water zone just below the horizon,
+            so no tide can beach them. */}
+        <g opacity="0.92">
           {/* Ambient jellyfish, pulsing */}
-          <g transform="translate(64,70)">
+          <g transform="translate(64,168)">
             <g style={A("bob 5s var(--ease-bob) infinite")}>
               <g style={A("pulse 2.6s var(--ease-pop) infinite", "center top")}>
-                <Sprite name="jellyfish" size={32} />
+                <Sprite name="jellyfish" size={30} />
               </g>
             </g>
           </g>
 
-          {/* A whale glides deep only on a good high tide — tap to hear it */}
+          {/* A whale cruises the deep only on a good high tide — tap to hear it */}
           {level > 0.74 && (
-            <g transform="translate(250,150)">
+            <g transform="translate(236,168)">
               <g style={A("whaleGlide 20s var(--ease-swim) infinite")}>
                 <Boop who="whale" lines={WHALE_QUIPS}>
-                  <Sprite name="whale" size={72} facing={facing} />
+                  <Sprite name="whale" size={64} facing={facing} />
                 </Boop>
               </g>
             </g>
           )}
 
-          {/* Fish school — each darts (burst-then-coast) with a wiggling tail, staggered */}
-          <Fish x={300} y={52} size={30} dur={5.2} delay={0} facing={facing} A={A} sprite="tropical_fish" />
-          <Fish x={268} y={74} size={24} dur={5.9} delay={-1.6} facing={facing} A={A} sprite="fish" />
-          {/* Kenney reef fish, brighter, mingling with the school */}
-          <Fish x={150} y={112} size={28} dur={6.8} delay={-0.8} facing={kenneyFacing} A={A} sprite="kenney_fish_blue" />
+          {/* Fish school — each darts (burst-then-coast), staggered */}
+          <Fish x={300} y={160} size={26} dur={5.2} delay={0} facing={facing} A={A} sprite="tropical_fish" />
+          <Fish x={268} y={176} size={21} dur={5.9} delay={-1.6} facing={facing} A={A} sprite="fish" />
+          <Fish x={150} y={186} size={24} dur={6.8} delay={-0.8} facing={kenneyFacing} A={A} sprite="kenney_fish_blue" />
           {/* Swim-by visitors: cross the whole scene, then gone for a while.
               The transform attribute parks them off-screen — the CSS traversal
               overrides it whenever motion is allowed (gull pattern). */}
           <g transform="translate(440,0)" style={A("swimAcrossL 34s linear infinite")}>
-            <g transform="translate(0,88)">
-              <Sprite name="fish" size={20} facing={1} />
+            <g transform="translate(0,170)">
+              <Sprite name="fish" size={18} facing={1} />
             </g>
           </g>
           <g transform="translate(-60,0)" style={A("swimAcrossR 52s linear 9s infinite")}>
-            <g transform="translate(0,116)">
-              <Sprite name="kenney_fish_red" size={22} facing={1} />
+            <g transform="translate(0,192)">
+              <Sprite name="kenney_fish_red" size={20} facing={1} />
             </g>
           </g>
 
-          {/* Bubble streams drifting up toward the surface */}
-          {!reduce && (
-            <>
-              {[
-                { x: 160, y: 150, d: 0 },
-                { x: 164, y: 150, d: -1.4 },
-                { x: 298, y: 150, d: -0.7 },
-                { x: 302, y: 150, d: -2.1 },
-              ].map((b, i) => (
-                <circle
-                  key={i}
-                  cx={b.x}
-                  cy={b.y}
-                  r={1.6 + (i % 2)}
-                  fill="#ffffff"
-                  style={{ animation: `rise ${3.4 + (i % 3) * 0.6}s ease-in ${b.d}s infinite` }}
-                />
-              ))}
-            </>
-          )}
-
-          {/* Turtle — slow inbound glide + bob — tap for turtle wisdom */}
-          <g transform="translate(120,44)">
+          {/* Turtle — slow glide + bob out in the swell — tap for turtle wisdom */}
+          <g transform="translate(112,166)">
             <g style={A("dart 11s var(--ease-glide) infinite")}>
               <g style={A("bob 4s var(--ease-bob) infinite")}>
                 <Boop who="turtle" lines={TURTLE_QUIPS}>
-                  <Sprite name="turtle" size={52} facing={facing} />
+                  <Sprite name="turtle" size={46} facing={facing} />
                 </Boop>
               </g>
             </g>
           </g>
+        </g>
 
-          {/* Surfer — our hand-drawn character. Carves the surface with board
-              spray on a moving tide; mellows out (no spray, slow carve) on
-              slack water. Tap for surf slang. */}
-          <g transform="translate(206,8)">
+        {/* Sailboat out near the horizon, rocking */}
+        <g transform="translate(296,138)">
+          <g style={A("bob 5s var(--ease-bob) infinite")}>
+            <g style={A("surf 6s var(--ease-swim) infinite", "bottom center")}>
+              <Sprite name="sailboat" size={34} />
+            </g>
+          </g>
+        </g>
+
+        {/* THE SAND APRON — the beach in the foreground, sliding over the
+            static ocean with the tide (translateY tweens). Its wavy top edge
+            IS the surf line: foam rides it, the wet band sits just below it,
+            and the tide pools + shells ride the flats (they slide below the
+            frame at high tide — hidden for free). */}
+        <g
+          style={{
+            transform: `translateY(${shoreY}px)`,
+            transition: reduce ? undefined : "transform 1.4s var(--ease-glide)",
+          }}
+        >
+          {/* second breaker line just offshore */}
+          <g transform="translate(0,-13)" style={{ ...A("wave 13s linear infinite reverse"), opacity: 0.35 }}>
+            <path d={foamPath(4, VB_W / 3, 2.4)} className="fill-white ocean-foam-bio" />
+          </g>
+
+          {/* Surfer — rides the break just off the surf line, so the tide
+              carries them in and out with it. Tap for surf slang. */}
+          <g transform="translate(206,-24)">
             <g style={A("bob 3s var(--ease-bob) infinite")}>
               <Boop
                 who="surfer"
                 lines={isLow ? [...SURFER_QUIPS, ...SURFER_LOW_TIDE_QUIPS] : SURFER_QUIPS}
               >
                 <Surfer
-                  size={62}
+                  size={56}
                   facing={rising ? 1 : -1}
                   energy={
                     now.phase === "high-slack" || now.phase === "low-slack"
@@ -524,39 +455,51 @@ export default function TideHero({ now }: { now: TideNow }) {
             </g>
           </g>
 
-          {/* Sailboat drifting on the far surface, rocking */}
-          <g transform="translate(340,4)">
-            <g style={A("bob 5s var(--ease-bob) infinite")}>
-              <g style={A("surf 6s var(--ease-swim) infinite", "bottom center")}>
-                <Sprite name="sailboat" size={40} />
-              </g>
+          {/* wet sand edge (wavy), then the dry sand body 7px lower */}
+          <path d={waveTopPath(0, 4, VB_W / 3)} className="fill-sand-deep" opacity="0.55" />
+          <g transform="translate(0,7)">
+            <path d={waveTopPath(2, 4, VB_W / 3)} fill="url(#beach)" />
+          </g>
+          {/* breaking foam riding the surf line */}
+          <g transform="translate(0,-3)" style={{ ...A("wave 9.5s linear infinite"), opacity: 0.8 }}>
+            <path d={foamPath(5, VB_W / 4, 3.4)} className="fill-white ocean-foam-bio" />
+          </g>
+          <g transform="translate(0,2)" style={{ ...A("wave 7s linear infinite"), opacity: 0.4 }}>
+            {[30, 150, 265, 420, 545, 660].map((fx, i) => (
+              <rect key={fx} x={fx} y={(i % 3) * 2.5} width={12 + (i % 3) * 6} height="2" rx="1" fill="#ffffff" className="ocean-foam-bio" />
+            ))}
+          </g>
+
+          {/* the flats: tide pools, shells, a breathing starfish */}
+          <g aria-hidden="true">
+            <ellipse cx="92" cy="30" rx="24" ry="5.5" className="fill-seafoam" opacity="0.5" />
+            <ellipse cx="92" cy="30" rx="16" ry="3.4" fill="url(#water)" opacity="0.5" />
+            <ellipse cx="296" cy="40" rx="18" ry="4.5" className="fill-seafoam" opacity="0.45" />
+            <ellipse cx="296" cy="40" rx="12" ry="2.8" fill="url(#water)" opacity="0.45" />
+            <ellipse cx="180" cy="24" rx="4" ry="1.6" className="fill-sand-deep" opacity="0.7" />
+            <ellipse cx="330" cy="26" rx="3.2" ry="1.4" className="fill-sand-deep" opacity="0.65" />
+            <path d="M 148 44 a 3 3 0 0 1 6 0 l -3 1.6 Z" fill="#f7ede0" opacity="0.9" />
+            <path d="M 252 30 a 2.6 2.6 0 0 1 5.2 0 l -2.6 1.4 Z" fill="#ffd9d1" opacity="0.85" />
+          </g>
+          <g transform="translate(244,34)">
+            <g style={A("breathe 3.6s ease-in-out infinite", "center")}>
+              <Sprite name="star" size={26} />
             </g>
+          </g>
+          <g transform="translate(300,26)">
+            <Sprite name="shell" size={22} />
           </g>
         </g>
 
-        {/* Low-tide treasures on the exposed sand */}
-        {isLow && (
+        {/* Crab & octopus walk on as Noto Lottie overlays below; Fluent
+            statics on the dry sand are the reduced-motion fallback. */}
+        {isLow && reduce && (
           <>
-            <ellipse cx="205" cy={SAND_Y + 20} rx="46" ry="9" className="fill-seafoam opacity-50" />
-            {/* Crab & octopus animate as Noto Lottie overlays below; Fluent
-                statics here are the reduced-motion fallback. */}
-            {reduce && (
-              <>
-                <g transform={`translate(150,${SAND_Y + 14})`}>
-                  <Sprite name="crab" size={40} />
-                </g>
-                <g transform={`translate(304,${SAND_Y + 16})`}>
-                  <Sprite name="octopus" size={38} />
-                </g>
-              </>
-            )}
-            <g transform={`translate(250,${SAND_Y + 20})`}>
-              <g style={A("breathe 3.6s ease-in-out infinite", "center")}>
-                <Sprite name="star" size={30} />
-              </g>
+            <g transform="translate(150,308)">
+              <Sprite name="crab" size={36} />
             </g>
-            <g transform={`translate(300,${SAND_Y + 22})`}>
-              <Sprite name="shell" size={26} />
+            <g transform="translate(304,310)">
+              <Sprite name="octopus" size={34} />
             </g>
           </>
         )}
@@ -564,7 +507,7 @@ export default function TideHero({ now }: { now: TideNow }) {
         {/* Dolphin animates as a Noto Lottie overlay below; Fluent static here
             is the reduced-motion fallback. */}
         {nearHigh && reduce && (
-          <g transform={`translate(300,${WATER_TOP_HIGH + 8})`}>
+          <g transform="translate(300,132)">
             <Sprite name="dolphin" size={56} facing={-1} />
           </g>
         )}
@@ -589,7 +532,7 @@ export default function TideHero({ now }: { now: TideNow }) {
       </svg>
 
       {/* Water glints */}
-      <WaterSparkles topFraction={0.42} />
+      <WaterSparkles topFraction={0.46} />
 
       {/* Tide-direction indicator — an always-visible cue near the surfer that
           shows, at a glance, whether the water is coming in or going out. */}
@@ -619,7 +562,7 @@ export default function TideHero({ now }: { now: TideNow }) {
             <AnimatedEmoji code="1f388" label="drifting balloon" style={pos(0, 15, 12)} />
           </div>
           {nearHigh && (
-            <AnimatedEmoji code="1f42c" label="leaping dolphin" style={pos(75, 25, 20)} />
+            <AnimatedEmoji code="1f42c" label="leaping dolphin" style={pos(72, 41, 16)} />
           )}
           {isLow && (
             <>
