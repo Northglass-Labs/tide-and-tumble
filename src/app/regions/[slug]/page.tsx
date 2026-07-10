@@ -66,12 +66,12 @@ export default async function RegionPage({ params }: Props) {
   const beaches = beachesInRegion(region);
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col">
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col lg:max-w-5xl">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(region)) }}
       />
-      <header className="px-5 pt-5">
+      <header className="px-5 pt-5 lg:max-w-3xl lg:px-8">
         <nav aria-label="Breadcrumb" className="font-body text-xs text-ink-soft">
           <Link href="/" className="text-ocean hover:underline">
             Tide &amp; Tumble
@@ -86,8 +86,8 @@ export default async function RegionPage({ params }: Props) {
         </p>
       </header>
 
-      <section className="px-5 pt-4 pb-8">
-        <ul className="grid gap-2.5">
+      <section className="px-5 pt-4 pb-8 lg:px-8">
+        <ul className="grid gap-2.5 lg:grid-cols-2 lg:gap-3">
           {beaches.map((b) => (
             <li key={b.slug}>
               <Link
