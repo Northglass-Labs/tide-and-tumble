@@ -145,8 +145,13 @@ export default function TideHero({ now }: { now: TideNow }) {
           {/* Lighthouse beam — bright at the lantern, fading with distance.
               --beam-op strengthens it at dusk/night (set per theme). */}
           <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#fff6cf" stopOpacity="var(--beam-op, 0.28)" />
-            <stop offset="100%" stopColor="#fff6cf" stopOpacity="0" />
+            <stop offset="0%" stopColor="#ffe9a3" stopOpacity="var(--beam-op, 0.28)" />
+            <stop offset="100%" stopColor="#ffe9a3" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="beach" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" style={{ stopColor: "var(--color-sand)" }} />
+            <stop offset="55%" style={{ stopColor: "var(--color-sand)" }} />
+            <stop offset="100%" style={{ stopColor: "var(--color-sand-deep)" }} />
           </linearGradient>
           {(["Far", "Mid", "Near"] as const).map((k) => (
             <linearGradient key={k} id={`dune${k}`} x1="0" y1="0" x2="0" y2="1">
@@ -176,6 +181,20 @@ export default function TideHero({ now }: { now: TideNow }) {
             />
           ))}
         </g>
+
+        {/* Shooting star — a rare, night-only streak (CSS-gated + animated;
+            hidden entirely under reduced motion and outside the night theme) */}
+        <line
+          className="shooting-star"
+          aria-hidden="true"
+          x1="0"
+          y1="0"
+          x2="24"
+          y2="9"
+          stroke="#fffbe8"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
 
         {/* Sun / moon with soft halo + gentle light rays */}
         <circle cx="332" cy="66" r="66" fill="url(#sunHalo)" />
@@ -248,7 +267,29 @@ export default function TideHero({ now }: { now: TideNow }) {
           <path d={dunePath(144, 22, 190, 194)} fill="url(#duneNear)" />
         </g>
 
-        {/* Sand floor + wet-sand band */}
+        {/* The beach — a sand bank running from the dune line all the way to
+            the sea floor, BEHIND the water. As the tide falls, the water slides
+            down this bank and real sand appears (no more sky-void seam). */}
+        <path
+          d={`M 0 198 Q 60 191 140 195 T 280 193 T ${VB_W} 196 L ${VB_W} ${VB_H} L 0 ${VB_H} Z`}
+          fill="url(#beach)"
+        />
+        {/* Beach detail on the flats: tide pools that emerge at low water,
+            plus pebbles and a couple of shells. Underwater they read as
+            seabed texture; exposed they make low tide worth the walk. */}
+        <g aria-hidden="true">
+          <ellipse cx="92" cy="236" rx="26" ry="6.5" className="fill-seafoam" opacity="0.5" />
+          <ellipse cx="92" cy="236" rx="18" ry="4" fill="url(#water)" opacity="0.55" />
+          <ellipse cx="296" cy="244" rx="20" ry="5" className="fill-seafoam" opacity="0.45" />
+          <ellipse cx="296" cy="244" rx="13" ry="3" fill="url(#water)" opacity="0.5" />
+          <ellipse cx="180" cy="228" rx="4" ry="1.8" className="fill-sand-deep" opacity="0.75" />
+          <ellipse cx="214" cy="240" rx="3" ry="1.4" className="fill-sand-deep" opacity="0.6" />
+          <ellipse cx="330" cy="226" rx="3.4" ry="1.5" className="fill-sand-deep" opacity="0.7" />
+          {/* two tiny shells */}
+          <path d="M 148 246 a 3 3 0 0 1 6 0 l -3 1.6 Z" fill="#f7ede0" opacity="0.9" />
+          <path d="M 252 231 a 2.6 2.6 0 0 1 5.2 0 l -2.6 1.4 Z" fill="#ffd9d1" opacity="0.85" />
+        </g>
+        {/* Sea-floor band (deepest sand, stays underwater) */}
         <rect x="0" y={SAND_Y} width={VB_W} height={VB_H - SAND_Y} className="fill-sand" />
         <rect x="0" y={SAND_Y} width={VB_W} height="7" className="fill-sand-deep opacity-60" />
 
@@ -284,6 +325,21 @@ export default function TideHero({ now }: { now: TideNow }) {
             transition: reduce ? undefined : "transform 1.4s var(--ease-glide)",
           }}
         >
+          {/* Wet-sand edge — the dark damp band right where the water meets
+              the beach. It rides (and tweens) with the water group; opacity
+              fades it out when the waterline is up over the dunes at high
+              tide, where a "wet sand" line would make no sense. */}
+          <rect
+            x="0"
+            y="-7"
+            width={VB_W}
+            height="9"
+            className="fill-sand-deep"
+            style={{
+              opacity: Math.max(0, Math.min(1, (waterTop - 196) / 20)) * 0.55,
+              transition: reduce ? undefined : "opacity 1.4s var(--ease-glide)",
+            }}
+          />
           {/* — Ocean surface, back to front —
               A back-swell peeks above the crest moving the OPPOSITE way, the
               main body rolls with a shorter open-water wavelength, and a bright
@@ -300,11 +356,11 @@ export default function TideHero({ now }: { now: TideNow }) {
           </g>
           {/* Foam scallop hugging the crest + broken foam flecks below it */}
           <g style={{ ...A("wave 9.5s linear infinite"), opacity: 0.75 }}>
-            <path d={foamPath(5, VB_W / 4, 3.2)} className="fill-white" />
+            <path d={foamPath(5, VB_W / 4, 3.2)} className="fill-white ocean-foam-bio" />
           </g>
           <g style={{ ...A("wave 7s linear infinite"), opacity: 0.45 }}>
             {[30, 150, 265, 420, 545, 660].map((fx, i) => (
-              <rect key={fx} x={fx} y={7 + (i % 3) * 3} width={14 + (i % 3) * 6} height="2.4" rx="1.2" fill="#ffffff" />
+              <rect key={fx} x={fx} y={7 + (i % 3) * 3} width={14 + (i % 3) * 6} height="2.4" rx="1.2" fill="#ffffff" className="ocean-foam-bio" />
             ))}
           </g>
           {/* Whitecaps winking across open water */}

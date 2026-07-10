@@ -13,6 +13,10 @@
   --color-coral: #ff7e67;
   --color-coral-soft: #ffb4a2;
   --color-shell: #fcfbf7;
+  /* Tinted UI surface (stat tiles, picker rows, close buttons). Follows the
+     sky tint by day but MUST stay light in every theme — night's sky-bottom
+     is dark navy, and dark surface + dark ink text was illegible. */
+  --color-surface: #e8f7f5;
   --color-ink: #123a42;
   --color-ink-soft: #4e7078;
 
@@ -402,6 +406,7 @@
 :root[data-theme="dawn"] {
   --color-sky-top: #86b6e3;
   --color-sky-bottom: #ffd9c2;
+  --color-surface: #ffe9db;
   --color-sand: #f6e6cf;
   --color-sand-deep: #ecd0a8;
   --color-seafoam: #a9e6da;
@@ -423,6 +428,7 @@
 :root[data-theme="golden"] {
   --color-sky-top: #5b4b8a;
   --color-sky-bottom: #ffb088;
+  --color-surface: #ffe2cd;
   --color-sand: #f0c9a0;
   --color-sand-deep: #c98a63;
   --color-seafoam: #ffc59e;
@@ -444,6 +450,7 @@
 :root[data-theme="dusk"] {
   --color-sky-top: #3b2c66;
   --color-sky-bottom: #e0796f;
+  --color-surface: #ffe3dc;
   --color-sand: #d9b48c;
   --color-sand-deep: #b07f5f;
   --color-seafoam: #ffb38a;
@@ -466,8 +473,9 @@
 :root[data-theme="night"] {
   --color-sky-top: #101a3a;
   --color-sky-bottom: #35406e;
-  --color-sand: #4a4e68;
-  --color-sand-deep: #33374d;
+  --color-surface: #e6eaf7;
+  --color-sand: #616896;
+  --color-sand-deep: #454b70;
   --color-seafoam: #6f8fc0;
   --color-ocean: #2e5f8a;
   --color-ocean-deep: #1b3f66;
@@ -629,6 +637,47 @@ body::before {
 }
 :root[data-theme="night"] body::before {
   background: linear-gradient(180deg, #dbe3f2, #eef2f9);
+}
+
+/* ===== Night magic (scene) =====
+   Bioluminescent foam: at night the whitecaps and crest foam pick up the
+   cool glow of bioluminescent plankton. Pure CSS on class hooks — the SVG
+   markup is identical in every theme. */
+:root[data-theme="night"] .ocean-foam-bio {
+  fill: #9ff2ff;
+  filter: drop-shadow(0 0 3px rgba(125, 235, 255, 0.75));
+}
+:root[data-theme="night"] .ocean-whitecap {
+  stroke: #9ff2ff;
+  filter: drop-shadow(0 0 2.5px rgba(125, 235, 255, 0.7));
+}
+
+/* Shooting star: invisible by default; at night (and only with motion
+   allowed) it streaks across the star field once per ~43s cycle. */
+.shooting-star {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-theme="night"] .shooting-star {
+    animation: shootingStar 43s linear 7s infinite;
+  }
+}
+@keyframes shootingStar {
+  0% {
+    opacity: 0;
+    transform: translate(330px, 16px);
+  }
+  0.8% {
+    opacity: 0.9;
+  }
+  3.2% {
+    opacity: 0;
+    transform: translate(150px, 78px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(150px, 78px);
+  }
 }
 
 /* Smooth token crossfade when theme flips */

@@ -5,9 +5,23 @@ const W = 360;
 const H = 170;
 const PAD_TOP = 26;
 const PAD_BOTTOM = 26;
+const MIN_PER_DAY = 24 * 60;
 
-/** The 24-hour tide curve with high/low pills and a pulsing "now" marker. */
-export default function TideCurve({ day }: { day: TideDay }) {
+/**
+ * The 24-hour tide curve with high/low pills, a pulsing "now" marker, and
+ * day/night shading (pre-sunrise and post-sunset bands with tiny sun/moon
+ * glyphs) so "is that low tide at a walkable hour?" reads at a glance.
+ */
+export default function TideCurve({
+  day,
+  sunriseMin,
+  sunsetMin,
+}: {
+  day: TideDay;
+  /** Minutes-since-midnight (station-local) of sunrise/sunset for this day. */
+  sunriseMin?: number | null;
+  sunsetMin?: number | null;
+}) {
   const { curve, dayMin, dayMax, extrema, now } = day;
   if (curve.length < 2) return null;
 
@@ -31,6 +45,15 @@ export default function TideCurve({ day }: { day: TideDay }) {
 
   const todayExtrema = extrema.filter((e) => e.time >= t0 && e.time <= t1);
 
+  // Day/night bands: the curve spans exactly midnight→midnight, so an x
+  // position is just minutes/1440.
+  const hasSun =
+    sunriseMin != null && sunsetMin != null && sunsetMin > sunriseMin;
+  const riseX = hasSun ? (sunriseMin! / MIN_PER_DAY) * W : 0;
+  const setX = hasSun ? (sunsetMin! / MIN_PER_DAY) * W : W;
+  const bandTop = 0;
+  const bandH = H - PAD_BOTTOM + 6;
+
   return (
     <div className="w-full">
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full">
@@ -40,6 +63,51 @@ export default function TideCurve({ day }: { day: TideDay }) {
             <stop offset="100%" style={{ stopColor: "var(--color-ocean-deep)" }} stopOpacity="0.05" />
           </linearGradient>
         </defs>
+
+        {/* night shading: soft indigo before sunrise and after sunset */}
+        {hasSun && (
+          <g aria-hidden="true">
+            <rect x="0" y={bandTop} width={riseX} height={bandH} fill="#3b4a86" opacity="0.10" />
+            <rect x={setX} y={bandTop} width={W - setX} height={bandH} fill="#3b4a86" opacity="0.10" />
+            {[riseX, setX].map((bx, i) => (
+              <line
+                key={i}
+                x1={bx}
+                y1={bandTop + 4}
+                x2={bx}
+                y2={H - PAD_BOTTOM}
+                className="stroke-ink-soft"
+                strokeWidth="0.6"
+                strokeDasharray="1.5 3"
+                opacity="0.35"
+              />
+            ))}
+            {/* tiny sun at sunrise */}
+            <g transform={`translate(${riseX}, ${bandTop + 8})`}>
+              <circle r="2.6" fill="#f6b73c" />
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+                <line
+                  key={a}
+                  x1={4}
+                  y1={0}
+                  x2={5.4}
+                  y2={0}
+                  stroke="#f6b73c"
+                  strokeWidth="0.9"
+                  strokeLinecap="round"
+                  transform={`rotate(${a})`}
+                />
+              ))}
+            </g>
+            {/* tiny crescent at sunset */}
+            <g transform={`translate(${setX}, ${bandTop + 8})`}>
+              <path
+                d="M 1.2 -3 A 3.2 3.2 0 1 0 1.2 3 A 2.5 2.5 0 1 1 1.2 -3 Z"
+                fill="#aab6dd"
+              />
+            </g>
+          </g>
+        )}
 
         {/* subtle hour gridlines at 6/12/18h */}
         {[0.25, 0.5, 0.75].map((f) => (
@@ -70,19 +138,20 @@ export default function TideCurve({ day }: { day: TideDay }) {
         {/* dim the past */}
         <rect x="0" y="0" width={nowX} height={H} className="fill-shell" opacity="0.22" />
 
-        {/* high/low pills */}
+        {/* high/low pills (labels clamped so edge times don't clip) */}
         {todayExtrema.map((e) => {
           const ex = x(e.time);
           const ey = y(e.height);
           const isHigh = e.type === "H";
           const labelY = isHigh ? ey - 12 : ey + 16;
+          const anchor = ex < 26 ? "start" : ex > W - 26 ? "end" : "middle";
           return (
             <g key={e.time}>
               <circle cx={ex} cy={ey} r="3" className="fill-ocean-deep" />
               <text
                 x={ex}
                 y={labelY}
-                textAnchor="middle"
+                textAnchor={anchor}
                 className="fill-ink-soft font-body"
                 fontSize="8.5"
                 fontWeight="700"
