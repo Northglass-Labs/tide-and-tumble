@@ -680,6 +680,77 @@ body::before {
   }
 }
 
+/* ===== Walk-on creatures =====
+   The scene keeps a small resident cast; everyone else enters from off-screen,
+   crosses, and leaves — absence windows are what keep the scene from feeling
+   busy. Base transforms park each walk-on OFF-SCREEN, so under reduced motion
+   (global animation kill) they simply never appear (decorative only).
+
+   Overlay walk-ons use cqw (container-relative) units — the hero root is a
+   size container. SVG swim-bys use px = viewBox user units (VB_W = 400). */
+.walkon-balloon,
+.walkon-crab {
+  transform: translateX(-18cqw);
+}
+.walkon-octopus {
+  transform: translateX(112cqw);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .walkon-balloon {
+    animation: walkonLR 96s linear 6s infinite; /* ~34s dreamy drift, then gone */
+  }
+  .walkon-crab {
+    animation: walkonLR 48s linear infinite; /* ~17s scuttle across the flats */
+  }
+  .walkon-octopus {
+    animation: walkonRL 85s linear 22s infinite; /* rare amble, other direction */
+  }
+}
+@keyframes walkonLR {
+  0% {
+    transform: translateX(-18cqw);
+  }
+  35% {
+    transform: translateX(112cqw);
+  }
+  100% {
+    transform: translateX(112cqw);
+  }
+}
+@keyframes walkonRL {
+  0% {
+    transform: translateX(112cqw);
+  }
+  30% {
+    transform: translateX(-18cqw);
+  }
+  100% {
+    transform: translateX(-18cqw);
+  }
+}
+@keyframes swimAcrossL {
+  0% {
+    transform: translateX(440px);
+  }
+  38% {
+    transform: translateX(-60px);
+  }
+  100% {
+    transform: translateX(-60px);
+  }
+}
+@keyframes swimAcrossR {
+  0% {
+    transform: translateX(-60px);
+  }
+  38% {
+    transform: translateX(440px);
+  }
+  100% {
+    transform: translateX(440px);
+  }
+}
+
 /* Smooth token crossfade when theme flips */
 :root {
   transition:

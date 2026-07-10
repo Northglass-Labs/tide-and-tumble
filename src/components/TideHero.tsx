@@ -114,7 +114,7 @@ export default function TideHero({ now }: { now: TideNow }) {
         };
 
   return (
-    <div className="relative w-full overflow-hidden rounded-b-[2.5rem] shadow-[var(--shadow-card)]">
+    <div className="relative w-full overflow-hidden rounded-b-[2.5rem] shadow-[var(--shadow-card)] [container-type:inline-size]">
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         className="block w-full"
@@ -413,10 +413,21 @@ export default function TideHero({ now }: { now: TideNow }) {
           {/* Fish school — each darts (burst-then-coast) with a wiggling tail, staggered */}
           <Fish x={300} y={52} size={30} dur={5.2} delay={0} facing={facing} A={A} sprite="tropical_fish" />
           <Fish x={268} y={74} size={24} dur={5.9} delay={-1.6} facing={facing} A={A} sprite="fish" />
-          <Fish x={324} y={82} size={20} dur={6.4} delay={-3.1} facing={facing} A={A} sprite="fish" />
           {/* Kenney reef fish, brighter, mingling with the school */}
           <Fish x={150} y={112} size={28} dur={6.8} delay={-0.8} facing={kenneyFacing} A={A} sprite="kenney_fish_blue" />
-          <Fish x={196} y={92} size={22} dur={5.6} delay={-2.4} facing={kenneyFacing} A={A} sprite="kenney_fish_red" />
+          {/* Swim-by visitors: cross the whole scene, then gone for a while.
+              The transform attribute parks them off-screen — the CSS traversal
+              overrides it whenever motion is allowed (gull pattern). */}
+          <g transform="translate(440,0)" style={A("swimAcrossL 34s linear infinite")}>
+            <g transform="translate(0,88)">
+              <Sprite name="fish" size={20} facing={1} />
+            </g>
+          </g>
+          <g transform="translate(-60,0)" style={A("swimAcrossR 52s linear 9s infinite")}>
+            <g transform="translate(0,116)">
+              <Sprite name="kenney_fish_red" size={22} facing={1} />
+            </g>
+          </g>
 
           {/* Bubble streams drifting up toward the surface */}
           {!reduce && (
@@ -574,15 +585,23 @@ export default function TideHero({ now }: { now: TideNow }) {
           the hero so they track the SVG scene. Skipped under reduced motion. */}
       {!reduce && (
         <div className="pointer-events-none absolute inset-0">
-          <AnimatedEmoji code="1f388" label="drifting balloon" style={pos(13, 15, 12)} />
+          <div className="absolute inset-0 walkon-balloon">
+            <AnimatedEmoji code="1f388" label="drifting balloon" style={pos(0, 15, 12)} />
+          </div>
           {nearHigh && (
             <AnimatedEmoji code="1f42c" label="leaping dolphin" style={pos(75, 25, 20)} />
           )}
           {isLow && (
             <>
-              <AnimatedEmoji code="1f980" label="crab" style={pos(38, 90, 13)} />
-              {/* 76% keeps the octopus clear of the lighthouse at ~89% */}
-              <AnimatedEmoji code="1f419" label="octopus" style={pos(76, 90, 12)} />
+              {/* Walk-ons, not residents: the crab scuttles across the
+                  exposed flats and exits; the octopus ambles the other way on
+                  a rarer cycle. Off-screen most of the time — that's the point. */}
+              <div className="absolute inset-0 walkon-crab">
+                <AnimatedEmoji code="1f980" label="crab" style={pos(0, 90, 13)} />
+              </div>
+              <div className="absolute inset-0 walkon-octopus">
+                <AnimatedEmoji code="1f419" label="octopus" style={pos(0, 90, 12)} />
+              </div>
             </>
           )}
         </div>
