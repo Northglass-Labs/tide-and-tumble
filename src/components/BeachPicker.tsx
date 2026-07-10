@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   regions,
   activeFromNoaa,
@@ -12,7 +12,7 @@ import { getRecents } from "@/lib/recents";
 const MapPicker = dynamic(() => import("./MapPicker"), {
   ssr: false,
   loading: () => (
-    <div className="grid h-72 place-items-center rounded-2xl bg-sky-bottom/50 text-ink-soft">
+    <div className="grid h-72 place-items-center rounded-2xl bg-surface/60 text-ink-soft">
       Loading map…
     </div>
   ),
@@ -35,8 +35,10 @@ export default function BeachPicker({
   const [zip, setZip] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // Read once per open; recents rarely change while the sheet is up.
-  const [recents] = useState<ActiveStation[]>(() => (open ? getRecents() : []));
+  // Re-read each time the sheet opens. (A lazy useState initializer ran once
+  // at mount — while the sheet was still CLOSED — so recents were permanently
+  // empty and the Recent section never rendered.)
+  const recents = useMemo<ActiveStation[]>(() => (open ? getRecents() : []), [open]);
 
   if (!open) return null;
 
@@ -133,7 +135,7 @@ export default function BeachPicker({
           </h2>
           <button
             onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-full bg-sky-bottom text-ink-soft"
+            className="grid h-8 w-8 place-items-center rounded-full bg-surface text-ink-soft"
             aria-label="Close"
           >
             ✕
@@ -176,7 +178,7 @@ export default function BeachPicker({
         </form>
 
         {status && (
-          <p className="mb-3 rounded-xl bg-sky-bottom px-3 py-2 text-sm font-body text-ink-soft">
+          <p className="mb-3 rounded-xl bg-surface px-3 py-2 text-sm font-body text-ink-soft">
             {status}
           </p>
         )}
@@ -222,7 +224,7 @@ export default function BeachPicker({
                           className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left font-body transition active:scale-[0.98] ${
                             active
                               ? "bg-ocean text-white"
-                              : "bg-sky-bottom/60 text-ink hover:bg-sky-bottom"
+                              : "bg-surface/70 text-ink hover:bg-surface"
                           }`}
                         >
                           <span className="font-bold">{s.label}</span>

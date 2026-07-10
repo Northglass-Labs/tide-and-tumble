@@ -622,54 +622,75 @@ export default function TideApp({
             <h2 className="mb-1 font-display text-sm font-semibold text-ink-soft">
               {isToday ? "Today's tide" : `${fmtDayLabel(focusMs)} tide`}
             </h2>
-            <TideCurve day={day} />
+            <TideCurve
+              day={day}
+              sunriseMin={clockToMinutes(sun.sunrise)}
+              sunsetMin={clockToMinutes(sun.sunset)}
+            />
           </section>
         )}
 
         {/* Conditions: marine (today only) + sun & moon */}
         {day && (
           <section className="mx-5 mt-4 mb-8 rounded-3xl bg-shell/60 p-4">
-            {isToday && marine && (marine.waterTempF != null || marine.windMph != null || marine.surfFt != null) && (
-              <div className="mb-3 grid grid-cols-3 gap-2">
-                <Stat
-                  icon={<StatIcon kind="water" />}
-                  label="Water"
-                  value={marine.waterTempF != null ? `${Math.round(marine.waterTempF)}°F` : "—"}
-                />
-                <Stat
-                  icon={<StatIcon kind="wind" />}
-                  label="Wind"
-                  value={
-                    marine.windMph != null
-                      ? `${Math.round(marine.windMph)}${marine.windDir ? " " + marine.windDir : ""}`
-                      : "—"
-                  }
-                  hint={marine.windMph != null ? "mph" : undefined}
-                />
-                <Stat
-                  icon={<StatIcon kind="surf" />}
-                  label="Surf"
-                  value={marine.surfFt != null ? `${marine.surfFt.toFixed(1)} ft` : "—"}
-                  hint={
-                    marine.surfFt != null && marine.surfPeriodS != null
+            {isToday && marine && (() => {
+              // Only render stats that have data — a "—" tile is clutter.
+              const stats = [
+                marine.waterTempF != null && {
+                  kind: "water" as const,
+                  label: "Water",
+                  value: `${Math.round(marine.waterTempF)}°F`,
+                },
+                marine.windMph != null && {
+                  kind: "wind" as const,
+                  label: "Wind",
+                  value: `${Math.round(marine.windMph)}${marine.windDir ? " " + marine.windDir : ""}`,
+                  hint: "mph",
+                },
+                marine.surfFt != null && {
+                  kind: "surf" as const,
+                  label: "Surf",
+                  value: `${marine.surfFt.toFixed(1)} ft`,
+                  hint:
+                    marine.surfPeriodS != null
                       ? `@ ${Math.round(marine.surfPeriodS)}s`
-                      : undefined
-                  }
-                />
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 font-body text-sm text-ink-soft">
-              <span className="flex items-center gap-1.5">
+                      : undefined,
+                },
+              ].filter(Boolean) as {
+                kind: "water" | "wind" | "surf";
+                label: string;
+                value: string;
+                hint?: string;
+              }[];
+              if (stats.length === 0) return null;
+              const cols =
+                stats.length === 1 ? "grid-cols-1" : stats.length === 2 ? "grid-cols-2" : "grid-cols-3";
+              return (
+                <div className={`mb-3 grid gap-2 ${cols}`}>
+                  {stats.map((st) => (
+                    <Stat
+                      key={st.kind}
+                      icon={<StatIcon kind={st.kind} />}
+                      label={st.label}
+                      value={st.value}
+                      hint={st.hint}
+                    />
+                  ))}
+                </div>
+              );
+            })()}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 font-body text-sm text-ink-soft">
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <Sunrise /> Sunrise · {sun.sunrise ?? "—"}
               </span>
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <Sunset /> Sunset · {sun.sunset ?? "—"}
               </span>
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <Moonrise /> Moonrise ·{" "}
                 {moonRS.rise ?? (moonRS.alwaysUp ? "up all day" : "—")}
               </span>
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <Moonset /> Moonset ·{" "}
                 {moonRS.set ?? (moonRS.alwaysDown ? "down all day" : "—")}
               </span>
@@ -677,7 +698,14 @@ export default function TideApp({
                 <MoonDisc fraction={moon.fraction} size={17} />
                 {moon.name} · {Math.round(moon.illumination * 100)}% lit
               </span>
-              {isToday && uvIndex && (
+              {isToday && uvIndex && (() => {
+                // UV at night is noise: show only between sunrise and sunset.
+                const d = new Date(nowMs);
+                const nowMin = d.getUTCHours() * 60 + d.getUTCMinutes();
+                const rise = clockToMinutes(sun.sunrise);
+                const set = clockToMinutes(sun.sunset);
+                return rise == null || set == null || (nowMin >= rise && nowMin <= set);
+              })() && (
                 <span className="col-span-2 flex items-center gap-1.5 text-ink-soft/90">
                   <span
                     aria-hidden="true"
@@ -720,7 +748,7 @@ function Stat({
   hint?: string;
 }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl bg-sky-bottom/60 px-2 py-2.5 text-center">
+    <div className="flex flex-col items-center rounded-2xl bg-surface/70 px-2 py-2.5 text-center">
       <span className="grid h-6 place-items-center leading-none">{icon}</span>
       <span className="mt-1 font-display text-base font-bold leading-tight text-ink">
         {value}

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { DAY_MS, dayParts } from "@/lib/tides";
+import { moonPhase } from "@/lib/sun";
 
 /**
  * A horizontally scrollable strip of day chips (Today → +maxDays), weather-app
@@ -85,6 +86,9 @@ export default function DayStrip({
           const ms = todayStartMs + i * DAY_MS;
           const p = dayParts(ms);
           const active = i === offset;
+          // Spring tides run biggest near full/new moon — worth a tiny dot.
+          const illum = moonPhase(new Date(ms + DAY_MS / 2)).illumination;
+          const spring = illum >= 0.94 || illum <= 0.06;
           return (
             <button
               key={i}
@@ -104,7 +108,15 @@ export default function DayStrip({
               <span className="font-display text-lg font-semibold leading-none">
                 {p.date}
               </span>
-              <span className="text-[10px] opacity-80">{p.month}</span>
+              <span className="flex items-center gap-1 text-[10px] opacity-80">
+                {p.month}
+                {spring && (
+                  <span
+                    className={`inline-block h-1 w-1 rounded-full ${active ? "bg-white" : "bg-coral"}`}
+                    title="Spring tides — full/new moon"
+                  />
+                )}
+              </span>
             </button>
           );
         })}
