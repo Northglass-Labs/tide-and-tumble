@@ -110,9 +110,21 @@ interface TideAppProps {
    * its own H1). The picker still works for on-page exploration.
    */
   seeded?: boolean;
+  /**
+   * Server-fetched NWS safety data (beach pages). Renders in the initial SSR
+   * HTML — the single alert strip for the page (never render alerts outside
+   * TideApp too, or they show twice). The client refetch replaces it fresh.
+   */
+  initialAlerts?: BeachAlert[];
+  initialUv?: string | null;
 }
 
-export default function TideApp({ initialStation, seeded = false }: TideAppProps) {
+export default function TideApp({
+  initialStation,
+  seeded = false,
+  initialAlerts,
+  initialUv,
+}: TideAppProps) {
   const [station, setStation] = useState<ActiveStation>(
     () => initialStation ?? findStation(DEFAULT_ID) ?? STATIONS[0],
   );
@@ -127,8 +139,9 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
   const [themeAuto, setThemeAuto] = useState(true);
 
   const [shareMsg, setShareMsg] = useState<string | null>(null);
-  const [alerts, setAlerts] = useState<BeachAlert[]>([]);
-  const [uvIndex, setUvIndex] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<BeachAlert[]>(initialAlerts ?? []);
+  const [uvIndex, setUvIndex] = useState<string | null>(initialUv ?? null);
+  const alertsSeededRef = useRef(initialAlerts != null);
 
   const selectStation = useCallback((s: ActiveStation) => {
     setStation(s);
@@ -273,8 +286,15 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
   // Beach safety (NWS): formal alerts + daily rip-current risk + UV index.
   useEffect(() => {
     let cancelled = false;
-    setAlerts([]);
-    setUvIndex(null);
+    // First run with server-seeded alerts: keep them on screen while the
+    // fresh fetch replaces them (no flash). Any later station change clears
+    // immediately — the previous beach's advisory must never linger.
+    if (alertsSeededRef.current) {
+      alertsSeededRef.current = false;
+    } else {
+      setAlerts([]);
+      setUvIndex(null);
+    }
     fetch(`/api/alerts?lat=${station.lat}&lng=${station.lng}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -363,7 +383,12 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col">
+    // On phones: one column, in reading order. On lg+ desktops: a two-column
+    // dashboard — the animated scene (sticky) on the left, the numbers on the
+    // right — so the app uses the width instead of floating as a phone column.
+    // Root is a <div>, not <main>: the page that renders TideApp owns <main>.
+    <div className="mx-auto flex w-full max-w-md flex-1 flex-col lg:grid lg:max-w-5xl lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start lg:gap-x-10 lg:px-8">
+      <div className="flex flex-col lg:sticky lg:top-4">
         {/* Header — on seeded (SEO) pages the page supplies its own H1 */}
         {!seeded && (
           <header className="flex items-center justify-between px-5 pt-5 pb-3">
@@ -418,29 +443,45 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
           </button>
         </div>
         <p className="mb-2 px-6 font-body text-[11px] text-ink-soft/80">
-          {station.stationName}
-          {station.note ? ` · ${station.note}` : ""}
+          {/* Notes usually name the station already — don't say it twice. */}
+          {station.note?.includes(station.stationName)
+            ? station.note
+            : `${station.stationName}${station.note ? ` · ${station.note}` : ""}`}
         </p>
 
-        {/* Beach safety advisories (NWS) */}
-        {alerts.length > 0 && (
-          <div className="mx-5 mb-2 space-y-1.5">
-            {alerts.map((a) => (
-              <div
-                key={a.id}
-                className="rounded-2xl border border-coral/40 bg-coral-soft/25 px-3.5 py-2 font-body"
-              >
-                <p className="flex items-center gap-1.5 text-sm font-bold text-coral">
-                  <span aria-hidden="true">⚠️</span> {a.event}
-                </p>
-                {a.summary && (
-                  <p className="mt-0.5 text-xs leading-snug text-ink-soft">{a.summary}</p>
-                )}
-                <p className="mt-0.5 text-[10px] text-ink-soft/70">Source: NWS</p>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Beach safety advisories (NWS). These describe TODAY's conditions, so
+            they never disappear while previewing another day — they collapse to
+            a compact pill labeled "Today" instead (tap → back to today). */}
+        {alerts.length > 0 &&
+          (dayOffset === 0 ? (
+            <div className="mx-5 mb-2 space-y-1.5">
+              {alerts.map((a) => (
+                <div
+                  key={a.id}
+                  className="rounded-2xl border border-coral/40 bg-coral-soft/25 px-3.5 py-2 font-body"
+                >
+                  <p className="flex items-center gap-1.5 text-sm font-bold text-coral">
+                    <span aria-hidden="true">⚠️</span> {a.event}
+                  </p>
+                  {a.summary && (
+                    <p className="mt-0.5 text-xs leading-snug text-ink-soft">{a.summary}</p>
+                  )}
+                  <p className="mt-0.5 text-[10px] text-ink-soft/70">Source: NWS</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <button
+              onClick={() => setDayOffset(0)}
+              className="mx-5 mb-2 flex items-center gap-1.5 rounded-full border border-coral/40 bg-coral-soft/25 px-3.5 py-1.5 text-left font-body text-xs font-bold text-coral active:scale-[0.98]"
+              title="This advisory is for today — tap to view today"
+            >
+              <span aria-hidden="true">⚠️</span>
+              <span className="truncate">
+                Today: {alerts.map((a) => a.event).join(" · ")}
+              </span>
+            </button>
+          ))}
 
         {/* Day switcher (30-day window) */}
         <DayStrip
@@ -541,7 +582,10 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
             )}
           </section>
         )}
+      </div>
 
+      {/* Data column (right on lg+, below the scene on phones) */}
+      <div className="flex flex-col">
         {/* Next high / low */}
         {day && (
           <section className="grid grid-cols-2 gap-3 px-5 pt-4">
@@ -655,20 +699,18 @@ export default function TideApp({ initialStation, seeded = false }: TideAppProps
                 Conditions: {marine.source}
               </p>
             )}
-            <p className="mt-1 text-[10px] text-ink-soft/50">
-              Sprites: Microsoft Fluent Emoji (MIT) · animated Google Noto Emoji (Apache-2.0)
-            </p>
           </section>
         )}
+      </div>
 
-        <BeachPicker
-          open={pickerOpen}
-          onClose={() => setPickerOpen(false)}
-          currentId={station.id}
-          onSelect={selectStation}
-        />
-        <AmbientToggle />
-      </main>
+      <BeachPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        currentId={station.id}
+        onSelect={selectStation}
+      />
+      <AmbientToggle />
+    </div>
   );
 }
 

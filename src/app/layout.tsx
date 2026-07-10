@@ -40,11 +40,11 @@ export const metadata: Metadata = {
   },
 };
 
+// No maximumScale: pinch-zoom must stay available (accessibility).
 export const viewport: Viewport = {
   themeColor: "#bfe9f2",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: "cover",
 };
 

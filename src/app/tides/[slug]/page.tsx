@@ -153,14 +153,14 @@ export default async function BeachTidePage({ params }: Props) {
   const faq = beachFaq(beach, week);
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col">
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col lg:max-w-5xl">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(beach)) }}
       />
 
       {/* Page header + breadcrumb */}
-      <header className="px-5 pt-5 pb-1">
+      <header className="px-5 pt-5 pb-1 lg:max-w-3xl lg:px-8">
         <nav aria-label="Breadcrumb" className="font-body text-xs text-ink-soft">
           <Link href="/" className="text-ocean hover:underline">
             Tide &amp; Tumble
@@ -180,36 +180,19 @@ export default async function BeachTidePage({ params }: Props) {
         </p>
       </header>
 
-      {/* Beach safety advisories (NWS) — server-rendered, real per-beach relevance */}
-      {alerts.length > 0 && (
-        <section className="px-5 pt-2">
-          {alerts.map((a) => (
-            <div
-              key={a.id}
-              className="mb-2 rounded-2xl border border-coral/40 bg-coral-soft/25 px-4 py-2.5"
-            >
-              <p className="flex items-center gap-1.5 font-display text-sm font-bold text-coral">
-                <span aria-hidden="true">⚠️</span> {a.event} — {beach.label}
-              </p>
-              {a.summary && (
-                <p className="mt-0.5 font-body text-xs leading-snug text-ink-soft">
-                  {a.summary}
-                </p>
-              )}
-              <p className="mt-0.5 font-body text-[10px] text-ink-soft/70">
-                Active advisory from the National Weather Service.
-              </p>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {/* The live, whimsical app — seeded to this beach */}
-      <TideApp initialStation={beach} seeded />
+      {/* The live, whimsical app — seeded to this beach. Safety alerts render
+          INSIDE TideApp only (it SSRs them into the initial HTML from these
+          props) — a separate server-rendered strip here would show twice. */}
+      <TideApp
+        initialStation={beach}
+        seeded
+        initialAlerts={alerts}
+        initialUv={safety.uvIndex}
+      />
 
       {/* Tide table: 7 days visible + the rest of the 30-day forecast behind a
           native disclosure (server-rendered either way, so crawlers see it all) */}
-      <section className="px-5 pt-2">
+      <section className="px-5 pt-2 lg:max-w-3xl lg:px-8">
         <h2 className="font-display text-lg font-bold text-ink">
           {beach.label} tide table — next 7 days
         </h2>
@@ -245,7 +228,7 @@ export default async function BeachTidePage({ params }: Props) {
       {/* Marine snapshot */}
       {marine &&
         (marine.waterTempF != null || marine.windMph != null || marine.surfFt != null) && (
-          <section className="px-5 pt-4">
+          <section className="px-5 pt-4 lg:max-w-3xl lg:px-8">
             <h2 className="font-display text-lg font-bold text-ink">
               Current conditions
             </h2>
@@ -283,7 +266,7 @@ export default async function BeachTidePage({ params }: Props) {
         )}
 
       {/* Location intro */}
-      <section className="px-5 pt-4">
+      <section className="px-5 pt-4 lg:max-w-3xl lg:px-8">
         <h2 className="font-display text-lg font-bold text-ink">
           About tides at {beach.label}
         </h2>
@@ -293,11 +276,11 @@ export default async function BeachTidePage({ params }: Props) {
       </section>
 
       {/* Nearby beaches — hub-and-spoke internal links */}
-      <section className="px-5 pt-4">
+      <section className="px-5 pt-4 lg:max-w-3xl lg:px-8">
         <h2 className="font-display text-lg font-bold text-ink">
           Tides near {beach.label}
         </h2>
-        <ul className="mt-2 grid grid-cols-2 gap-2 font-body text-sm">
+        <ul className="mt-2 grid grid-cols-2 gap-2 font-body text-sm sm:grid-cols-3">
           {nearbyBeaches(beach).map(({ beach: b, miles }) => (
             <li key={b.slug}>
               <Link
@@ -315,7 +298,7 @@ export default async function BeachTidePage({ params }: Props) {
       </section>
 
       {/* FAQ (content only — no FAQPage schema; rich results retired May 2026) */}
-      <section className="px-5 pt-5 pb-4">
+      <section className="px-5 pt-5 pb-4 lg:max-w-3xl lg:px-8">
         <h2 className="font-display text-lg font-bold text-ink">
           {beach.label} tide FAQ
         </h2>
