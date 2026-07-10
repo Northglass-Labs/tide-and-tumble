@@ -148,6 +148,7 @@ src/
     TideHero.tsx        # the animated scene: rolling ocean, creatures, tide badge
     Surfer.tsx          # original hand-drawn surfer (carves/sprays with the tide)
     Gull.tsx            # original hand-drawn gliding gull
+    Lighthouse.tsx      # original hand-drawn lighthouse (lives on the pier)
     StatIcon.tsx        # animated water/wind/surf icons (conditions card)
     TideCurve.tsx       # 24-hour tide curve with live "now" ripple marker
     DayStrip.tsx        # 30-day day switcher
@@ -173,8 +174,8 @@ setup, and the exact steps to ship a change.
 Bundled assets are cleanly licensed:
 
 - **Sprites:** Microsoft Fluent Emoji (MIT) and Kenney Fish Pack (CC0), plus original
-  hand-drawn art authored for this project (the surfer, gull, and UI icons are
-  original inline SVG). See `public/sprites/CREDITS.md`.
+  hand-drawn art authored for this project (the surfer, gull, lighthouse, and UI
+  icons are original inline SVG). See `public/sprites/CREDITS.md`.
 - **Animated emoji:** Google Noto Emoji (Apache-2.0). See `public/emoji/`.
 - **Audio:** a public-domain ocean-waves excerpt ([Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Waves.ogg)),
   layered under a fully procedural Web Audio soundscape. See `public/audio/CREDITS.md`.

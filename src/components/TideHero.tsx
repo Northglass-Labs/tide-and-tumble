@@ -7,6 +7,7 @@ import type { TideNow } from "@/lib/tides";
 import Sprite from "./Sprite";
 import Surfer from "./Surfer";
 import Gull from "./Gull";
+import Lighthouse from "./Lighthouse";
 import WaterSparkles from "./WaterSparkles";
 import AnimatedEmoji from "./AnimatedEmoji";
 
@@ -318,6 +319,46 @@ export default function TideHero({ now }: { now: TideNow }) {
         <g transform="translate(160,297)"><Sprite name="kenney_rock" size={30} /></g>
         <g transform="translate(298,299)"><Sprite name="kenney_rock" size={22} facing={-1} /></g>
 
+        {/* The lighthouse pier — a little wooden pier runs in from off-frame
+            right on stilts, and our hand-drawn lighthouse lives out at its
+            end. The deck sits just above the high-tide line, so the (moving)
+            water visibly climbs the pilings on the flood and strands them on
+            the ebb — the pier tells the tide story too. */}
+        <g>
+          {/* pilings: deck down into the seabed */}
+          {[340, 367.5, 393.5].map((px) => (
+            <rect key={px} x={px} y="98" width="4.5" height="198" rx="2" fill="#8a6544" />
+          ))}
+          {/* cross-braces (upper third — above most waterlines) */}
+          <g stroke="#7e5a40" strokeWidth="1.8" strokeLinecap="round" opacity="0.85">
+            <line x1="343" y1="112" x2="369" y2="164" />
+            <line x1="369" y1="112" x2="343" y2="164" />
+            <line x1="370" y1="118" x2="395" y2="168" />
+            <line x1="395" y1="118" x2="370" y2="168" />
+          </g>
+          {/* deck boards */}
+          <rect x="336" y="96" width="68" height="5.5" rx="1.5" fill="#a8795a" stroke="#7e5a40" strokeWidth="0.7" />
+          {[348, 360, 372, 384, 396].map((px) => (
+            <line key={px} x1={px} y1="96.6" x2={px} y2="101" stroke="#7e5a40" strokeWidth="0.6" opacity="0.5" />
+          ))}
+
+          {/* Beam: two opposite soft cones rotating from the lantern (0,-64
+              in lighthouse-local coords → (372, 32) here) */}
+          <g transform="translate(372,32)" style={{ mixBlendMode: "screen" }}>
+            <g style={A("beacon 9s linear infinite", "center")}>
+              <polygon points="0,0 150,-30 150,30" fill="url(#beam)" />
+              <polygon points="0,0 -150,-30 -150,30" fill="url(#beam)" />
+            </g>
+          </g>
+
+          {/* the lighthouse itself — tap it for keeper wisdom */}
+          <g transform="translate(372,96)">
+            <Boop who="lighthouse" lines={LIGHTHOUSE_QUIPS}>
+              <Lighthouse size={80} />
+            </Boop>
+          </g>
+        </g>
+
         {/* Water body — level animates via CSS transition; translucent for depth */}
         <g
           style={{
@@ -545,17 +586,6 @@ export default function TideHero({ now }: { now: TideNow }) {
           </g>
         </g>
 
-        {/* Lighthouse standing on the far headland, its beacon slowly sweeping */}
-        <g transform="translate(370,296)">
-          {/* Beam: two opposite soft cones rotating from the lantern */}
-          <g transform="translate(0,-22)" style={{ mixBlendMode: "screen" }}>
-            <g style={A("beacon 9s linear infinite", "center")}>
-              <polygon points="0,0 150,-30 150,30" fill="url(#beam)" />
-              <polygon points="0,0 -150,-30 -150,30" fill="url(#beam)" />
-            </g>
-          </g>
-          <Sprite name="lighthouse" size={80} />
-        </g>
       </svg>
 
       {/* Water glints */}
@@ -642,6 +672,12 @@ const TURTLE_QUIPS = [
 ];
 const BALL_QUIPS = ["Boing! 🏖️", "Wanna play? 🏐", "Don't let me float away! 🌊"];
 const SUN_QUIPS = ["Feelin' toasty ☀️", "Don't forget sunscreen 🧴", "I'm a big deal 🌞"];
+const LIGHTHOUSE_QUIPS = [
+  "Shine on 💡",
+  "Guiding sailboats since forever ⛵",
+  "Best seat on the pier 🌊",
+  "I never blink 👁️",
+];
 const SUN_SHADES_QUIPS = ["Too bright? 😎", "Now we're cool 🕶️", "Deal with it 😎"];
 
 /** Absolute overlay position by % of the hero, centered on (leftPct, topPct). */

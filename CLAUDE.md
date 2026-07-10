@@ -28,7 +28,10 @@ APIs at request time.
   SVG/JSX markup stays identical across all five palettes. UI tint surfaces use
   `bg-surface`, never `bg-sky-bottom` (dark at night → illegible).
 - **Playwright testing gotcha:** the service worker intercepts `/api/tides`, hiding it
-  from `page.route()` — unregister the SW in the page first when route-mocking tides.
+  from `page.route()` — and it re-registers on every page load with `clients.claim()`,
+  so a one-time unregister doesn't stick. To force a tide state for screenshots, skip
+  the data layer entirely: set the water group's inline `translateY` directly
+  (96 = high, 250 = low).
 - **Only add CC0 / MIT / Apache / public-domain assets** and record them in the relevant
   `public/**/CREDITS.md` — this is a public deploy.
 - `npm run build` must pass before any deploy.
