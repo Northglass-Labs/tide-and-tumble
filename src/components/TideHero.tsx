@@ -276,24 +276,40 @@ export default function TideHero({ now }: { now: TideNow }) {
         <rect x="0" y={HORIZON} width={VB_W} height={VB_H - HORIZON} fill="url(#water)" />
         <rect x="0" y={HORIZON} width={VB_W} height="14" fill="#ffffff" opacity="0.14" />
         <line x1="0" y1={HORIZON} x2={VB_W} y2={HORIZON} stroke="#ffffff" opacity="0.3" strokeWidth="1" />
-        {/* rolling wave lines, closer-spaced near the horizon (perspective),
-            cross-moving so it reads as swell instead of a lake */}
-        <g transform={`translate(0,${HORIZON + 13})`} style={{ ...A("wave 17s linear infinite reverse"), opacity: 0.3 }}>
-          <path d={foamPath(2, VB_W / 3, 1.6)} className="fill-white" />
-        </g>
-        <g transform={`translate(0,${HORIZON + 32})`} style={{ ...A("wave 13s linear infinite"), opacity: 0.26 }}>
-          <path d={foamPath(3, VB_W / 3.5, 2.2)} className="fill-white" />
-        </g>
-        <g transform={`translate(0,${HORIZON + 58})`} style={{ ...A("wave 10s linear infinite reverse"), opacity: 0.22 }}>
-          <path d={foamPath(4, VB_W / 4, 3)} className="fill-white" />
-        </g>
-        {/* deep swell shading toward the viewer */}
-        <g transform={`translate(0,${HORIZON + 78})`} style={{ ...A("wave 26s linear infinite"), opacity: 0.14 }}>
-          <path d={waveTopPath(1, 9, VB_W / 2)} className="fill-ocean-deep" />
-        </g>
-        <g transform={`translate(0,${HORIZON + 116})`} style={{ ...A("wave 38s linear infinite reverse"), opacity: 0.1 }}>
-          <path d={waveTopPath(3, 11, VB_W / 2)} className="fill-ocean-abyss" />
-        </g>
+        {/* Rolling swell — rows of waves receding in perspective: tight and
+            faint near the horizon, taller and bolder toward the viewer,
+            alternating directions so the sea visibly rolls. Each row is a
+            shadowed wave silhouette with a crest highlight riding its edge
+            (crest + shadow share speed/direction so they travel together). */}
+        {[
+          { y: 158, amp: 2, seg: 55, dur: 15, rev: true, sh: 0.08, cr: 0.2 },
+          { y: 172, amp: 3, seg: 75, dur: 13, rev: false, sh: 0.1, cr: 0.22 },
+          { y: 190, amp: 4.5, seg: 100, dur: 11, rev: true, sh: 0.12, cr: 0.25 },
+          { y: 212, amp: 5.5, seg: 130, dur: 9, rev: false, sh: 0.13, cr: 0.28 },
+          { y: 238, amp: 6.5, seg: 165, dur: 7.5, rev: true, sh: 0.14, cr: 0.3 },
+        ].map((row, i) => (
+          <g key={row.y} transform={`translate(0,${row.y})`}>
+            <g
+              style={{
+                ...A(`wave ${row.dur}s linear infinite${row.rev ? " reverse" : ""}`),
+                opacity: row.sh,
+              }}
+            >
+              <path d={waveTopPath(i, row.amp, row.seg)} className="fill-ocean-deep" />
+            </g>
+            <g
+              style={{
+                ...A(`wave ${row.dur}s linear infinite${row.rev ? " reverse" : ""}`),
+                opacity: row.cr,
+              }}
+            >
+              <path
+                d={foamPath(row.amp, row.seg, 1.4 + i * 0.35)}
+                className={i === 4 ? "fill-white ocean-foam-bio" : "fill-white"}
+              />
+            </g>
+          </g>
+        ))}
         {/* Whitecaps winking on the open water */}
         {[
           [70, 170, 0],

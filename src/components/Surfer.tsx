@@ -69,14 +69,14 @@ export default function Surfer({
           <path d="M 8 14.5 Q 8.5 9.5 4.5 6.5" fill="none" stroke="#e59a63" strokeWidth="3.4" strokeLinecap="round" />
           {/* board shorts */}
           <path d="M -6 3 Q 0 0.6 6 3 L 5 7.4 Q 0 5.6 -5 7.4 Z" fill="var(--color-coral)" />
-          {/* torso — teal rash guard, leaning toward the nose */}
-          <path d="M -5.5 4 Q -4.2 -7 2 -9.6 L 7 -6.8 Q 6.3 0.5 4.8 4.6 Q 0 2.8 -5.5 4 Z" fill="var(--color-ocean)" />
+          {/* torso — sunny rash guard (NOT ocean-colored: she surfs in front of the sea now) */}
+          <path d="M -5.5 4 Q -4.2 -7 2 -9.6 L 7 -6.8 Q 6.3 0.5 4.8 4.6 Q 0 2.8 -5.5 4 Z" fill="#ffc94d" />
           {/* back arm — raised high for balance */}
           <path d="M 0 -6.5 Q -6 -9 -10.5 -14.5" fill="none" stroke="#e59a63" strokeWidth="3" strokeLinecap="round" />
-          <path d="M 0 -6.5 Q -3.5 -8 -6 -10.5" fill="none" stroke="var(--color-ocean)" strokeWidth="3.4" strokeLinecap="round" />
+          <path d="M 0 -6.5 Q -3.5 -8 -6 -10.5" fill="none" stroke="#ffc94d" strokeWidth="3.4" strokeLinecap="round" />
           {/* front arm — reaching over the nose */}
           <path d="M 4 -7 Q 10.5 -7.5 14.5 -4.5" fill="none" stroke="#e59a63" strokeWidth="3" strokeLinecap="round" />
-          <path d="M 4 -7 Q 7 -7.6 9.5 -6.6" fill="none" stroke="var(--color-ocean)" strokeWidth="3.4" strokeLinecap="round" />
+          <path d="M 4 -7 Q 7 -7.6 9.5 -6.6" fill="none" stroke="#ffc94d" strokeWidth="3.4" strokeLinecap="round" />
 
           {/* head — ¾ chibi, looking down the line */}
           <g transform="translate(5,-13.8)">
