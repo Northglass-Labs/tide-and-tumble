@@ -5,7 +5,8 @@ import { DAY_MS, dayParts } from "@/lib/tides";
 
 /**
  * A horizontally scrollable strip of day chips (Today → +maxDays), weather-app
- * style. Tapping a chip selects that day; the selected chip auto-scrolls into view.
+ * style, plus a calendar chip that opens the platform's native date picker.
+ * Tapping a chip selects that day; the selected chip auto-scrolls into view.
  */
 export default function DayStrip({
   todayStartMs,
@@ -30,10 +31,53 @@ export default function DayStrip({
 
   const days = Array.from({ length: maxDays + 1 }, (_, i) => i);
 
+  // App times are station-local epochs read via UTC getters, so the UTC date
+  // string IS the station-local calendar date.
+  const isoDay = (off: number) =>
+    new Date(todayStartMs + off * DAY_MS).toISOString().slice(0, 10);
+
+  const onDatePicked = (value: string) => {
+    if (!value) return;
+    const ms = Date.parse(`${value}T00:00:00Z`);
+    if (!Number.isFinite(ms)) return;
+    const off = Math.round((ms - todayStartMs) / DAY_MS);
+    onSelect(Math.min(maxDays, Math.max(0, off)));
+  };
+
   return (
-    <div className="px-3">
+    <div className="flex gap-2 px-3">
+      {/* Calendar chip: an invisible native date input overlays the visual so a
+          tap opens the platform date picker (min/max = the 30-day window). */}
+      <div className="relative shrink-0">
+        <div
+          aria-hidden="true"
+          className="flex h-full flex-col items-center justify-center rounded-2xl bg-shell/70 px-3 py-2 font-body text-ink-soft"
+        >
+          <span className="text-lg leading-none">📅</span>
+          <span className="mt-1 text-[10px] font-bold uppercase tracking-wide">
+            Date
+          </span>
+        </div>
+        <input
+          type="date"
+          aria-label="Jump to a date"
+          title="Jump to a date"
+          value={isoDay(offset)}
+          min={isoDay(0)}
+          max={isoDay(maxDays)}
+          onChange={(e) => onDatePicked(e.currentTarget.value)}
+          onClick={(e) => {
+            // Desktop browsers focus the field but don't open the calendar
+            // popover on click — ask for it (safe no-op where unsupported).
+            try {
+              e.currentTarget.showPicker();
+            } catch {}
+          }}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        />
+      </div>
       <div
-        className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x gap-2 overflow-x-auto pb-1 pr-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         role="listbox"
         aria-label="Choose a day"
       >

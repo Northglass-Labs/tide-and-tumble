@@ -323,7 +323,7 @@ export default function AmbientToggle() {
       aria-pressed={on}
       aria-label={on ? "Turn off ambient beach sounds" : "Turn on ambient beach sounds"}
       title={on ? "Beach sounds on" : "Beach sounds off"}
-      className="fixed bottom-4 right-4 z-40 grid h-11 w-11 place-items-center rounded-full bg-shell/80 text-lg shadow-[var(--shadow-float)] backdrop-blur transition active:scale-95"
+      className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 grid h-11 w-11 place-items-center rounded-full bg-shell/80 text-lg shadow-[var(--shadow-float)] backdrop-blur transition active:scale-95"
     >
       {on ? "🔊" : "🔈"}
     </button>

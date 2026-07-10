@@ -3,7 +3,7 @@ import Link from "next/link";
 /** Site footer — Northglass identity, privacy, and contact on every page. */
 export default function Footer() {
   return (
-    <footer className="mx-auto w-full max-w-md px-5 pb-8 pt-4">
+    <footer className="mx-auto w-full max-w-md px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 lg:max-w-5xl lg:px-8">
       <div className="border-t border-ink/10 pt-4 text-center font-body text-[11px] leading-relaxed text-ink-soft/80">
         <p>
           <Link href="/" className="font-display font-semibold text-ocean-deep">

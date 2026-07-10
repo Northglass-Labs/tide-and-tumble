@@ -586,38 +586,48 @@
   100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
 }
 
-html,
-body {
+html {
   height: 100%;
 }
 
 body {
+  min-height: 100%;
   font-family: var(--font-body);
   color: var(--color-ink);
+  background: var(--color-sky-bottom);
+  -webkit-font-smoothing: antialiased;
+  transition: color 1.4s ease;
+  overscroll-behavior-y: none;
+}
+
+/* The sky gradient lives on a fixed full-viewport layer so it never tiles or
+   bands on pages taller than one screen (body-height gradients repeat per
+   viewport; background-attachment: fixed is still unreliable on iOS Safari). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
   background: linear-gradient(
     180deg,
     var(--color-sky-top),
     var(--color-sky-bottom)
   );
-  -webkit-font-smoothing: antialiased;
-  transition:
-    background 1.4s ease,
-    color 1.4s ease;
-  overscroll-behavior-y: none;
+  transition: background 1.4s ease;
 }
 
 /* For the dramatic phases, keep the page backdrop a light wash so header/body
    text stays readable — the deep sky lives inside the hero scene. */
-:root[data-theme="dawn"] body {
+:root[data-theme="dawn"] body::before {
   background: linear-gradient(180deg, #d3e6f6, #ffe6d6);
 }
-:root[data-theme="golden"] body {
+:root[data-theme="golden"] body::before {
   background: linear-gradient(180deg, #ffdcbb, var(--color-sky-bottom));
 }
-:root[data-theme="dusk"] body {
+:root[data-theme="dusk"] body::before {
   background: linear-gradient(180deg, #ffd3c4, #ffe7db);
 }
-:root[data-theme="night"] body {
+:root[data-theme="night"] body::before {
   background: linear-gradient(180deg, #dbe3f2, #eef2f9);
 }
 
