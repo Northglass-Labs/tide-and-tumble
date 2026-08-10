@@ -7,9 +7,9 @@ whether the tide is rolling **in** or slipping **out**, in a hand-tuned
 little surfers, sea turtles, fish, a whale, a sweeping lighthouse, and creatures
 that swim and sway with the real tide.
 
-A **[Northglass Labs](https://northglass.io)** product — a small tool, built well.
+[a Northglass Product](https://northglass.io) — a small tool, built well.
 
-**Live:** https://tideandtumble.app · (`obx-tides.vercel.app` 308-redirects here)
+**Live:** https://tideandtumble.app
 
 Built for opening on your phone at the beach — with a proper two-column dashboard
 on desktop.
@@ -25,8 +25,7 @@ on desktop.
 - **Tide-direction at a glance** — a badge by the surfer shows **"Coming in"** with
   chevrons flowing shoreward on a rising tide, or **"Going out"** flowing seaward on
   the ebb. One fact per layer: the badge says the direction, the chips below say the
-  numbers, and a single whimsical headline carries the personality (see
-  `docs/adr/003`).
+  numbers, and a single whimsical headline carries the personality.
 - **Tiny Wings-style animated scene** — a multi-stop sky with a big soft sun, parallax
   dune silhouettes, water sparkles, and creatures with organic motion (birds glide and
   bank, fish dart with wiggling tails, jellyfish pulse, a whale glides deep at high
@@ -164,8 +163,9 @@ public/
   audio/                # public-domain ocean-waves loop
 ```
 
-See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for how this is hosted, the custom-domain/DNS
-setup, and the exact steps to ship a change.
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the public release policy. Operator
+accounts, DNS configuration, credentials, and recovery procedures are intentionally
+kept outside this public repository.
 
 ---
 
@@ -190,4 +190,3 @@ licenses above.
 
 No accounts, no cookies, no tracking, no analytics — see the [privacy policy](https://tideandtumble.app/privacy).
 Questions: **hello@northglass.io**.
-

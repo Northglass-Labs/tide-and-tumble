@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Privacy",
   description:
-    "Tide & Tumble privacy policy. No accounts, no tracking, no analytics — a Northglass Labs product.",
+    "Tide & Tumble privacy policy. No accounts, no tracking, no analytics — a Northglass Product.",
   alternates: { canonical: "https://tideandtumble.app/privacy" },
 };
 
@@ -47,12 +47,12 @@ export default function PrivacyPage() {
         <section>
           <h2 className="font-display text-base font-bold">What we store</h2>
           <p className="mt-1">
-            Nothing on a server, and no personal information. The app keeps a few
-            preferences in your browser&apos;s <strong>localStorage</strong> only —
-            your selected beach, recently viewed beaches, and your sound toggle —
-            so the app remembers them on your next visit. This data never leaves
-            your device and you can clear it any time by clearing your browser
-            storage.
+            We do not create an account, server-side profile, or location database.
+            The app keeps a few preferences in your browser&apos;s{" "}
+            <strong>localStorage</strong> only — your selected beach, recently
+            viewed beaches, and your sound toggle — so the app remembers them on
+            your next visit. This preference data never leaves your device and you
+            can clear it any time by clearing your browser storage.
           </p>
         </section>
 
@@ -60,10 +60,14 @@ export default function PrivacyPage() {
           <h2 className="font-display text-base font-bold">Location</h2>
           <p className="mt-1">
             If you tap &quot;Near me&quot;, your browser asks your permission to
-            share your location. If you allow it, your coordinates are used once, in
-            that moment, to find the nearest tide station, and are not stored or
-            logged. You can decline and pick a beach from the list instead — the app
-            works fully without location access.
+            share your location. If you allow it, your coordinates are sent once in
+            a protected request body through our hosting provider and used to find
+            the nearest tide station. The response is marked no-store and is not
+            retained in a browser cache; we do not add application logs or a
+            location database. Our hosting provider may still process standard
+            operational request logs as described below. You can decline and pick a
+            beach from the list instead — the app works fully without location
+            access.
           </p>
         </section>
 

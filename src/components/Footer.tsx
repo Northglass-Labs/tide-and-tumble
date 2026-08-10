@@ -9,16 +9,16 @@ export default function Footer() {
           <Link href="/" className="font-display font-semibold text-ocean-deep">
             Tide &amp; Tumble
           </Link>{" "}
-          — a{" "}
+          —{" "}
           <a
             href="https://northglass.io"
             target="_blank"
             rel="noopener noreferrer"
             className="text-ocean hover:underline"
           >
-            Northglass Labs
-          </a>{" "}
-          product.
+            a Northglass Product
+          </a>
+          .
         </p>
         <p className="mt-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
           <Link href="/privacy" className="text-ocean hover:underline">

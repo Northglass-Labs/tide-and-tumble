@@ -2,9 +2,9 @@
   "name": "tide-and-tumble",
   "version": "0.1.0",
   "private": true,
-  "description": "A whimsical, live tide chart for US beaches. A Northglass Labs product.",
+  "description": "A whimsical, live tide chart for US beaches — a Northglass Product.",
   "homepage": "https://tideandtumble.app",
-  "author": "Northglass Labs <hello@northglass.io>",
+  "author": "Northglass LLC <hello@northglass.io>",
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
