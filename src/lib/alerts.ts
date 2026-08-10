@@ -14,7 +14,14 @@
 // Everything is best-effort: any failure returns empty/null. Advisories are
 // additive, never load-bearing.
 
+import {
+  fetchWithTimeout,
+  readJsonBounded,
+} from "./upstream";
+
 const UA = "TideAndTumble/1.0 (tideandtumble.app, hello@northglass.io)";
+const NWS_FETCH_TIMEOUT_MS = 4_000;
+const NWS_JSON_MAX_BYTES = 768 * 1024;
 
 export interface BeachAlert {
   id: string;
@@ -47,16 +54,28 @@ const BEACH_EVENTS = [
   "sneaker wave",
   "tsunami",
 ];
-const isBeachRelevant = (e: string) =>
-  BEACH_EVENTS.some((k) => e.toLowerCase().includes(k));
+const isBeachRelevant = (event: string) => {
+  const normalized = event.toLowerCase();
+  return BEACH_EVENTS.some((keyword) => normalized.includes(keyword));
+};
 
-async function nws<T = unknown>(url: string): Promise<T | null> {
+async function nws<T = unknown>(
+  url: string,
+  signal?: AbortSignal,
+): Promise<T | null> {
   try {
-    const r = await fetch(url, {
-      headers: { "User-Agent": UA, Accept: "application/geo+json" },
-      next: { revalidate: 900 },
-    });
-    return r.ok ? ((await r.json()) as T) : null;
+    const response = await fetchWithTimeout(
+      url,
+      {
+        headers: { "User-Agent": UA, Accept: "application/geo+json" },
+        next: { revalidate: 900 },
+        signal,
+      },
+      NWS_FETCH_TIMEOUT_MS,
+    );
+    return response.ok
+      ? await readJsonBounded<T>(response, NWS_JSON_MAX_BYTES)
+      : null;
   } catch {
     return null;
   }
@@ -66,20 +85,23 @@ interface PointProps {
   properties?: { gridId?: string; forecastZone?: string };
 }
 interface AlertResp {
-  features?: { id?: string; properties?: Record<string, string | null> }[];
+  features?: unknown;
 }
 interface ProductList {
-  "@graph"?: { "@id"?: string }[];
+  "@graph"?: unknown;
 }
 
 /** Extract this beach's rip-current risk + UV from the office SRF text product. */
 function parseSrf(text: string, zoneCode: string): { rip: RiskLevel | null; uv: string | null } {
+  if (!/^[A-Z]{3}\d{3}$/.test(zoneCode)) {
+    return { rip: null, uv: null };
+  }
   // Segments are separated by "$$"; each starts with its UGC zone code(s).
   const segments = text.split("$$");
-  const seg =
-    segments.find((s) => s.includes(zoneCode)) ??
-    // fall back to the first segment carrying a rip-current headline
-    segments.find((s) => /RIP CURRENT RISK/i.test(s));
+  const zonePattern = new RegExp(`\\b${zoneCode}\\b`);
+  const seg = segments.find((segment) =>
+    zonePattern.test(segment.slice(0, 600).toUpperCase()),
+  );
   if (!seg) return { rip: null, uv: null };
   // First occurrence in the segment == today's period.
   const ripM = seg.match(/Rip Current Risk[*\s.]+(Low|Moderate|High)/i);
@@ -90,45 +112,97 @@ function parseSrf(text: string, zoneCode: string): { rip: RiskLevel | null; uv: 
   return { rip, uv: uvM ? uvM[1].trim() : null };
 }
 
-export async function fetchBeachSafety(lat: number, lng: number): Promise<BeachSafety> {
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function forecastZoneCode(value: unknown): string | null {
+  const raw = nonEmptyString(value);
+  const code = raw?.split("/").pop()?.toUpperCase() ?? "";
+  return /^[A-Z]{3}\d{3}$/.test(code) ? code : null;
+}
+
+function nwsProductUrl(value: unknown): string | null {
+  const raw = nonEmptyString(value);
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" &&
+      url.hostname === "api.weather.gov" &&
+      !url.port &&
+      !url.username &&
+      !url.password
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchBeachSafety(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<BeachSafety> {
   const pt = `${lat.toFixed(4)},${lng.toFixed(4)}`;
 
   // Run the point lookup + formal alerts together.
   const [point, alertData] = await Promise.all([
-    nws<PointProps>(`https://api.weather.gov/points/${pt}`),
-    nws<AlertResp>(`https://api.weather.gov/alerts/active?point=${pt}&status=actual`),
+    nws<PointProps>(`https://api.weather.gov/points/${pt}`, signal),
+    nws<AlertResp>(
+      `https://api.weather.gov/alerts/active?point=${pt}&status=actual`,
+      signal,
+    ),
   ]);
 
   const alerts: BeachAlert[] = [];
   const seen = new Set<string>();
-  for (const f of alertData?.features ?? []) {
-    const p = f.properties ?? {};
-    const event = (p.event as string) ?? "";
+  const features = Array.isArray(alertData?.features) ? alertData.features : [];
+  for (const rawFeature of features) {
+    const feature = record(rawFeature);
+    const properties = record(feature?.properties);
+    if (!feature || !properties) continue;
+    const event = nonEmptyString(properties.event);
+    if (!event) continue;
     if (!isBeachRelevant(event) || seen.has(event)) continue;
     seen.add(event);
-    const desc = ((p.description as string) ?? "").replace(/\s+/g, " ").trim();
+    const description = nonEmptyString(properties.description) ?? "";
+    const summary = description.replace(/\s+/g, " ").trim();
     alerts.push({
-      id: f.id ?? event,
+      id: nonEmptyString(feature.id) ?? event,
       event,
-      severity: (p.severity as string) ?? "Unknown",
-      summary: desc.split(/(?<=\.)\s/)[0]?.slice(0, 220) ?? "",
+      severity: nonEmptyString(properties.severity) ?? "Unknown",
+      summary: summary.split(/(?<=\.)\s/)[0]?.slice(0, 220) ?? "",
     });
   }
 
-  const office = point?.properties?.gridId;
-  const zoneCode = point?.properties?.forecastZone?.split("/").pop() ?? "";
+  const pointProperties = record(point?.properties);
+  const officeCandidate = nonEmptyString(pointProperties?.gridId)?.toUpperCase();
+  const office = officeCandidate && /^[A-Z]{3}$/.test(officeCandidate)
+    ? officeCandidate
+    : null;
+  const zoneCode = forecastZoneCode(pointProperties?.forecastZone);
   let ripRisk: RiskLevel | null = null;
   let uvIndex: string | null = null;
 
-  if (office) {
+  if (office && zoneCode) {
     const list = await nws<ProductList>(
       `https://api.weather.gov/products/types/SRF/locations/${office}`,
+      signal,
     );
-    const latest = list?.["@graph"]?.[0]?.["@id"];
+    const graph = Array.isArray(list?.["@graph"]) ? list["@graph"] : [];
+    const latest = nwsProductUrl(record(graph[0])?.["@id"]);
     if (latest) {
-      const prod = await nws<{ productText?: string }>(latest);
-      if (prod?.productText) {
-        const parsed = parseSrf(prod.productText, zoneCode);
+      const prod = await nws<{ productText?: unknown }>(latest, signal);
+      const productText = nonEmptyString(prod?.productText);
+      if (productText) {
+        const parsed = parseSrf(productText, zoneCode);
         ripRisk = parsed.rip;
         uvIndex = parsed.uv;
       }

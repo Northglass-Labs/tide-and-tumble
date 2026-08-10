@@ -6,6 +6,14 @@
 // this is accurate to within a couple inches and works uniformly for both
 // harmonic (R) and subordinate (S) stations.
 
+import {
+  fetchWithTimeout,
+  readJsonBounded,
+} from "./upstream";
+
+const NOAA_FETCH_TIMEOUT_MS = 6_000;
+const NOAA_RESPONSE_MAX_BYTES = 2 * 1024 * 1024;
+
 export interface Extremum {
   /** epoch milliseconds (local wall-clock interpreted as the station's local time) */
   time: number;
@@ -170,6 +178,7 @@ export async function fetchExtrema(
   anchor: Date,
   backDays = 1,
   fwdDays = 2,
+  signal?: AbortSignal,
 ): Promise<Extremum[]> {
   const begin = new Date(anchor);
   begin.setUTCDate(begin.getUTCDate() - backDays);
@@ -189,14 +198,22 @@ export async function fetchExtrema(
     application: "obx-tides",
   });
 
-  const res = await fetch(`${NOAA}?${params.toString()}`, {
-    // Cache tide predictions for 15 min at the edge; they're deterministic.
-    next: { revalidate: 900 },
-  });
+  const res = await fetchWithTimeout(
+    `${NOAA}?${params.toString()}`,
+    {
+      // Cache tide predictions for 15 min at the edge; they're deterministic.
+      next: { revalidate: 900 },
+      signal,
+    },
+    NOAA_FETCH_TIMEOUT_MS,
+  );
   if (!res.ok) {
     throw new Error(`NOAA request failed: ${res.status}`);
   }
-  const data = (await res.json()) as NoaaResponse;
+  const data = await readJsonBounded<NoaaResponse>(
+    res,
+    NOAA_RESPONSE_MAX_BYTES,
+  );
   if (data.error) {
     throw new Error(`NOAA: ${data.error.message}`);
   }

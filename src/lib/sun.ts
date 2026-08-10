@@ -159,7 +159,7 @@ function moonAltitude(realMs: number, lat: number, lng: number): number {
   const d = toDaysReal(realMs);
   const c = moonCoords(d);
   const H = siderealTime(d, lw) - c.ra;
-  let h = Math.asin(
+  const h = Math.asin(
     Math.sin(phi) * Math.sin(c.dec) +
       Math.cos(phi) * Math.cos(c.dec) * Math.cos(H),
   );

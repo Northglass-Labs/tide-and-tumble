@@ -302,7 +302,6 @@ export default function AmbientToggle() {
     };
     window.addEventListener("pointerdown", once, { once: true });
     return () => window.removeEventListener("pointerdown", once);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Pause when the tab is hidden.

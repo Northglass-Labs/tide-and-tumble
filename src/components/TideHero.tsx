@@ -1,7 +1,7 @@
 "use client";
 
 import { useReducedMotion } from "motion/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { TideNow } from "@/lib/tides";
 import Sprite from "./Sprite";
@@ -29,6 +29,69 @@ const STARS: [number, number, number, boolean][] = [
   [110, 92, 1.0, true], [180, 110, 0.9, false], [248, 96, 1.1, true],
   [312, 112, 0.8, false], [376, 96, 1.0, true], [148, 132, 0.8, false],
 ];
+
+interface BoopProps {
+  who: string;
+  lines: string[];
+  onTap?: () => void;
+  children: ReactNode;
+  reduce: boolean | null;
+  active: boolean;
+  say: (lines: string[], who?: string) => void;
+}
+
+function Boop({
+  who,
+  lines,
+  onTap,
+  children,
+  reduce,
+  active,
+  say,
+}: BoopProps) {
+  const activate = () => {
+    onTap?.();
+    say(lines, who);
+  };
+
+  return (
+    <g
+      role="button"
+      tabIndex={0}
+      aria-label={`${who} — activate for a message`}
+      style={{
+        cursor: "pointer",
+        pointerEvents: "auto",
+        outline: "none",
+        WebkitTapHighlightColor: "transparent",
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        event.stopPropagation();
+        activate();
+      }}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        activate();
+      }}
+    >
+      <g
+        style={
+          !reduce && active
+            ? {
+                animation: "boop 0.6s var(--ease-pop)",
+                transformBox: "fill-box",
+                transformOrigin: "center",
+              }
+            : undefined
+        }
+      >
+        {children}
+      </g>
+    </g>
+  );
+}
 
 /**
  * The hero scene, Tiny-Wings styled: a multi-stop sky with a big soft sun,
@@ -72,39 +135,12 @@ export default function TideHero({ now }: { now: TideNow }) {
     }
   }, []);
 
-  // Wraps a scene sprite so tapping it fires a reaction (a quip + a quick pop).
-  const Boop = ({
-    who,
-    lines,
-    onTap,
-    children,
-  }: {
-    who: string;
-    lines: string[];
-    onTap?: () => void;
-    children: ReactNode;
-  }) => (
-    <g
-      role="button"
-      tabIndex={-1}
-      aria-label={`${who} — tap me`}
-      style={{ cursor: "pointer", pointerEvents: "auto", outline: "none", WebkitTapHighlightColor: "transparent" }}
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        onTap?.();
-        say(lines, who);
-      }}
-    >
-      <g
-        style={
-          !reduce && poke === who
-            ? { animation: "boop 0.6s var(--ease-pop)", transformBox: "fill-box", transformOrigin: "center" }
-            : undefined
-        }
-      >
-        {children}
-      </g>
-    </g>
+  useEffect(
+    () => () => {
+      if (quipTimer.current) clearTimeout(quipTimer.current);
+      if (pokeTimer.current) clearTimeout(pokeTimer.current);
+    },
+    [],
   );
 
   // Animation style helper (skipped under reduced motion).
@@ -365,7 +401,13 @@ export default function TideHero({ now }: { now: TideNow }) {
 
           {/* the lighthouse itself — tap it for keeper wisdom */}
           <g transform="translate(372,178)">
-            <Boop who="lighthouse" lines={LIGHTHOUSE_QUIPS}>
+            <Boop
+              who="lighthouse"
+              lines={LIGHTHOUSE_QUIPS}
+              reduce={reduce}
+              active={poke === "lighthouse"}
+              say={say}
+            >
               <Lighthouse size={80} />
             </Boop>
           </g>
@@ -388,7 +430,13 @@ export default function TideHero({ now }: { now: TideNow }) {
           {level > 0.74 && (
             <g transform="translate(236,168)">
               <g style={A("whaleGlide 20s var(--ease-swim) infinite")}>
-                <Boop who="whale" lines={WHALE_QUIPS}>
+                <Boop
+                  who="whale"
+                  lines={WHALE_QUIPS}
+                  reduce={reduce}
+                  active={poke === "whale"}
+                  say={say}
+                >
                   <Sprite name="whale" size={64} facing={facing} />
                 </Boop>
               </g>
@@ -417,7 +465,13 @@ export default function TideHero({ now }: { now: TideNow }) {
           <g transform="translate(112,166)">
             <g style={A("dart 11s var(--ease-glide) infinite")}>
               <g style={A("bob 4s var(--ease-bob) infinite")}>
-                <Boop who="turtle" lines={TURTLE_QUIPS}>
+                <Boop
+                  who="turtle"
+                  lines={TURTLE_QUIPS}
+                  reduce={reduce}
+                  active={poke === "turtle"}
+                  say={say}
+                >
                   <Sprite name="turtle" size={46} facing={facing} />
                 </Boop>
               </g>
@@ -457,6 +511,9 @@ export default function TideHero({ now }: { now: TideNow }) {
               <Boop
                 who="surfer"
                 lines={isLow ? [...SURFER_QUIPS, ...SURFER_LOW_TIDE_QUIPS] : SURFER_QUIPS}
+                reduce={reduce}
+                active={poke === "surfer"}
+                say={say}
               >
                 <Surfer
                   size={56}
@@ -532,7 +589,13 @@ export default function TideHero({ now }: { now: TideNow }) {
         <g transform="translate(84,306)"><Sprite name="sandcastle" size={46} /></g>
         <g transform="translate(126,320)">
           <g style={A("roll 3.2s var(--ease-bob) infinite", "bottom center")}>
-            <Boop who="beachball" lines={BALL_QUIPS}>
+            <Boop
+              who="beachball"
+              lines={BALL_QUIPS}
+              reduce={reduce}
+              active={poke === "beachball"}
+              say={say}
+            >
               <Sprite name="beachball" size={24} />
             </Boop>
           </g>

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   buildTideDay,
   stationNow,
@@ -19,7 +26,7 @@ import {
   type ActiveStation,
 } from "@/lib/stations";
 import { BEACHES, SITE_URL } from "@/lib/slugs";
-import { getRecents, pushRecent } from "@/lib/recents";
+import { pushRecent } from "@/lib/recents";
 import type { BeachAlert } from "@/lib/alerts";
 import type { Marine } from "@/lib/marine";
 import { statusLine } from "@/lib/copy";
@@ -30,12 +37,29 @@ import BeachPicker from "@/components/BeachPicker";
 import DayStrip from "@/components/DayStrip";
 import AmbientToggle from "@/components/AmbientToggle";
 import StatIcon from "@/components/StatIcon";
+import DataFreshnessNotice, {
+  type SafetyStatus,
+} from "@/components/DataFreshnessNotice";
 import { Sunrise, Sunset, Moonrise, Moonset, MoonDisc } from "@/components/SkyIcon";
 
 const MAX_DAY_OFFSET = 30; // 30-day forward window
 
-const DEFAULT_ID = "8651370"; // Corolla — where you are 🏖️
+const DEFAULT_ID = "8651370"; // Public default: Corolla, North Carolina
 const LS_KEY = "obx-tides:station";
+const TIDE_CACHED_AT_HEADER = "X-Tide-Cached-At";
+const TIDE_OFFLINE_HEADER = "X-Tide-Offline";
+
+function subscribeOnlineStatus(onChange: () => void) {
+  window.addEventListener("online", onChange);
+  window.addEventListener("offline", onChange);
+  return () => {
+    window.removeEventListener("online", onChange);
+    window.removeEventListener("offline", onChange);
+  };
+}
+
+const getOnlineStatus = () => navigator.onLine;
+const getServerOnlineStatus = () => true;
 
 interface ApiResp {
   station: { id: string; label: string };
@@ -135,15 +159,29 @@ export default function TideApp({
   const [nowMs, setNowMs] = useState<number>(() => stationNow());
   const [dayOffset, setDayOffset] = useState(0);
   const [marine, setMarine] = useState<Marine | null>(null);
-  const [theme, setTheme] = useState<Phase>("day");
-  const [themeAuto, setThemeAuto] = useState(true);
+  const [manualTheme, setManualTheme] = useState<Phase | null>(null);
 
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<BeachAlert[]>(initialAlerts ?? []);
   const [uvIndex, setUvIndex] = useState<string | null>(initialUv ?? null);
+  const [tideCachedAt, setTideCachedAt] = useState<number | null>(null);
+  const [safetyStatus, setSafetyStatus] = useState<SafetyStatus>("loading");
   const alertsSeededRef = useRef(initialAlerts != null);
+  const online = useSyncExternalStore(
+    subscribeOnlineStatus,
+    getOnlineStatus,
+    getServerOnlineStatus,
+  );
 
   const selectStation = useCallback((s: ActiveStation) => {
+    setExtrema(null);
+    setError(null);
+    setLoading(true);
+    setMarine(null);
+    setAlerts([]);
+    setUvIndex(null);
+    setTideCachedAt(null);
+    setSafetyStatus("loading");
     setStation(s);
     setDayOffset(0);
     try {
@@ -190,66 +228,98 @@ export default function TideApp({
   // Seeded pages skip both — they must always show their own beach.
   useEffect(() => {
     if (seeded) return;
-    // Shareable deep link: ?beach=<id> (+ lat/lng/n for non-curated beaches).
-    try {
-      const p = new URLSearchParams(window.location.search);
-      const bid = p.get("beach");
-      if (bid) {
-        const curated = findStation(bid) ?? BEACHES.find((b) => noaaId(b) === bid);
-        if (curated) {
-          selectStation(curated);
-          return;
-        }
-        const lat = parseFloat(p.get("lat") ?? "");
-        const lng = parseFloat(p.get("lng") ?? "");
-        const label = p.get("n");
-        if (Number.isFinite(lat) && Number.isFinite(lng) && label) {
-          selectStation({ id: bid, label, stationName: label, lat, lng });
-          return;
-        }
-      }
-    } catch {}
-    let saved: string | null = null;
-    try {
-      saved = localStorage.getItem(LS_KEY);
-    } catch {}
-    if (saved) {
+    let cancelled = false;
+
+    const restore = async () => {
+      // Browser state is unavailable to SSR. Defer the state response until after
+      // hydration rather than synchronously cascading from the effect body.
+      await Promise.resolve();
+      if (cancelled) return;
+
+      // Shareable deep link: ?beach=<id> (+ lat/lng/n for non-curated beaches).
       try {
-        const s = JSON.parse(saved) as ActiveStation;
-        if (s?.id && s?.label && Number.isFinite(s.lat)) {
-          setStation(s);
-          return;
+        const p = new URLSearchParams(window.location.search);
+        const bid = p.get("beach");
+        if (bid) {
+          const curated =
+            findStation(bid) ?? BEACHES.find((b) => noaaId(b) === bid);
+          if (curated) {
+            selectStation(curated);
+            return;
+          }
+          const lat = parseFloat(p.get("lat") ?? "");
+          const lng = parseFloat(p.get("lng") ?? "");
+          const label = p.get("n");
+          if (Number.isFinite(lat) && Number.isFinite(lng) && label) {
+            selectStation({ id: bid, label, stationName: label, lat, lng });
+            return;
+          }
         }
       } catch {}
-    }
-    // First visit → try to find the beach closest to the user automatically.
-    if (typeof navigator !== "undefined" && "geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            const r = await fetch(
-              `/api/nearest?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`,
-            );
-            const d = await r.json();
-            if (r.ok && d.nearest) selectStation(activeFromNoaa(d.nearest));
-          } catch {}
-        },
-        () => {},
-        { timeout: 8000, maximumAge: 600_000 },
-      );
-    }
+
+      let saved: string | null = null;
+      try {
+        saved = localStorage.getItem(LS_KEY);
+      } catch {}
+      if (saved) {
+        try {
+          const restored = JSON.parse(saved) as ActiveStation;
+          if (
+            restored?.id &&
+            restored?.label &&
+            Number.isFinite(restored.lat)
+          ) {
+            setStation(restored);
+            return;
+          }
+        } catch {}
+      }
+
+      // First visit → try to find the beach closest to the user automatically.
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            try {
+              const response = await fetch("/api/nearest", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude,
+                }),
+              });
+              const data = await response.json();
+              if (!cancelled && response.ok && data.nearest) {
+                selectStation(activeFromNoaa(data.nearest));
+              }
+            } catch {}
+          },
+          () => {},
+          { timeout: 8000, maximumAge: 600_000 },
+        );
+      }
+    };
+
+    void restore();
+    return () => {
+      cancelled = true;
+    };
   }, [selectStation, seeded]);
 
   // Fetch tide extrema whenever the station changes.
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     fetch(`/api/tides?station=${encodeURIComponent(station.id)}`)
       .then(async (r) => {
         const data: ApiResp = await r.json();
         if (!r.ok) throw new Error(data.error || "Failed to load tides");
         if (!cancelled) {
+          const cachedAt = Number(r.headers.get(TIDE_CACHED_AT_HEADER));
+          setTideCachedAt(
+            r.headers.get(TIDE_OFFLINE_HEADER) === "1" && Number.isFinite(cachedAt)
+              ? cachedAt
+              : null,
+          );
           setExtrema(data.extrema);
           setNowMs(stationNow());
           setLoading(false);
@@ -257,6 +327,7 @@ export default function TideApp({
       })
       .catch((e) => {
         if (!cancelled) {
+          setTideCachedAt(null);
           setError(e instanceof Error ? e.message : "Something went wrong");
           setLoading(false);
         }
@@ -269,7 +340,6 @@ export default function TideApp({
   // Live marine conditions (surf / wind / water temp) for the selected beach.
   useEffect(() => {
     let cancelled = false;
-    setMarine(null);
     fetch(
       `/api/marine?station=${encodeURIComponent(station.id)}&lat=${station.lat}&lng=${station.lng}`,
     )
@@ -289,20 +359,24 @@ export default function TideApp({
     // First run with server-seeded alerts: keep them on screen while the
     // fresh fetch replaces them (no flash). Any later station change clears
     // immediately — the previous beach's advisory must never linger.
-    if (alertsSeededRef.current) {
+    const retainedSeed = alertsSeededRef.current;
+    if (retainedSeed) {
       alertsSeededRef.current = false;
-    } else {
-      setAlerts([]);
-      setUvIndex(null);
     }
     fetch(`/api/alerts?lat=${station.lat}&lng=${station.lng}`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Beach safety request failed");
+        return r.json();
+      })
       .then((d) => {
         if (cancelled || !d) return;
-        if (d.alerts) setAlerts(d.alerts as BeachAlert[]);
-        if (d.uvIndex) setUvIndex(d.uvIndex as string);
+        setAlerts(Array.isArray(d.alerts) ? (d.alerts as BeachAlert[]) : []);
+        setUvIndex(typeof d.uvIndex === "string" ? d.uvIndex : null);
+        setSafetyStatus("fresh");
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setSafetyStatus(retainedSeed ? "stale" : "unavailable");
+      });
     return () => {
       cancelled = true;
     };
@@ -340,15 +414,16 @@ export default function TideApp({
     [station, focusMs],
   );
 
-  // Auto time-of-day phase from the station clock + today's sun times.
-  useEffect(() => {
-    if (!themeAuto) return;
+  const autoTheme = useMemo(() => {
     const d = new Date(nowMs);
     const nowMin = d.getUTCHours() * 60 + d.getUTCMinutes();
-    setTheme(
-      computePhase(nowMin, clockToMinutes(sun.sunrise), clockToMinutes(sun.sunset)),
+    return computePhase(
+      nowMin,
+      clockToMinutes(sun.sunrise),
+      clockToMinutes(sun.sunset),
     );
-  }, [nowMs, sun, themeAuto]);
+  }, [nowMs, sun]);
+  const theme = manualTheme ?? autoTheme;
 
   // Apply the phase to <html data-theme>.
   useEffect(() => {
@@ -356,9 +431,8 @@ export default function TideApp({
   }, [theme]);
 
   const cycleTheme = () => {
-    setThemeAuto(false);
-    setTheme(
-      (t) => PHASE_ORDER[(PHASE_ORDER.indexOf(t) + 1) % PHASE_ORDER.length],
+    setManualTheme(
+      PHASE_ORDER[(PHASE_ORDER.indexOf(theme) + 1) % PHASE_ORDER.length],
     );
   };
 
@@ -448,6 +522,12 @@ export default function TideApp({
             ? station.note
             : `${station.stationName}${station.note ? ` · ${station.note}` : ""}`}
         </p>
+
+        <DataFreshnessNotice
+          offline={!online}
+          safetyStatus={safetyStatus}
+          tideCachedAt={tideCachedAt}
+        />
 
         {/* Beach safety advisories (NWS). These describe TODAY's conditions, so
             they never disappear while previewing another day — they collapse to

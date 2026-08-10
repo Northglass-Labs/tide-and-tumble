@@ -1,28 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchExtrema, stationNow } from "@/lib/tides";
 import { findStation } from "@/lib/stations";
+import {
+  checkApiRateLimit,
+  parseStationId,
+  PRIVATE_NO_STORE_HEADERS,
+  rateLimitHeaders,
+} from "@/lib/api-guard";
 
 // Tide predictions are deterministic; cache generously.
 export const revalidate = 900;
+export const maxDuration = 10;
 
 export async function GET(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get("station");
-  if (!id) {
-    return NextResponse.json({ error: "Missing station" }, { status: 400 });
+  const budget = checkApiRateLimit(req, "tides");
+  if (!budget.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: rateLimitHeaders(budget) },
+    );
   }
-  // Accept any NOAA station id (nationwide), not just curated beaches. Curated
-  // ids may carry a "-suffix" for town disambiguation; strip it to the NOAA id.
-  const noaa = id.split("-")[0];
-  if (!/^\d{6,8}$/.test(noaa)) {
-    return NextResponse.json({ error: "Invalid station id" }, { status: 400 });
+  const station = parseStationId(req.nextUrl.searchParams.get("station"));
+  if (!station) {
+    return NextResponse.json(
+      { error: "Invalid station id" },
+      { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
+    );
   }
-  const curated = findStation(id);
+  const curated = findStation(station.id);
 
   try {
     const anchor = new Date(stationNow());
     // Fetch a ~32-day window (yesterday → +31d) so the client can render any day
     // in the day switcher without another request.
-    const extrema = await fetchExtrema(noaa, anchor, 1, 31);
+    const extrema = await fetchExtrema(
+      station.noaaId,
+      anchor,
+      1,
+      31,
+      AbortSignal.timeout(8_000),
+    );
     return NextResponse.json(
       {
         station: curated
@@ -36,7 +53,7 @@ export async function GET(req: NextRequest) {
               exposure: curated.exposure,
               note: curated.note,
             }
-          : { id, noaaId: noaa },
+          : { id: station.id, noaaId: station.noaaId },
         extrema,
       },
       {
@@ -47,6 +64,9 @@ export async function GET(req: NextRequest) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load tides";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json(
+      { error: message },
+      { status: 502, headers: PRIVATE_NO_STORE_HEADERS },
+    );
   }
 }

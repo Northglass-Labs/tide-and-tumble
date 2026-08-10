@@ -5,6 +5,15 @@
 
 import ndbcRaw from "./ndbc-stations.json";
 import { distanceMiles } from "./stations";
+import {
+  fetchWithTimeout,
+  readJsonBounded,
+  readTextBounded,
+} from "./upstream";
+
+const UPSTREAM_TIMEOUT_MS = 4_000;
+const NDBC_MAX_BYTES = 256 * 1024;
+const COOPS_MAX_BYTES = 256 * 1024;
 
 export interface Marine {
   waterTempF: number | null;
@@ -51,14 +60,18 @@ interface Buoy {
   windGustMph: number | null;
 }
 
-async function fetchBuoy(id: string): Promise<Buoy | null> {
+async function fetchBuoy(
+  id: string,
+  signal?: AbortSignal,
+): Promise<Buoy | null> {
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://www.ndbc.noaa.gov/data/realtime2/${id}.txt`,
-      { next: { revalidate: 600 } },
+      { next: { revalidate: 600 }, signal },
+      UPSTREAM_TIMEOUT_MS,
     );
     if (!res.ok) return null;
-    const text = await res.text();
+    const text = await readTextBounded(res, NDBC_MAX_BYTES);
     // First non-# line is newest. Columns: 5=WDIR 6=WSPD 7=GST 8=WVHT 9=DPD
     // ... 14=WTMP (see NDBC realtime2 header).
     const row = text.split("\n").find((l) => l.trim() && !l.startsWith("#"));
@@ -84,16 +97,21 @@ async function fetchBuoy(id: string): Promise<Buoy | null> {
 
 const COOPS = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter";
 
-async function fetchCoopsWind(id: string) {
+async function fetchCoopsWind(id: string, signal?: AbortSignal) {
   try {
     const p = new URLSearchParams({
       product: "wind", date: "latest", station: id,
       units: "english", time_zone: "lst_ldt", format: "json", application: "obx-tides",
     });
-    const res = await fetch(`${COOPS}?${p}`, { next: { revalidate: 600 } });
+    const res = await fetchWithTimeout(
+      `${COOPS}?${p}`,
+      { next: { revalidate: 600 }, signal },
+      UPSTREAM_TIMEOUT_MS,
+    );
     if (!res.ok) return null;
-    const d = await res.json();
-    const row = d?.data?.[0];
+    const d = await readJsonBounded<Record<string, unknown>>(res, COOPS_MAX_BYTES);
+    const data = Array.isArray(d.data) ? d.data : [];
+    const row = data[0] as Record<string, string | undefined> | undefined;
     if (!row) return null;
     const KT = 1.15078;
     const s = num(row.s);
@@ -108,16 +126,25 @@ async function fetchCoopsWind(id: string) {
   }
 }
 
-async function fetchCoopsWaterTemp(id: string): Promise<number | null> {
+async function fetchCoopsWaterTemp(
+  id: string,
+  signal?: AbortSignal,
+): Promise<number | null> {
   try {
     const p = new URLSearchParams({
       product: "water_temperature", date: "latest", station: id,
       units: "english", time_zone: "lst_ldt", format: "json", application: "obx-tides",
     });
-    const res = await fetch(`${COOPS}?${p}`, { next: { revalidate: 600 } });
+    const res = await fetchWithTimeout(
+      `${COOPS}?${p}`,
+      { next: { revalidate: 600 }, signal },
+      UPSTREAM_TIMEOUT_MS,
+    );
     if (!res.ok) return null;
-    const d = await res.json();
-    return num(d?.data?.[0]?.v);
+    const d = await readJsonBounded<Record<string, unknown>>(res, COOPS_MAX_BYTES);
+    const data = Array.isArray(d.data) ? d.data : [];
+    const row = data[0] as Record<string, string | undefined> | undefined;
+    return num(row?.v);
   } catch {
     return null;
   }
@@ -132,11 +159,14 @@ export async function fetchMarine(opts: {
   noaaId?: string;
   lat: number;
   lng: number;
+  signal?: AbortSignal;
 }): Promise<Marine> {
   if (!Number.isFinite(opts.lat) || !Number.isFinite(opts.lng)) return EMPTY;
 
   const cands = nearestNdbc(opts.lat, opts.lng, 5).filter((c) => c.d <= MAX_MI);
-  const settled = await Promise.allSettled(cands.map((c) => fetchBuoy(c.s.i)));
+  const settled = await Promise.allSettled(
+    cands.map((c) => fetchBuoy(c.s.i, opts.signal)),
+  );
   const readings = cands.map((c, i) => ({
     id: c.s.i,
     d: c.d,
@@ -152,7 +182,7 @@ export async function fetchMarine(opts: {
   let windGustMph: number | null = null;
   let windSrc: string | null = null;
   if (opts.noaaId) {
-    const cw = await fetchCoopsWind(opts.noaaId);
+    const cw = await fetchCoopsWind(opts.noaaId, opts.signal);
     if (cw?.windMph != null) {
       windMph = cw.windMph;
       windDir = cw.windDir;
@@ -173,7 +203,7 @@ export async function fetchMarine(opts: {
   // Water temp: ocean buoy first, else the tide station's CO-OPS sensor.
   let waterTempF = temp?.r?.waterTempF ?? null;
   if (waterTempF == null && opts.noaaId) {
-    waterTempF = await fetchCoopsWaterTemp(opts.noaaId);
+    waterTempF = await fetchCoopsWaterTemp(opts.noaaId, opts.signal);
   }
 
   const sources: string[] = [];
