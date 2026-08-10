@@ -1,0 +1,16 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="bb"><circle cx="32" cy="32" r="22"/></clipPath>
+  </defs>
+  <circle cx="32" cy="32" r="22" fill="#fdfdfd"/>
+  <g clip-path="url(#bb)">
+    <path d="M32 10 L32 54 A22 22 0 0 0 47 10 Z" fill="#ff6b6b"/>
+    <path d="M32 10 A22 22 0 0 0 17 10 L32 32 Z" fill="#ffd23f"/>
+    <path d="M32 32 L10 30 A22 22 0 0 0 20 51 Z" fill="#4fc3d9"/>
+    <path d="M32 32 L20 51 A22 22 0 0 0 44 51 Z" fill="#ff9e42"/>
+    <path d="M32 32 L44 51 A22 22 0 0 0 54 30 Z" fill="#7ed957"/>
+  </g>
+  <circle cx="32" cy="32" r="4.5" fill="#fdfdfd"/>
+  <circle cx="32" cy="32" r="22" fill="none" stroke="#e6eef2" stroke-width="1.5"/>
+  <ellipse cx="25" cy="24" rx="7" ry="4" fill="#ffffff" opacity="0.55"/>
+</svg>

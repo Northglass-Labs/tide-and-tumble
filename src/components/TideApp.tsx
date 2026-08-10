@@ -1,0 +1,794 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  buildTideDay,
+  stationNow,
+  startOfDay,
+  fmtClock,
+  fmtDayLabel,
+  DAY_MS,
+  type Extremum,
+  type TideDay,
+} from "@/lib/tides";
+import {
+  STATIONS,
+  findStation,
+  activeFromNoaa,
+  noaaId,
+  type ActiveStation,
+} from "@/lib/stations";
+import { BEACHES, SITE_URL } from "@/lib/slugs";
+import { getRecents, pushRecent } from "@/lib/recents";
+import type { BeachAlert } from "@/lib/alerts";
+import type { Marine } from "@/lib/marine";
+import { statusLine } from "@/lib/copy";
+import { sunTimes, moonPhase, moonTimes } from "@/lib/sun";
+import TideHero from "@/components/TideHero";
+import TideCurve from "@/components/TideCurve";
+import BeachPicker from "@/components/BeachPicker";
+import DayStrip from "@/components/DayStrip";
+import AmbientToggle from "@/components/AmbientToggle";
+import StatIcon from "@/components/StatIcon";
+import { Sunrise, Sunset, Moonrise, Moonset, MoonDisc } from "@/components/SkyIcon";
+
+const MAX_DAY_OFFSET = 30; // 30-day forward window
+
+const DEFAULT_ID = "8651370"; // Corolla — where you are 🏖️
+const LS_KEY = "obx-tides:station";
+
+interface ApiResp {
+  station: { id: string; label: string };
+  extrema: Extremum[];
+  error?: string;
+}
+
+/** Feet with a clean zero (never "-0.0"). */
+function fmtFt(n: number): string {
+  const s = n.toFixed(1);
+  return s === "-0.0" ? "0.0" : s;
+}
+
+function fmtCountdown(fromMs: number, toMs: number): string {
+  const mins = Math.max(0, Math.round((toMs - fromMs) / 60_000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `in ${m}m`;
+  return `in ${h}h ${String(m).padStart(2, "0")}m`;
+}
+
+type Phase = "dawn" | "day" | "golden" | "dusk" | "night";
+const PHASE_ORDER: Phase[] = ["dawn", "day", "golden", "dusk", "night"];
+const PHASE_ICON: Record<Phase, string> = {
+  dawn: "🌅",
+  day: "☀️",
+  golden: "🌇",
+  dusk: "🌆",
+  night: "🌙",
+};
+
+/** Which time-of-day phase we're in, from the station clock + today's sun times. */
+function computePhase(
+  nowMin: number,
+  sunriseMin: number | null,
+  sunsetMin: number | null,
+): Phase {
+  if (sunriseMin == null || sunsetMin == null) return "day";
+  if (nowMin < sunriseMin - 50 || nowMin > sunsetMin + 75) return "night";
+  if (nowMin < sunriseMin + 55) return "dawn";
+  if (nowMin > sunsetMin + 12) return "dusk";
+  if (nowMin > sunsetMin - 70) return "golden";
+  return "day";
+}
+
+/** EPA UV-index color scale (Low→Extreme). */
+function uvColor(level: string): string {
+  const l = level.toLowerCase();
+  if (l.includes("extreme")) return "#8b5cf6";
+  if (l.includes("very high")) return "#ef4444";
+  if (l.includes("high")) return "#f97316";
+  if (l.includes("moderate")) return "#eab308";
+  return "#22c55e"; // Low / unknown
+}
+
+/** minutes-since-midnight for a "H:MM AM/PM" string */
+function clockToMinutes(s: string | null): number | null {
+  if (!s) return null;
+  const m = s.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return null;
+  let h = Number(m[1]) % 12;
+  if (m[3].toUpperCase() === "PM") h += 12;
+  return h * 60 + Number(m[2]);
+}
+
+interface TideAppProps {
+  /** Seed the app to a specific beach (SEO pages) instead of the default. */
+  initialStation?: ActiveStation;
+  /**
+   * Seeded mode (beach pages): skip localStorage restore + geolocation so the
+   * page always shows ITS beach, and hide the brand header (the page supplies
+   * its own H1). The picker still works for on-page exploration.
+   */
+  seeded?: boolean;
+  /**
+   * Server-fetched NWS safety data (beach pages). Renders in the initial SSR
+   * HTML — the single alert strip for the page (never render alerts outside
+   * TideApp too, or they show twice). The client refetch replaces it fresh.
+   */
+  initialAlerts?: BeachAlert[];
+  initialUv?: string | null;
+}
+
+export default function TideApp({
+  initialStation,
+  seeded = false,
+  initialAlerts,
+  initialUv,
+}: TideAppProps) {
+  const [station, setStation] = useState<ActiveStation>(
+    () => initialStation ?? findStation(DEFAULT_ID) ?? STATIONS[0],
+  );
+  const [extrema, setExtrema] = useState<Extremum[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [nowMs, setNowMs] = useState<number>(() => stationNow());
+  const [dayOffset, setDayOffset] = useState(0);
+  const [marine, setMarine] = useState<Marine | null>(null);
+  const [theme, setTheme] = useState<Phase>("day");
+  const [themeAuto, setThemeAuto] = useState(true);
+
+  const [shareMsg, setShareMsg] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<BeachAlert[]>(initialAlerts ?? []);
+  const [uvIndex, setUvIndex] = useState<string | null>(initialUv ?? null);
+  const alertsSeededRef = useRef(initialAlerts != null);
+
+  const selectStation = useCallback((s: ActiveStation) => {
+    setStation(s);
+    setDayOffset(0);
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(s));
+    } catch {}
+    pushRecent(s);
+  }, []);
+
+  /** Best shareable URL for a beach: its SEO page if curated, else a self-contained home link. */
+  const shareUrl = useCallback((s: ActiveStation): string => {
+    const curated = BEACHES.find((b) => noaaId(b) === noaaId(s));
+    if (curated) return `${SITE_URL}/tides/${curated.slug}`;
+    const q = new URLSearchParams({
+      beach: s.id,
+      lat: String(s.lat),
+      lng: String(s.lng),
+      n: s.label,
+    });
+    return `${SITE_URL}/?${q.toString()}`;
+  }, []);
+
+  const share = useCallback(async () => {
+    const url = shareUrl(station);
+    const title = `${station.label} tide chart`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text: `${title} · Tide & Tumble`, url });
+        return;
+      }
+    } catch {
+      return; // user cancelled the native sheet
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMsg("Link copied!");
+      setTimeout(() => setShareMsg(null), 1800);
+    } catch {
+      setShareMsg(url);
+      setTimeout(() => setShareMsg(null), 4000);
+    }
+  }, [station, shareUrl]);
+
+  // Restore last-picked beach, or auto-locate the nearest beach on first visit.
+  // Seeded pages skip both — they must always show their own beach.
+  useEffect(() => {
+    if (seeded) return;
+    // Shareable deep link: ?beach=<id> (+ lat/lng/n for non-curated beaches).
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const bid = p.get("beach");
+      if (bid) {
+        const curated = findStation(bid) ?? BEACHES.find((b) => noaaId(b) === bid);
+        if (curated) {
+          selectStation(curated);
+          return;
+        }
+        const lat = parseFloat(p.get("lat") ?? "");
+        const lng = parseFloat(p.get("lng") ?? "");
+        const label = p.get("n");
+        if (Number.isFinite(lat) && Number.isFinite(lng) && label) {
+          selectStation({ id: bid, label, stationName: label, lat, lng });
+          return;
+        }
+      }
+    } catch {}
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(LS_KEY);
+    } catch {}
+    if (saved) {
+      try {
+        const s = JSON.parse(saved) as ActiveStation;
+        if (s?.id && s?.label && Number.isFinite(s.lat)) {
+          setStation(s);
+          return;
+        }
+      } catch {}
+    }
+    // First visit → try to find the beach closest to the user automatically.
+    if (typeof navigator !== "undefined" && "geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const r = await fetch(
+              `/api/nearest?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`,
+            );
+            const d = await r.json();
+            if (r.ok && d.nearest) selectStation(activeFromNoaa(d.nearest));
+          } catch {}
+        },
+        () => {},
+        { timeout: 8000, maximumAge: 600_000 },
+      );
+    }
+  }, [selectStation, seeded]);
+
+  // Fetch tide extrema whenever the station changes.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetch(`/api/tides?station=${encodeURIComponent(station.id)}`)
+      .then(async (r) => {
+        const data: ApiResp = await r.json();
+        if (!r.ok) throw new Error(data.error || "Failed to load tides");
+        if (!cancelled) {
+          setExtrema(data.extrema);
+          setNowMs(stationNow());
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Something went wrong");
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [station]);
+
+  // Live marine conditions (surf / wind / water temp) for the selected beach.
+  useEffect(() => {
+    let cancelled = false;
+    setMarine(null);
+    fetch(
+      `/api/marine?station=${encodeURIComponent(station.id)}&lat=${station.lat}&lng=${station.lng}`,
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m) => {
+        if (!cancelled && m) setMarine(m as Marine);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [station]);
+
+  // Beach safety (NWS): formal alerts + daily rip-current risk + UV index.
+  useEffect(() => {
+    let cancelled = false;
+    // First run with server-seeded alerts: keep them on screen while the
+    // fresh fetch replaces them (no flash). Any later station change clears
+    // immediately — the previous beach's advisory must never linger.
+    if (alertsSeededRef.current) {
+      alertsSeededRef.current = false;
+    } else {
+      setAlerts([]);
+      setUvIndex(null);
+    }
+    fetch(`/api/alerts?lat=${station.lat}&lng=${station.lng}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d) return;
+        if (d.alerts) setAlerts(d.alerts as BeachAlert[]);
+        if (d.uvIndex) setUvIndex(d.uvIndex as string);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [station]);
+
+  // Live clock: recompute "now" every 30s so the marker + creatures stay current.
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(stationNow()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const isToday = dayOffset === 0;
+  const todayStartMs = useMemo(() => startOfDay(nowMs), [nowMs]);
+  // Same time-of-day on the selected day (== now for today), so the hero preview
+  // and creatures stay meaningful for any day.
+  const focusMs = useMemo(() => nowMs + dayOffset * DAY_MS, [nowMs, dayOffset]);
+
+  const day: TideDay | null = useMemo(
+    () => (extrema ? buildTideDay(extrema, focusMs) : null),
+    [extrema, focusMs],
+  );
+
+  // Sun/moon for the selected calendar day (noon UTC of that day, DST-safe).
+  const sunMoonDate = useMemo(
+    () => new Date(startOfDay(focusMs) + 12 * 60 * 60 * 1000),
+    [focusMs],
+  );
+  const sun = useMemo(
+    () => sunTimes(station.lat, station.lng, sunMoonDate),
+    [station, sunMoonDate],
+  );
+  const moon = useMemo(() => moonPhase(sunMoonDate), [sunMoonDate]);
+  const moonRS = useMemo(
+    () => moonTimes(station.lat, station.lng, startOfDay(focusMs)),
+    [station, focusMs],
+  );
+
+  // Auto time-of-day phase from the station clock + today's sun times.
+  useEffect(() => {
+    if (!themeAuto) return;
+    const d = new Date(nowMs);
+    const nowMin = d.getUTCHours() * 60 + d.getUTCMinutes();
+    setTheme(
+      computePhase(nowMin, clockToMinutes(sun.sunrise), clockToMinutes(sun.sunset)),
+    );
+  }, [nowMs, sun, themeAuto]);
+
+  // Apply the phase to <html data-theme>.
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  const cycleTheme = () => {
+    setThemeAuto(false);
+    setTheme(
+      (t) => PHASE_ORDER[(PHASE_ORDER.indexOf(t) + 1) % PHASE_ORDER.length],
+    );
+  };
+
+  const stepDay = useCallback((dir: number) => {
+    setDayOffset((o) => Math.min(MAX_DAY_OFFSET, Math.max(0, o + dir)));
+  }, []);
+
+  // Swipe the hero left/right to change days.
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const onHeroPointerDown = (e: React.PointerEvent) => {
+    swipeStart.current = { x: e.clientX, y: e.clientY };
+  };
+  const onHeroPointerUp = (e: React.PointerEvent) => {
+    const s = swipeStart.current;
+    swipeStart.current = null;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      stepDay(dx < 0 ? 1 : -1); // swipe left → next day
+    }
+  };
+
+  return (
+    // On phones: one column, in reading order. On lg+ desktops: a two-column
+    // dashboard — the animated scene (sticky) on the left, the numbers on the
+    // right — so the app uses the width instead of floating as a phone column.
+    // Root is a <div>, not <main>: the page that renders TideApp owns <main>.
+    <div className="mx-auto flex w-full max-w-md flex-1 flex-col lg:grid lg:max-w-5xl lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start lg:gap-x-10 lg:px-8">
+      <div className="flex flex-col lg:sticky lg:top-4">
+        {/* Header — on seeded (SEO) pages the page supplies its own H1 */}
+        {!seeded && (
+          <header className="flex items-center justify-between px-5 pt-5 pb-3">
+            <div>
+              <h1 className="font-brand text-2xl leading-none text-ocean-deep">
+                Tide &amp; Tumble
+              </h1>
+              <p className="mt-1 font-body text-xs text-ink-soft">
+                Beach tides, alive
+              </p>
+            </div>
+            <button
+              onClick={cycleTheme}
+              className="grid h-10 w-10 place-items-center rounded-full bg-shell/70 text-lg shadow-[var(--shadow-float)] active:scale-95"
+              aria-label="Change time of day"
+              title="Change time of day"
+            >
+              {PHASE_ICON[theme]}
+            </button>
+          </header>
+        )}
+
+        {/* Beach selector + share */}
+        <div className="mx-5 mb-1 flex items-center gap-2">
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="flex flex-1 items-center justify-between rounded-2xl bg-shell/70 px-4 py-2.5 shadow-[var(--shadow-float)] active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
+              🏖️ {station.label}
+            </span>
+            <span className="font-body text-sm text-ocean">change ›</span>
+          </button>
+          <button
+            onClick={share}
+            className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-shell/70 text-ocean shadow-[var(--shadow-float)] active:scale-95"
+            aria-label={`Share ${station.label} tide chart`}
+            title="Share this beach"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.6" y1="10.5" x2="15.4" y2="6.5" />
+              <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
+            </svg>
+            {shareMsg && (
+              <span className="absolute -bottom-7 right-0 z-10 whitespace-nowrap rounded-lg bg-ink px-2 py-1 text-[11px] font-body text-white shadow">
+                {shareMsg}
+              </span>
+            )}
+          </button>
+        </div>
+        <p className="mb-2 px-6 font-body text-[11px] text-ink-soft/80">
+          {/* Notes usually name the station already — don't say it twice. */}
+          {station.note?.includes(station.stationName)
+            ? station.note
+            : `${station.stationName}${station.note ? ` · ${station.note}` : ""}`}
+        </p>
+
+        {/* Beach safety advisories (NWS). These describe TODAY's conditions, so
+            they never disappear while previewing another day — they collapse to
+            a compact pill labeled "Today" instead (tap → back to today). */}
+        {alerts.length > 0 &&
+          (dayOffset === 0 ? (
+            <div className="mx-5 mb-2 space-y-1.5">
+              {alerts.map((a) => (
+                <div
+                  key={a.id}
+                  className="rounded-2xl border border-coral/40 bg-coral-soft/25 px-3.5 py-2 font-body"
+                >
+                  <p className="flex items-center gap-1.5 text-sm font-bold text-coral">
+                    <span aria-hidden="true">⚠️</span> {a.event}
+                  </p>
+                  {a.summary && (
+                    <p className="mt-0.5 text-xs leading-snug text-ink-soft">{a.summary}</p>
+                  )}
+                  <p className="mt-0.5 text-[10px] text-ink-soft/70">Source: NWS</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <button
+              onClick={() => setDayOffset(0)}
+              className="mx-5 mb-2 flex items-center gap-1.5 rounded-full border border-coral/40 bg-coral-soft/25 px-3.5 py-1.5 text-left font-body text-xs font-bold text-coral active:scale-[0.98]"
+              title="This advisory is for today — tap to view today"
+            >
+              <span aria-hidden="true">⚠️</span>
+              <span className="truncate">
+                Today: {alerts.map((a) => a.event).join(" · ")}
+              </span>
+            </button>
+          ))}
+
+        {/* Day switcher (30-day window) */}
+        <DayStrip
+          todayStartMs={todayStartMs}
+          offset={dayOffset}
+          onSelect={setDayOffset}
+          maxDays={MAX_DAY_OFFSET}
+        />
+
+        {/* Hero */}
+        {loading && !day && (
+          <div className="grid h-72 place-items-center rounded-b-[2.5rem] bg-sky-top/60">
+            <div className="animate-pulse font-body text-ink-soft">
+              Reading the tide…
+            </div>
+          </div>
+        )}
+        {error && (
+          <div className="mx-5 rounded-2xl bg-coral-soft/40 p-4 text-center font-body text-ink">
+            <p className="font-bold">Couldn&apos;t load tides</p>
+            <p className="text-sm text-ink-soft">{error}</p>
+            <button
+              onClick={() => setStation({ ...station })}
+              className="mt-2 rounded-xl bg-coral px-4 py-2 text-sm font-bold text-white"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+        {day && (
+          <div
+            className="relative select-none"
+            style={{ touchAction: "pan-y" }}
+            onPointerDown={onHeroPointerDown}
+            onPointerUp={onHeroPointerUp}
+          >
+            <TideHero now={day.now} />
+            {/* swipe affordances */}
+            {dayOffset > 0 && (
+              <button
+                onClick={() => stepDay(-1)}
+                aria-label="Previous day"
+                className="absolute left-1 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-shell/60 text-ink-soft backdrop-blur-sm transition active:scale-90"
+              >
+                ‹
+              </button>
+            )}
+            {dayOffset < MAX_DAY_OFFSET && (
+              <button
+                onClick={() => stepDay(1)}
+                aria-label="Next day"
+                className="absolute right-1 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-shell/60 text-ink-soft backdrop-blur-sm transition active:scale-90"
+              >
+                ›
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Status */}
+        {day && (
+          <section className="px-5 pt-5">
+            {!isToday && (
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="rounded-full bg-ocean/10 px-3 py-1 font-body text-xs font-bold text-ocean-deep">
+                  Preview · {fmtDayLabel(focusMs)} at {fmtClock(focusMs)}
+                </span>
+                <button
+                  onClick={() => setDayOffset(0)}
+                  className="rounded-full bg-coral px-3 py-1 font-body text-xs font-bold text-white active:scale-95"
+                >
+                  ↺ Today
+                </button>
+              </div>
+            )}
+            <p className="font-display text-2xl font-semibold leading-tight text-ink">
+              {statusLine(day.now, focusMs)}
+            </p>
+            {/* One voice per layer: the scene badge says the direction word,
+                these chips say the numbers, the headline above carries ALL the
+                whimsy (activity hints live in its line pool now). */}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Chip>{fmtFt(day.now.height)} ft</Chip>
+              <Chip>
+                {Math.abs(day.now.rate) < 0.05
+                  ? "±0.0"
+                  : `${day.now.rate > 0 ? "+" : "−"}${Math.abs(
+                      day.now.rate,
+                    ).toFixed(1)}`}{" "}
+                ft/hr
+              </Chip>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* Data column (right on lg+, below the scene on phones) */}
+      <div className="flex flex-col">
+        {/* Next high / low */}
+        {day && (
+          <section className="grid grid-cols-2 gap-3 px-5 pt-4">
+            <TideCard
+              label={isToday ? "Next high" : "High tide"}
+              arrow="▲"
+              when={day.now.nextHigh ? fmtClock(day.now.nextHigh.time) : "—"}
+              sub={
+                day.now.nextHigh
+                  ? `${fmtFt(day.now.nextHigh.height)} ft${
+                      isToday
+                        ? ` · ${fmtCountdown(focusMs, day.now.nextHigh.time)}`
+                        : ""
+                    }`
+                  : ""
+              }
+              accent="ocean"
+            />
+            <TideCard
+              label={isToday ? "Next low" : "Low tide"}
+              arrow="▼"
+              when={day.now.nextLow ? fmtClock(day.now.nextLow.time) : "—"}
+              sub={
+                day.now.nextLow
+                  ? `${fmtFt(day.now.nextLow.height)} ft${
+                      isToday
+                        ? ` · ${fmtCountdown(focusMs, day.now.nextLow.time)}`
+                        : ""
+                    }`
+                  : ""
+              }
+              accent="coral"
+            />
+          </section>
+        )}
+
+        {/* Curve */}
+        {day && (
+          <section className="mx-5 mt-5 rounded-3xl bg-shell/70 p-4 shadow-[var(--shadow-card)]">
+            <h2 className="mb-1 font-display text-sm font-semibold text-ink-soft">
+              {isToday ? "Today's tide" : `${fmtDayLabel(focusMs)} tide`}
+            </h2>
+            <TideCurve
+              day={day}
+              sunriseMin={clockToMinutes(sun.sunrise)}
+              sunsetMin={clockToMinutes(sun.sunset)}
+            />
+          </section>
+        )}
+
+        {/* Conditions: marine (today only) + sun & moon */}
+        {day && (
+          <section className="mx-5 mt-4 mb-8 rounded-3xl bg-shell/60 p-4">
+            {isToday && marine && (() => {
+              // Only render stats that have data — a "—" tile is clutter.
+              const stats = [
+                marine.waterTempF != null && {
+                  kind: "water" as const,
+                  label: "Water",
+                  value: `${Math.round(marine.waterTempF)}°F`,
+                },
+                marine.windMph != null && {
+                  kind: "wind" as const,
+                  label: "Wind",
+                  value: `${Math.round(marine.windMph)}${marine.windDir ? " " + marine.windDir : ""}`,
+                  hint: "mph",
+                },
+                marine.surfFt != null && {
+                  kind: "surf" as const,
+                  label: "Surf",
+                  value: `${marine.surfFt.toFixed(1)} ft`,
+                  hint:
+                    marine.surfPeriodS != null
+                      ? `@ ${Math.round(marine.surfPeriodS)}s`
+                      : undefined,
+                },
+              ].filter(Boolean) as {
+                kind: "water" | "wind" | "surf";
+                label: string;
+                value: string;
+                hint?: string;
+              }[];
+              if (stats.length === 0) return null;
+              const cols =
+                stats.length === 1 ? "grid-cols-1" : stats.length === 2 ? "grid-cols-2" : "grid-cols-3";
+              return (
+                <div className={`mb-3 grid gap-2 ${cols}`}>
+                  {stats.map((st) => (
+                    <Stat
+                      key={st.kind}
+                      icon={<StatIcon kind={st.kind} />}
+                      label={st.label}
+                      value={st.value}
+                      hint={st.hint}
+                    />
+                  ))}
+                </div>
+              );
+            })()}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 font-body text-sm text-ink-soft">
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <Sunrise /> Sunrise · {sun.sunrise ?? "—"}
+              </span>
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <Sunset /> Sunset · {sun.sunset ?? "—"}
+              </span>
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <Moonrise /> Moonrise ·{" "}
+                {moonRS.rise ?? (moonRS.alwaysUp ? "up all day" : "—")}
+              </span>
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <Moonset /> Moonset ·{" "}
+                {moonRS.set ?? (moonRS.alwaysDown ? "down all day" : "—")}
+              </span>
+              <span className="col-span-2 mt-0.5 flex items-center gap-1.5 text-ink-soft/90">
+                <MoonDisc fraction={moon.fraction} size={17} />
+                {moon.name} · {Math.round(moon.illumination * 100)}% lit
+              </span>
+              {isToday && uvIndex && (() => {
+                // UV at night is noise: show only between sunrise and sunset.
+                const d = new Date(nowMs);
+                const nowMin = d.getUTCHours() * 60 + d.getUTCMinutes();
+                const rise = clockToMinutes(sun.sunrise);
+                const set = clockToMinutes(sun.sunset);
+                return rise == null || set == null || (nowMin >= rise && nowMin <= set);
+              })() && (
+                <span className="col-span-2 flex items-center gap-1.5 text-ink-soft/90">
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ background: uvColor(uvIndex) }}
+                  />
+                  UV index · {uvIndex}
+                </span>
+              )}
+            </div>
+            {isToday && marine?.source && (
+              <p className="mt-2 text-[10px] text-ink-soft/60">
+                Conditions: {marine.source}
+              </p>
+            )}
+          </section>
+        )}
+      </div>
+
+      <BeachPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        currentId={station.id}
+        onSelect={selectStation}
+      />
+      <AmbientToggle />
+    </div>
+  );
+}
+
+function Stat({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="flex flex-col items-center rounded-2xl bg-surface/70 px-2 py-2.5 text-center">
+      <span className="grid h-6 place-items-center leading-none">{icon}</span>
+      <span className="mt-1 font-display text-base font-bold leading-tight text-ink">
+        {value}
+      </span>
+      <span className="text-[10px] text-ink-soft">{hint ?? label}</span>
+    </div>
+  );
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-full bg-shell/80 px-3 py-1 font-body text-sm font-bold text-ocean-deep shadow-sm">
+      {children}
+    </span>
+  );
+}
+
+function TideCard({
+  label,
+  arrow,
+  when,
+  sub,
+  accent,
+}: {
+  label: string;
+  arrow: string;
+  when: string;
+  sub: string;
+  accent: "ocean" | "coral";
+}) {
+  return (
+    <div className="rounded-3xl bg-shell/70 p-4 shadow-[var(--shadow-card)]">
+      <p className="font-body text-xs font-bold uppercase tracking-wide text-ink-soft">
+        <span className={accent === "ocean" ? "text-ocean" : "text-coral"}>
+          {arrow}
+        </span>{" "}
+        {label}
+      </p>
+      <p className="mt-1 font-display text-2xl font-bold text-ink">{when}</p>
+      <p className="font-body text-xs text-ink-soft">{sub}</p>
+    </div>
+  );
+}

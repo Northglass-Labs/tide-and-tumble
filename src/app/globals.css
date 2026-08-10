@@ -1,0 +1,781 @@
+@import "tailwindcss";
+
+/* ---- Theme tokens (design brief: "Blue-Sky Sandbar" day palette) ---- */
+@theme {
+  --color-sky-top: #bfe9f2;
+  --color-sky-bottom: #e8f7f5;
+  --color-sand: #f4e4c9;
+  --color-sand-deep: #e9cfa3;
+  --color-seafoam: #8fe3d0;
+  --color-ocean: #2fa6a6;
+  --color-ocean-deep: #14707d;
+  --color-ocean-abyss: #0f4a57;
+  --color-coral: #ff7e67;
+  --color-coral-soft: #ffb4a2;
+  --color-shell: #fcfbf7;
+  /* Tinted UI surface (stat tiles, picker rows, close buttons). Follows the
+     sky tint by day but MUST stay light in every theme — night's sky-bottom
+     is dark navy, and dark surface + dark ink text was illegible. */
+  --color-surface: #e8f7f5;
+  --color-ink: #123a42;
+  --color-ink-soft: #4e7078;
+
+  --font-display: var(--font-fredoka), system-ui, sans-serif;
+  --font-body: var(--font-nunito), system-ui, sans-serif;
+  --font-brand: var(--font-pacifico), cursive;
+
+  --shadow-card: 0 10px 30px -12px rgba(15, 74, 87, 0.35);
+  --shadow-float: 0 6px 20px -8px rgba(15, 74, 87, 0.45);
+
+  /* Ambient keyframes */
+  --animate-wave: wave var(--wave-dur, 8s) linear infinite;
+  --animate-wave-slow: wave 13s linear infinite;
+  --animate-bob: bob 4s ease-in-out infinite;
+  --animate-drift: drift 60s linear infinite;
+  --animate-drift-slow: drift 90s linear infinite;
+  --animate-pulse-ring: pulseRing 2s ease-out infinite;
+  --animate-shimmer: shimmer 8s ease-in-out infinite;
+  --animate-flip-fin: flipFin 1.4s ease-in-out infinite;
+  --animate-scuttle: scuttle 3.2s ease-in-out infinite;
+  --animate-breathe: breathe 3.6s ease-in-out infinite;
+}
+
+@keyframes wave {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes drift {
+  from {
+    transform: translateX(-15vw);
+  }
+  to {
+    transform: translateX(115vw);
+  }
+}
+/* --- Tide-curve "now" marker: soft water-ripple rings expanding in place --- */
+@keyframes nowRipple {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.8;
+  }
+  70% {
+    opacity: 0.22;
+  }
+  100% {
+    transform: scale(2.7);
+    opacity: 0;
+  }
+}
+.tide-now-ripple {
+  fill: none;
+  stroke: var(--color-coral);
+  stroke-width: 1.6px;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nowRipple 2.8s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+}
+
+/* --- Conditions-card stat icons (StatIcon.tsx): water / wind / surf --- */
+@keyframes statMercury {
+  0%,
+  100% {
+    transform: scaleY(0.72);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.stat-mercury {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: statMercury 3.4s ease-in-out infinite;
+}
+@keyframes gustFlow {
+  to {
+    stroke-dashoffset: -125;
+  }
+}
+/* Dasharray only when motion is allowed — reduced-motion users get solid gusts.
+   Mostly-solid stroke with a small traveling gap: reads as a full gust line with
+   a breath of wind moving through it (a big gap makes the icon look broken). */
+@media (prefers-reduced-motion: no-preference) {
+  .stat-gust {
+    stroke-dasharray: 100 25;
+    animation: gustFlow 2.6s linear infinite;
+  }
+}
+@keyframes statWaveSlide {
+  to {
+    transform: translateX(14px);
+  }
+}
+.stat-wave-front {
+  animation: statWaveSlide 2.4s linear infinite;
+}
+.stat-wave-back {
+  animation: statWaveSlide 4.6s linear infinite reverse;
+}
+@keyframes statFoamBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.4px);
+  }
+}
+.stat-foam {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: statFoamBob 2.3s ease-in-out infinite;
+}
+
+/* --- The hand-drawn surfer (Surfer.tsx) --- */
+@keyframes surferCarve {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4.5deg);
+  }
+}
+.surfer-carve {
+  transform-box: fill-box;
+  transform-origin: center 78%;
+  animation: surferCarve 4.6s var(--ease-swim, ease-in-out) infinite;
+}
+@keyframes surferLean {
+  0%,
+  100% {
+    transform: rotate(2deg);
+  }
+  50% {
+    transform: rotate(-2.5deg);
+  }
+}
+.surfer-body {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: surferLean 4.6s ease-in-out infinite;
+}
+@keyframes surferHair {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+}
+.surfer-hair {
+  transform-box: fill-box;
+  transform-origin: right center;
+  animation: surferHair 1.1s ease-in-out infinite;
+}
+@keyframes surferBlink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  95.5% {
+    transform: scaleY(0.12);
+  }
+}
+.surfer-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: surferBlink 4.4s linear infinite;
+}
+@keyframes surferSpray {
+  0% {
+    transform: translate(0, 0) scale(0.5);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.9;
+  }
+  60% {
+    transform: translate(-6px, -9px) scale(1);
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate(-9px, -13px) scale(0.75);
+    opacity: 0;
+  }
+}
+.surfer-spray {
+  animation: surferSpray 1.5s ease-out infinite;
+}
+/* frozen droplets look like dirt — hide them entirely without motion */
+@media (prefers-reduced-motion: reduce) {
+  .surfer-sprayGroup {
+    display: none;
+  }
+}
+@keyframes surferWake {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleX(1.18);
+    opacity: 0.35;
+  }
+}
+.surfer-wake {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: surferWake 2.2s ease-in-out infinite;
+}
+
+/* --- Ocean whitecaps: brief glints of breaking chop on open water --- */
+@keyframes whitecapWink {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  12% {
+    opacity: 0.75;
+  }
+  55% {
+    opacity: 0.35;
+    transform: translateX(-10px);
+  }
+  78% {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+}
+.ocean-whitecap {
+  animation: whitecapWink 7.2s ease-in-out infinite;
+}
+
+/* --- Sky icons (SkyIcon.tsx): sun rays breathe gently --- */
+@keyframes skyRays {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.sky-rays { animation: skyRays 3s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
+/* --- Hand-drawn gull (Gull.tsx): wings flap around the shoulder joint --- */
+@keyframes gullFlapNear {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(26deg);
+  }
+}
+.gull-wing-near {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: gullFlapNear 0.7s var(--ease-flap, ease-in-out) infinite;
+}
+@keyframes gullFlapFar {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-18deg);
+  }
+}
+.gull-wing-far {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: gullFlapFar 0.7s var(--ease-flap, ease-in-out) infinite;
+}
+@keyframes shimmer {
+  0%,
+  100% {
+    transform: translateX(-30%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  70% {
+    transform: translateX(130%);
+    opacity: 0;
+  }
+}
+@keyframes flipFin {
+  0%,
+  100% {
+    transform: rotate(-12deg);
+  }
+  50% {
+    transform: rotate(12deg);
+  }
+}
+@keyframes scuttle {
+  0%,
+  100% {
+    transform: translateX(-10px) scaleX(1);
+  }
+  50% {
+    transform: translateX(10px) scaleX(-1);
+  }
+}
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+@keyframes swim {
+  0%,
+  100% {
+    transform: translateX(-9px);
+  }
+  50% {
+    transform: translateX(9px);
+  }
+}
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes leap {
+  0%,
+  100% {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  40%,
+  60% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-12px);
+    opacity: 1;
+  }
+}
+
+/* ===== Time-of-day palette progression: dawn → day → golden → dusk → night =====
+   Day is the :root default. Each phase overrides colors, dune tiers, the sun/moon,
+   and a star-opacity token. Dark-sky phases keep a light page backdrop (below) so
+   the app chrome stays readable while the hero carries the drama. */
+:root {
+  --ease-glide: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bob: cubic-bezier(0.37, 0, 0.63, 1);
+  --ease-swim: cubic-bezier(0.45, 0, 0.55, 1);
+  --ease-flap: cubic-bezier(0.3, 0, 0.2, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Parallax dune palette — distant hills on the horizon (day). */
+  --dune-far: #bfe3d6;
+  --dune-far-lite: #dcf3ec;
+  --dune-mid: #8fd0bf;
+  --dune-mid-lite: #bce6da;
+  --dune-near: #69bf9f;
+  --dune-near-lite: #9bdabf;
+  /* Sun / moon + stars (day). */
+  --sun-core: #fff6d8;
+  --sun-mid: #ffe08a;
+  --sun-edge: #ffb4a2;
+  --halo: #fff3c8;
+  --star-op: 0;
+}
+
+:root[data-theme="dawn"] {
+  --color-sky-top: #86b6e3;
+  --color-sky-bottom: #ffd9c2;
+  --color-surface: #ffe9db;
+  --color-sand: #f6e6cf;
+  --color-sand-deep: #ecd0a8;
+  --color-seafoam: #a9e6da;
+  --color-ocean: #33a7bb;
+  --color-ocean-deep: #1f7d90;
+  --color-ocean-abyss: #124f5c;
+  --color-coral: #ff9e8b;
+  --color-coral-soft: #ffc7b6;
+  --color-shell: #fffaf3;
+  --color-ink: #123a42;
+  --color-ink-soft: #4e7078;
+  --dune-far: #c9c0e0; --dune-far-lite: #e6def4;
+  --dune-mid: #a6c9b4; --dune-mid-lite: #cbe6d3;
+  --dune-near: #7cb28e; --dune-near-lite: #a6d6b1;
+  --sun-core: #fff0d8; --sun-mid: #ffd9a0; --sun-edge: #ffb38a; --halo: #ffe6c8;
+  --star-op: 0.2;
+}
+
+:root[data-theme="golden"] {
+  --color-sky-top: #5b4b8a;
+  --color-sky-bottom: #ffb088;
+  --color-surface: #ffe2cd;
+  --color-sand: #f0c9a0;
+  --color-sand-deep: #c98a63;
+  --color-seafoam: #ffc59e;
+  --color-ocean: #d76a83;
+  --color-ocean-deep: #8f4368;
+  --color-ocean-abyss: #5e3a5c;
+  --color-coral: #ff6b6b;
+  --color-coral-soft: #ffa07a;
+  --color-shell: #fff6ec;
+  --color-ink: #3a2438;
+  --color-ink-soft: #7a5a63;
+  --dune-far: #e8956a; --dune-far-lite: #ffc9a0;
+  --dune-mid: #cf6f6a; --dune-mid-lite: #ef9781;
+  --dune-near: #a8506a; --dune-near-lite: #d1737f;
+  --sun-core: #fff2cc; --sun-mid: #ffd27f; --sun-edge: #ff9e5e; --halo: #ffdca0;
+  --star-op: 0.15;
+}
+
+:root[data-theme="dusk"] {
+  --color-sky-top: #3b2c66;
+  --color-sky-bottom: #e0796f;
+  --color-surface: #ffe3dc;
+  --color-sand: #d9b48c;
+  --color-sand-deep: #b07f5f;
+  --color-seafoam: #ffb38a;
+  --color-ocean: #b5567a;
+  --color-ocean-deep: #6e3763;
+  --color-ocean-abyss: #3a2450;
+  --color-coral: #ff8f6b;
+  --color-coral-soft: #ffb59a;
+  --color-shell: #fff2ea;
+  --color-ink: #2a1c38;
+  --color-ink-soft: #6a4a63;
+  --dune-far: #6a4a7a; --dune-far-lite: #8a6a9a;
+  --dune-mid: #4e3565; --dune-mid-lite: #6e5585;
+  --dune-near: #34244f; --dune-near-lite: #54446f;
+  --sun-core: #ffe0b0; --sun-mid: #ff9e7e; --sun-edge: #b5567a; --halo: #ffcaa0;
+  --star-op: 0.7;
+  --beam-op: 0.55;
+}
+
+:root[data-theme="night"] {
+  --color-sky-top: #101a3a;
+  --color-sky-bottom: #35406e;
+  --color-surface: #e6eaf7;
+  --color-sand: #616896;
+  --color-sand-deep: #454b70;
+  --color-seafoam: #6f8fc0;
+  --color-ocean: #2e5f8a;
+  --color-ocean-deep: #1b3f66;
+  --color-ocean-abyss: #0f2947;
+  --color-coral: #ff9a8b;
+  --color-coral-soft: #ffbfae;
+  --color-shell: #f2f5fb;
+  --color-ink: #16203f;
+  --color-ink-soft: #4a5578;
+  --dune-far: #2a355e; --dune-far-lite: #3a466e;
+  --dune-mid: #1e2748; --dune-mid-lite: #2e3a5e;
+  --dune-near: #141b35; --dune-near-lite: #26304f;
+  --sun-core: #eef4ff; --sun-mid: #dfe8ff; --sun-edge: #c7d4ff; --halo: #cdd9ff;
+  --star-op: 1;
+  --beam-op: 0.8;
+}
+
+/* Fish dart — quick burst then coast (paired with --ease-glide). */
+@keyframes dart {
+  0% { transform: translateX(0); }
+  18% { transform: translateX(30px); }
+  46% { transform: translateX(34px); }
+  64% { transform: translateX(66px); }
+  100% { transform: translateX(0); }
+}
+/* Tail-wiggle (origin at the tail). */
+@keyframes wiggle {
+  0%, 100% { transform: skewX(-6deg) rotate(-2deg); }
+  50% { transform: skewX(6deg) rotate(2deg); }
+}
+/* Jellyfish squash-and-stretch pulse. */
+@keyframes pulse {
+  0%, 100% { transform: scale(1, 1); }
+  40% { transform: scale(0.9, 1.15); }
+  70% { transform: scale(1.05, 0.94); }
+}
+/* Wing flap (fast down, slow recover). */
+@keyframes flap {
+  0%, 100% { transform: scaleY(1); }
+  45% { transform: scaleY(0.8) rotate(-3deg); }
+}
+/* Star twinkle. */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+/* Gentle rocking on the water (surfer, sailboat). */
+@keyframes surf {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+/* Slow majestic whale glide with a slight roll. */
+@keyframes whaleGlide {
+  0%, 100% { transform: translateX(-30px) rotate(-1.5deg); }
+  50% { transform: translateX(30px) rotate(1.5deg); }
+}
+/* Bird gliding across the sky on a gentle arc with subtle banking. */
+@keyframes birdFly {
+  0% { transform: translate(-70px, 66px) rotate(5deg); }
+  25% { transform: translate(70px, 26px) rotate(-4deg); }
+  50% { transform: translate(200px, 40px) rotate(3deg); }
+  75% { transform: translate(330px, 14px) rotate(-5deg); }
+  100% { transform: translate(480px, 52px) rotate(4deg); }
+}
+/* Lighthouse beacon — a slow full sweep. */
+@keyframes beacon {
+  to { transform: rotate(360deg); }
+}
+/* Beach ball nudged by the breeze — a tiny roll-and-settle. */
+@keyframes roll {
+  0%, 100% { transform: translateY(0) rotate(-8deg); }
+  50% { transform: translateY(-6px) rotate(8deg); }
+}
+/* Bubbles rising and fading toward the surface. */
+@keyframes rise {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  15% { opacity: 0.7; }
+  100% { transform: translateY(-46px) scale(1); opacity: 0; }
+}
+/* Tide-direction flow chevrons — a stream travelling shoreward (up) on a
+   rising tide, seaward (down) on the ebb. */
+@keyframes flowUp {
+  0% { transform: translateY(7px); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: translateY(-8px); opacity: 0; }
+}
+@keyframes slackSway {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-2.5px);
+  }
+}
+@keyframes flowDown {
+  0% { transform: translateY(-7px); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: translateY(8px); opacity: 0; }
+}
+/* Easter-egg reactions: a boop when a critter is tapped, shades dropping
+   onto the sun, and the quip speech-bubble popping in. */
+@keyframes boop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.18) rotate(-4deg); }
+  70% { transform: scale(0.94) rotate(3deg); }
+  100% { transform: scale(1); }
+}
+@keyframes dropShades {
+  0% { transform: translateY(-10px); opacity: 0; }
+  60% { transform: translateY(2px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes quipPop {
+  0% { transform: translate(-50%, 6px) scale(0.8); opacity: 0; }
+  100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background: var(--color-sky-bottom);
+  -webkit-font-smoothing: antialiased;
+  transition: color 1.4s ease;
+  overscroll-behavior-y: none;
+}
+
+/* The sky gradient lives on a fixed full-viewport layer so it never tiles or
+   bands on pages taller than one screen (body-height gradients repeat per
+   viewport; background-attachment: fixed is still unreliable on iOS Safari). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    var(--color-sky-top),
+    var(--color-sky-bottom)
+  );
+  transition: background 1.4s ease;
+}
+
+/* For the dramatic phases, keep the page backdrop a light wash so header/body
+   text stays readable — the deep sky lives inside the hero scene. */
+:root[data-theme="dawn"] body::before {
+  background: linear-gradient(180deg, #d3e6f6, #ffe6d6);
+}
+:root[data-theme="golden"] body::before {
+  background: linear-gradient(180deg, #ffdcbb, var(--color-sky-bottom));
+}
+:root[data-theme="dusk"] body::before {
+  background: linear-gradient(180deg, #ffd3c4, #ffe7db);
+}
+:root[data-theme="night"] body::before {
+  background: linear-gradient(180deg, #dbe3f2, #eef2f9);
+}
+
+/* ===== Night magic (scene) =====
+   Bioluminescent foam: at night the whitecaps and crest foam pick up the
+   cool glow of bioluminescent plankton. Pure CSS on class hooks — the SVG
+   markup is identical in every theme. */
+:root[data-theme="night"] .ocean-foam-bio {
+  fill: #9ff2ff;
+  filter: drop-shadow(0 0 3px rgba(125, 235, 255, 0.75));
+}
+:root[data-theme="night"] .ocean-whitecap {
+  stroke: #9ff2ff;
+  filter: drop-shadow(0 0 2.5px rgba(125, 235, 255, 0.7));
+}
+
+/* Shooting star: invisible by default; at night (and only with motion
+   allowed) it streaks across the star field once per ~43s cycle. */
+.shooting-star {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-theme="night"] .shooting-star {
+    animation: shootingStar 43s linear 7s infinite;
+  }
+}
+@keyframes shootingStar {
+  0% {
+    opacity: 0;
+    transform: translate(330px, 16px);
+  }
+  0.8% {
+    opacity: 0.9;
+  }
+  3.2% {
+    opacity: 0;
+    transform: translate(150px, 78px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(150px, 78px);
+  }
+}
+
+/* ===== Walk-on creatures =====
+   The scene keeps a small resident cast; everyone else enters from off-screen,
+   crosses, and leaves — absence windows are what keep the scene from feeling
+   busy. Base transforms park each walk-on OFF-SCREEN, so under reduced motion
+   (global animation kill) they simply never appear (decorative only).
+
+   Overlay walk-ons use cqw (container-relative) units — the hero root is a
+   size container. SVG swim-bys use px = viewBox user units (VB_W = 400). */
+.walkon-balloon,
+.walkon-crab {
+  transform: translateX(-18cqw);
+}
+.walkon-octopus {
+  transform: translateX(112cqw);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .walkon-balloon {
+    animation: walkonLR 96s linear 6s infinite; /* ~34s dreamy drift, then gone */
+  }
+  .walkon-crab {
+    animation: walkonLR 48s linear infinite; /* ~17s scuttle across the flats */
+  }
+  .walkon-octopus {
+    animation: walkonRL 85s linear 22s infinite; /* rare amble, other direction */
+  }
+}
+@keyframes walkonLR {
+  0% {
+    transform: translateX(-18cqw);
+  }
+  35% {
+    transform: translateX(112cqw);
+  }
+  100% {
+    transform: translateX(112cqw);
+  }
+}
+@keyframes walkonRL {
+  0% {
+    transform: translateX(112cqw);
+  }
+  30% {
+    transform: translateX(-18cqw);
+  }
+  100% {
+    transform: translateX(-18cqw);
+  }
+}
+@keyframes swimAcrossL {
+  0% {
+    transform: translateX(440px);
+  }
+  38% {
+    transform: translateX(-60px);
+  }
+  100% {
+    transform: translateX(-60px);
+  }
+}
+@keyframes swimAcrossR {
+  0% {
+    transform: translateX(-60px);
+  }
+  38% {
+    transform: translateX(440px);
+  }
+  100% {
+    transform: translateX(440px);
+  }
+}
+
+/* Smooth token crossfade when theme flips */
+:root {
+  transition:
+    --color-sky-top 1.4s ease,
+    --color-ocean 1.4s ease;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+.font-brand {
+  font-family: var(--font-brand);
+}
+
+/* Leaflet tweaks so the map feels part of the app */
+.leaflet-container {
+  font-family: var(--font-body);
+  background: var(--color-sky-bottom);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
