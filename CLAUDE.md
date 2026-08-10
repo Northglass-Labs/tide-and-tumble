@@ -1,52 +1,38 @@
 @AGENTS.md
 
-# Tide & Tumble — orientation for Claude Code
+# Tide & Tumble — public repository orientation
 
-A whimsical, animated **US tide-chart** web app (Next.js 16 + React 19 + Tailwind v4).
-No backend of its own, no database, no secrets — all data is from free/keyless public
-APIs at request time.
+Tide & Tumble is a whimsical US tide-chart application built with Next.js 16,
+React 19, and Tailwind CSS v4. It has no accounts or database; runtime data comes
+from the keyless public services documented in the README.
 
-**Start here:**
-- `README.md` — what it does, stack, data sources, project layout, how to run.
-- `DEPLOYMENT.md` — **how it's hosted (Vercel), the `tideandtumble.app` domain/DNS
-  setup, and the exact steps to ship a change.** Read this before deploying or touching
-  DNS.
+## Start here
 
-**Conventions that matter:**
-- **Next.js 16 is not the version in your training data** (see `AGENTS.md`) — check
-  `node_modules/next/dist/docs/` before writing framework code.
-- The animated scene (`src/components/TideHero.tsx`) is **pure SVG + CSS keyframes**
-  (all keyframes in `src/app/globals.css`). Don't drive SVG `<g>` transforms with a JS
-  animation lib — it clobbers child transforms. Nest groups instead (static outer,
-  animated inner).
-- **Every animation needs a `prefers-reduced-motion` static fallback.**
-- **Status copy is "one voice per layer"** (`docs/adr/003`): scene badge = direction
-  word, ONE whimsical headline (pool in `src/lib/copy.ts`), chips = numbers, creature
-  tap-quips = invited whimsy. Never add a second persistent status line.
-- **Theme-dependent styling goes through CSS custom properties** (`--star-op`,
-  `--beam-op`, `--color-surface`, night-only classes like `.ocean-foam-bio`) — the
-  SVG/JSX markup stays identical across all five palettes. UI tint surfaces use
-  `bg-surface`, never `bg-sky-bottom` (dark at night → illegible).
-- **Playwright testing gotcha:** the service worker intercepts `/api/tides`, hiding it
-  from `page.route()` — and it re-registers on every page load with `clients.claim()`,
-  so a one-time unregister doesn't stick. To force a tide state for screenshots, skip
-  the data layer entirely: set the sand apron's inline `translateY` directly
-  (216 = dead low, 300 = king tide — it's the only inline-translateY group).
-- **Only add CC0 / MIT / Apache / public-domain assets** and record them in the relevant
-  `public/**/CREDITS.md` — this is a public deploy.
-- `npm run build` must pass before any deploy.
+- `README.md` — product behavior, stack, sources, layout, and local development.
+- `DEPLOYMENT.md` — public contribution and release gates.
+- `node_modules/next/dist/docs/` — the installed Next.js 16 documentation. Read the
+  relevant guide before changing framework behavior.
 
-**Workflow:** feature branch → PR into `main` → Vercel preview URL → merge → prod
-(auto-deploys on push to `main`). See `DEPLOYMENT.md` §5.
+## Engineering conventions
 
-**Northglass Labs product (public).** Repo is `github.com/Northglass-Labs/tide-and-tumble`
-(public since 2026-07-09; all-rights-reserved © Northglass LLC — see `docs/adr/002`).
-Public identity: contact **hello@northglass.io**, git authorship the GitHub noreply —
-**no personal email in any committed artifact** (Public Identity Rule). Privacy policy at
-`/privacy` links to the parent `northglass.io/privacy`. Listed on `northglass.io/tools`.
+- The animated scene in `src/components/TideHero.tsx` is SVG plus CSS keyframes.
+  Do not drive SVG group transforms with a JavaScript animation library; nest a
+  static outer group and animated inner group.
+- Every animation requires a `prefers-reduced-motion` static fallback.
+- Keep one voice per status layer: the scene badge names direction, chips show
+  numbers, and one headline carries personality.
+- Theme styling belongs in CSS custom properties; keep SVG/JSX markup identical
+  across palettes and use `bg-surface` for readable UI tint surfaces.
+- Only add CC0, MIT, Apache, or public-domain assets and update the relevant
+  `public/**/CREDITS.md`.
+- Preserve NOAA/NWS/NDBC attribution and the “not for navigation” warning.
 
-**Hosting facts live in the homelab, not here** —
-`~/Projects/02-Personal/HomeLab/hosting/tide-and-tumble.md` is authoritative for the
-Vercel project, the `tideandtumble.app` Cloudflare zone, DNS, and Search Console. Notable
-gotcha: **Vercel Git auto-deploy is unreliable — deploy explicitly via the Vercel REST API
-after merging** and confirm the prod alias moved (see the hosting doc).
+## Public identity and operations boundary
+
+- Public contact: `hello@northglass.io`.
+- Never commit personal email, personal identity details, private paths, provider
+  account identifiers, credentials, DNS administration, incident notes, or recovery
+  procedures.
+- Private operations records are authoritative for deployment and infrastructure.
+  Do not recreate them in this repository.
+- `npm test`, `npm run lint`, and `npm run build` must pass before release.
