@@ -1,0 +1,29 @@
+version: 2
+
+# Grouped from the start. This repo had 20 open Dependabot alerts and no config,
+# so nothing was opening PRs to clear them. Grouping keeps routine minor/patch
+# bumps to one PR per run and isolates majors, which are the ones worth reading.
+# Same shape as Slink's, which is the only repo in the estate sitting at zero.
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      major:
+        patterns: ["*"]
+        update-types: ["major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]

@@ -1,0 +1,45 @@
+name: CI
+
+# The suite and the lint baseline already existed; nothing ran them. This is the
+# guard for a repo that is public and live, so a regression cannot reach
+# tideandtumble.app unnoticed.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Test, lint, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Includes tests/brand-contract.test.ts and tests/opsec.test.ts — the
+      # guards that keep the endorsement, the glyph, and the public/private
+      # boundary from drifting.
+      - name: Test
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
