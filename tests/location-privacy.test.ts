@@ -13,8 +13,10 @@ describe("precise-location request privacy", () => {
   test("privacy copy accurately describes hosting-provider processing", () => {
     const policy = readFileSync("src/app/privacy/page.tsx", "utf8");
 
-    expect(policy).not.toMatch(/coordinates.+not stored or\s+logged/is);
-    expect(policy).toMatch(/coordinates.+hosting provider/is);
+    // `[\s\S]` rather than `.` with the `s` flag: dotAll needs an ES2018 target
+    // and tsconfig targets ES2017, so the build's type-check rejects it.
+    expect(policy).not.toMatch(/coordinates[\s\S]+not stored or\s+logged/i);
+    expect(policy).toMatch(/coordinates[\s\S]+hosting provider/i);
     expect(policy).toMatch(/no-store|not retained in (?:a )?browser cache/i);
   });
 });
