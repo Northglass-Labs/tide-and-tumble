@@ -52,6 +52,62 @@ const SLUG_BY_ID: Record<string, string> = {
   "8661070": "myrtle-beach",
   "8665530": "charleston-folly",
   "8670892": "tybee-island",
+  // New England
+  "8413320": "bar-harbor",
+  "8418150": "portland-me",
+  "8418557": "old-orchard-beach",
+  "8429489": "hampton-beach",
+  "8446121": "provincetown",
+  "8449130": "nantucket",
+  "8448558": "marthas-vineyard",
+  "8452660": "newport-ri",
+  "8454658": "narragansett",
+  "8459338": "block-island",
+  // Florida · Atlantic Coast
+  "8720587": "st-augustine-beach",
+  "8721120": "daytona-beach",
+  "8721164": "new-smyrna-beach",
+  "8721604": "cocoa-beach",
+  "8722956": "fort-lauderdale",
+  "8723080": "miami-beach",
+  "8724580": "key-west",
+  // Florida · Gulf Coast
+  "8729807": "pensacola-beach",
+  "8729511": "destin",
+  "8729210": "panama-city-beach",
+  "8726724": "clearwater-beach",
+  "8726520": "st-petersburg",
+  "8726034": "siesta-key",
+  "8725520": "fort-myers",
+  "8725110": "naples",
+  // Gulf Coast
+  "8731439": "gulf-shores",
+  "8735180": "dauphin-island",
+  "8744117": "biloxi",
+  "8761724": "grand-isle",
+  "8771341": "galveston",
+  "8775237": "port-aransas",
+  "8779749": "south-padre-island",
+  // Southern California
+  "9410170": "san-diego",
+  "9410230": "la-jolla",
+  "9410580": "newport-beach",
+  "9410660": "los-angeles",
+  "9410840": "santa-monica",
+  "9411340": "santa-barbara",
+  // Northern California
+  "9413450": "monterey",
+  "9413745": "santa-cruz",
+  "9414290": "san-francisco",
+  "9415020": "point-reyes",
+  "9419750": "crescent-city",
+  // Pacific Northwest
+  "9437540": "garibaldi",
+  "9437540-cannon": "cannon-beach",
+  "9439040": "astoria",
+  "9441102": "westport",
+  "9442396": "la-push",
+  "9443090": "neah-bay",
 };
 
 /** stationId → two-letter state (regions imply NC/NJ; "More" varies). */
@@ -67,6 +123,26 @@ const STATE_BY_ID: Record<string, string> = {
   "8661070": "SC",
   "8665530": "SC",
   "8670892": "GA",
+  // New England
+  "8413320": "ME", "8418150": "ME", "8418557": "ME",
+  "8429489": "NH",
+  "8446121": "MA", "8449130": "MA", "8448558": "MA",
+  "8452660": "RI", "8454658": "RI", "8459338": "RI",
+  // Florida (both coasts)
+  "8720587": "FL", "8721120": "FL", "8721164": "FL", "8721604": "FL",
+  "8722956": "FL", "8723080": "FL", "8724580": "FL", "8729807": "FL",
+  "8729511": "FL", "8729210": "FL", "8726724": "FL", "8726520": "FL",
+  "8726034": "FL", "8725520": "FL", "8725110": "FL",
+  // Gulf Coast
+  "8731439": "AL", "8735180": "AL", "8744117": "MS", "8761724": "LA",
+  "8771341": "TX", "8775237": "TX", "8779749": "TX",
+  // California
+  "9410170": "CA", "9410230": "CA", "9410580": "CA", "9410660": "CA",
+  "9410840": "CA", "9411340": "CA", "9413450": "CA", "9413745": "CA",
+  "9414290": "CA", "9415020": "CA", "9419750": "CA",
+  // Pacific Northwest
+  "9437540": "OR", "9437540-cannon": "OR", "9439040": "OR",
+  "9441102": "WA", "9442396": "WA", "9443090": "WA",
 };
 
 export interface Region {
@@ -106,6 +182,55 @@ export const REGIONS: Region[] = [
     title: "More East Coast Beaches",
     blurb:
       "A sweep of favorite Atlantic beaches beyond our core regions — Cape Cod to Tybee Island, including Montauk, Rehoboth, Ocean City MD, Virginia Beach, and Myrtle Beach.",
+  },
+  {
+    slug: "new-england",
+    region: "New England",
+    title: "New England",
+    blurb:
+      "Big-swing northern tides from Bar Harbor and Portland down through Old Orchard, Hampton Beach, Cape Cod, the islands, and Rhode Island's ocean shore.",
+  },
+  {
+    slug: "florida-atlantic",
+    region: "Florida · Atlantic Coast",
+    title: "Florida — Atlantic Coast",
+    blurb:
+      "Florida's east coast from St. Augustine and Daytona through Cocoa Beach, Fort Lauderdale, and Miami Beach, all the way down to Key West.",
+  },
+  {
+    slug: "florida-gulf",
+    region: "Florida · Gulf Coast",
+    title: "Florida — Gulf Coast",
+    blurb:
+      "The Gulf side of Florida: Pensacola Beach and the panhandle, Clearwater and St. Pete, Siesta Key's sand, and south to Fort Myers and Naples.",
+  },
+  {
+    slug: "gulf-coast",
+    region: "Gulf Coast",
+    title: "Gulf Coast",
+    blurb:
+      "Gulf beaches beyond Florida — Gulf Shores and Dauphin Island, Biloxi, Grand Isle, and the Texas coast from Galveston to South Padre Island.",
+  },
+  {
+    slug: "southern-california",
+    region: "Southern California",
+    title: "Southern California",
+    blurb:
+      "SoCal's classic piers and coves — San Diego, La Jolla's Scripps Pier, Newport Beach, Santa Monica, and up the coast to Santa Barbara.",
+  },
+  {
+    slug: "northern-california",
+    region: "Northern California",
+    title: "Northern California",
+    blurb:
+      "From Monterey Bay and Santa Cruz past the Golden Gate to Point Reyes and Crescent City — the cold, dramatic half of the California coast.",
+  },
+  {
+    slug: "pacific-northwest",
+    region: "Pacific Northwest",
+    title: "Pacific Northwest",
+    blurb:
+      "Oregon and Washington's moody shores: Cannon Beach and Tillamook Bay, the Columbia at Astoria, and out to Westport, La Push, and Neah Bay.",
   },
 ];
 

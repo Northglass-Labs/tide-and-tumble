@@ -182,6 +182,84 @@ const MORE_BEACHES: Omit<Station, "region">[] = [
   { id: "8670892", label: "Tybee Island", stationName: "Tybee Light", lat: 32.0283, lng: -80.855, type: "S", exposure: "ocean" },
 ];
 
+
+// Florida Atlantic coast — north → south. (Verified NOAA ids, 2026-08-16.)
+const FLORIDA_ATLANTIC: Omit<Station, "region">[] = [
+  { id: "8720587", label: "St. Augustine Beach", stationName: "St. Augustine Beach", lat: 29.8567, lng: -81.2633, type: "R", exposure: "ocean" },
+  { id: "8721120", label: "Daytona Beach", stationName: "Daytona Beach Shores, Sunglow Pier", lat: 29.1467, lng: -80.9633, type: "S", exposure: "ocean", note: "Sunglow Pier" },
+  { id: "8721164", label: "New Smyrna Beach", stationName: "New Smyrna Beach", lat: 29.0233, lng: -80.9183, type: "R", exposure: "ocean" },
+  { id: "8721604", label: "Cocoa Beach", stationName: "Port Canaveral (Trident Pier)", lat: 28.4158, lng: -80.5931, type: "R", exposure: "ocean", note: "Trident Pier, Port Canaveral" },
+  { id: "8722956", label: "Fort Lauderdale", stationName: "South Port Everglades, ICWW", lat: 26.0817, lng: -80.1167, type: "R", exposure: "inlet", note: "Port Everglades" },
+  { id: "8723080", label: "Miami Beach", stationName: "Haulover Pier, N. Miami Beach", lat: 25.9033, lng: -80.12, type: "R", exposure: "ocean", note: "Haulover Pier" },
+  { id: "8724580", label: "Key West", stationName: "Key West", lat: 24.5557, lng: -81.8079, type: "R", exposure: "bay", note: "Key West Harbor" },
+];
+
+// Florida Gulf coast — north → south along the panhandle, then down the peninsula.
+const FLORIDA_GULF: Omit<Station, "region">[] = [
+  { id: "8729807", label: "Pensacola Beach", stationName: "Pensacola Beach Pier", lat: 30.3275, lng: -87.1419, type: "R", exposure: "ocean" },
+  { id: "8729511", label: "Destin", stationName: "East Pass (Destin)", lat: 30.395, lng: -86.5133, type: "S", exposure: "inlet", note: "East Pass" },
+  { id: "8729210", label: "Panama City Beach", stationName: "Panama City Beach", lat: 30.2138, lng: -85.8786, type: "R", exposure: "ocean" },
+  { id: "8726724", label: "Clearwater Beach", stationName: "Clearwater Beach", lat: 27.9783, lng: -82.8317, type: "R", exposure: "ocean" },
+  { id: "8726520", label: "St. Petersburg", stationName: "St. Petersburg", lat: 27.7606, lng: -82.6269, type: "R", exposure: "bay", note: "Tampa Bay" },
+  { id: "8726034", label: "Siesta Key", stationName: "Siesta Key, Big Sarasota Pass", lat: 27.2839, lng: -82.565, type: "R", exposure: "inlet", note: "Big Sarasota Pass" },
+  { id: "8725520", label: "Fort Myers", stationName: "Fort Myers", lat: 26.6478, lng: -81.8711, type: "R", exposure: "bay", note: "Caloosahatchee River" },
+  { id: "8725110", label: "Naples", stationName: "Naples (outer coast)", lat: 26.1317, lng: -81.8075, type: "R", exposure: "ocean" },
+];
+
+// Gulf Coast beyond Florida — east → west, AL / MS / LA / TX.
+const GULF_COAST: Omit<Station, "region">[] = [
+  { id: "8731439", label: "Gulf Shores", stationName: "Gulf Shores, ICWW", lat: 30.2799, lng: -87.6843, type: "R", exposure: "sound", note: "ICWW gauge" },
+  { id: "8735180", label: "Dauphin Island", stationName: "Dauphin Island", lat: 30.25, lng: -88.075, type: "R", exposure: "ocean" },
+  { id: "8744117", label: "Biloxi", stationName: "Biloxi", lat: 30.4117, lng: -88.9033, type: "R", exposure: "bay", note: "Biloxi Bay" },
+  { id: "8761724", label: "Grand Isle", stationName: "East Point, Grand Isle", lat: 29.2633, lng: -89.9567, type: "R", exposure: "ocean" },
+  { id: "8771341", label: "Galveston", stationName: "Galveston Bay Entrance, North Jetty", lat: 29.3575, lng: -94.7247, type: "R", exposure: "inlet", note: "Bay entrance, North Jetty" },
+  { id: "8775237", label: "Port Aransas", stationName: "Port Aransas", lat: 27.8397, lng: -97.0725, type: "R", exposure: "inlet" },
+  { id: "8779749", label: "South Padre Island", stationName: "South Padre Island, Brazos Santiago Pass", lat: 26.0675, lng: -97.1548, type: "R", exposure: "inlet", note: "Brazos Santiago Pass" },
+];
+
+// Southern California — south → north. (Pacific: one big swing per day matters.)
+const SOCAL: Omit<Station, "region">[] = [
+  { id: "9410170", label: "San Diego", stationName: "San Diego (Broadway)", lat: 32.7142, lng: -117.1736, type: "R", exposure: "bay", note: "San Diego Bay" },
+  { id: "9410230", label: "La Jolla", stationName: "La Jolla (Scripps Institution Wharf)", lat: 32.8669, lng: -117.2571, type: "R", exposure: "ocean", note: "Scripps Pier" },
+  { id: "9410580", label: "Newport Beach", stationName: "Newport Bay Entrance, Corona del Mar", lat: 33.6033, lng: -117.883, type: "R", exposure: "inlet", note: "Corona del Mar" },
+  { id: "9410660", label: "Los Angeles", stationName: "Los Angeles (Outer Harbor)", lat: 33.72, lng: -118.272, type: "R", exposure: "bay", note: "Outer Harbor, San Pedro" },
+  { id: "9410840", label: "Santa Monica", stationName: "Santa Monica, Municipal Pier", lat: 34.0083, lng: -118.5, type: "R", exposure: "ocean", note: "Municipal Pier" },
+  { id: "9411340", label: "Santa Barbara", stationName: "Santa Barbara", lat: 34.4046, lng: -119.6925, type: "R", exposure: "bay", note: "Santa Barbara Harbor" },
+];
+
+// Northern California — south → north.
+const NORCAL: Omit<Station, "region">[] = [
+  { id: "9413450", label: "Monterey", stationName: "Monterey, Monterey Bay", lat: 36.6089, lng: -121.8914, type: "R", exposure: "bay", note: "Monterey Harbor" },
+  { id: "9413745", label: "Santa Cruz", stationName: "Santa Cruz, Monterey Bay", lat: 36.9583, lng: -122.017, type: "S", exposure: "ocean", note: "Municipal Wharf" },
+  { id: "9414290", label: "San Francisco", stationName: "San Francisco (Golden Gate)", lat: 37.8063, lng: -122.4659, type: "R", exposure: "ocean", note: "Golden Gate / Ocean Beach" },
+  { id: "9415020", label: "Point Reyes", stationName: "Point Reyes", lat: 37.9942, lng: -122.9736, type: "R", exposure: "ocean" },
+  { id: "9419750", label: "Crescent City", stationName: "Crescent City", lat: 41.7456, lng: -124.1844, type: "R", exposure: "ocean" },
+];
+
+// Pacific Northwest — south → north, OR then WA.
+const PNW: Omit<Station, "region">[] = [
+  { id: "9437540", label: "Garibaldi", stationName: "Garibaldi", lat: 45.5545, lng: -123.9189, type: "R", exposure: "bay", note: "Tillamook Bay" },
+  { id: "9437540-cannon", label: "Cannon Beach", stationName: "Garibaldi", lat: 45.8918, lng: -123.9615, type: "R", exposure: "ocean", note: "Nearest gauge (Garibaldi, Tillamook Bay)" },
+  { id: "9439040", label: "Astoria", stationName: "Astoria (Tongue Point), Oreg.", lat: 46.2073, lng: -123.7683, type: "R", exposure: "bay", note: "Columbia River" },
+  { id: "9441102", label: "Westport", stationName: "Westport, Point Chehalis", lat: 46.9043, lng: -124.1051, type: "R", exposure: "ocean", note: "Point Chehalis" },
+  { id: "9442396", label: "La Push", stationName: "La Push, Quillayute River", lat: 47.9128, lng: -124.6357, type: "R", exposure: "ocean" },
+  { id: "9443090", label: "Neah Bay", stationName: "Neah Bay", lat: 48.3707, lng: -124.6016, type: "R", exposure: "sound", note: "Strait of Juan de Fuca" },
+];
+
+// New England — north → south, ME / NH / MA / RI.
+const NEW_ENGLAND: Omit<Station, "region">[] = [
+  { id: "8413320", label: "Bar Harbor", stationName: "Bar Harbor", lat: 44.3922, lng: -68.2043, type: "R", exposure: "ocean" },
+  { id: "8418150", label: "Portland, ME", stationName: "Portland", lat: 43.6581, lng: -70.2442, type: "R", exposure: "bay", note: "Casco Bay" },
+  { id: "8418557", label: "Old Orchard Beach", stationName: "Old Orchard Beach", lat: 43.5167, lng: -70.3667, type: "S", exposure: "ocean" },
+  { id: "8429489", label: "Hampton Beach", stationName: "Hampton Harbor", lat: 42.895, lng: -70.8167, type: "S", exposure: "inlet", note: "Hampton Harbor" },
+  { id: "8446121", label: "Provincetown", stationName: "Provincetown", lat: 42.0496, lng: -70.1822, type: "R", exposure: "bay", note: "Cape Cod Bay" },
+  { id: "8449130", label: "Nantucket", stationName: "Nantucket", lat: 41.285, lng: -70.0967, type: "R", exposure: "bay", note: "Nantucket Harbor" },
+  { id: "8448558", label: "Martha's Vineyard", stationName: "Edgartown", lat: 41.3883, lng: -70.5117, type: "R", exposure: "bay", note: "Edgartown Harbor" },
+  { id: "8452660", label: "Newport, RI", stationName: "Newport", lat: 41.5043, lng: -71.3261, type: "R", exposure: "bay", note: "Narragansett Bay" },
+  { id: "8454658", label: "Narragansett", stationName: "Narragansett Pier", lat: 41.4217, lng: -71.455, type: "S", exposure: "ocean" },
+  { id: "8459338", label: "Block Island", stationName: "Block Island (Old Harbor)", lat: 41.1733, lng: -71.5567, type: "R", exposure: "ocean", note: "Old Harbor" },
+];
+
 function withRegion(
   beaches: Omit<Station, "region">[],
   region: string,
@@ -196,6 +274,13 @@ export const STATIONS: Station[] = [
   ...withRegion(CAPE_FEAR, "Cape Fear · Wilmington, NC"),
   ...withRegion(JERSEY, "Jersey Shore, NJ"),
   ...withRegion(MORE_BEACHES, "More US beaches"),
+  ...withRegion(NEW_ENGLAND, "New England"),
+  ...withRegion(FLORIDA_ATLANTIC, "Florida · Atlantic Coast"),
+  ...withRegion(FLORIDA_GULF, "Florida · Gulf Coast"),
+  ...withRegion(GULF_COAST, "Gulf Coast"),
+  ...withRegion(SOCAL, "Southern California"),
+  ...withRegion(NORCAL, "Northern California"),
+  ...withRegion(PNW, "Pacific Northwest"),
 ];
 
 /** Curated regions in display order, each with its beaches. */
