@@ -109,6 +109,13 @@ export function pagesWithoutTable(dir) {
     .map((name) => `tides/${name}`);
 }
 
+/**
+ * Found only in the full Lottie player (its canvas renderer), never in the
+ * light build the emoji use: 700 KB more, and an expression engine that needs
+ * eval, which the Content-Security-Policy refuses.
+ */
+const FULL_LOTTIE = /\bCVShapeElement\b/;
+
 /** The free plan's static-asset limits, from Cloudflare's documentation on 2026-11-27. */
 export const LIMITS = Object.freeze({ files: 20_000, bytesPerFile: 25 * 1024 * 1024, headerRules: 100 });
 
@@ -135,10 +142,11 @@ export const REQUIRED_FILES = Object.freeze([
  * @param {(path: string) => number} build.size Bytes of one file.
  * @param {string} build.sitemap The exported sitemap.xml.
  * @param {string} build.headers The exported _headers.
+ * @param {(path: string) => string} [build.read] A file's text, for the checks that read scripts.
  * @param {string} origin The site's address, as the sitemap names it.
  * @returns {string[]}
  */
-export function buildProblems({ files, links, size, sitemap, headers }, origin) {
+export function buildProblems({ files, links, size, sitemap, headers, read }, origin) {
   /** @type {string[]} */
   const problems = [];
   for (const path of strayFiles(files)) {
@@ -166,6 +174,13 @@ export function buildProblems({ files, links, size, sitemap, headers }, origin) 
   }
   for (const path of files) {
     if (size(path) > LIMITS.bytesPerFile) problems.push(`out/${path} is over 25 MiB, the free plan's limit per file`);
+  }
+  if (read) {
+    for (const path of files.filter((file) => /^_next\/static\/.+\.js$/.test(file))) {
+      if (FULL_LOTTIE.test(read(path))) {
+        problems.push(`out/${path} holds the full Lottie player; import the light build only (src/components/AnimatedEmoji.tsx)`);
+      }
+    }
   }
   const rules = headers.split("\n").filter((line) => line.trim() !== "" && !/^\s/.test(line) && !line.startsWith("#"));
   if (rules.length > LIMITS.headerRules) {

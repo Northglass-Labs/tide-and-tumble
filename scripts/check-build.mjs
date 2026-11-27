@@ -36,6 +36,7 @@ await runMain(async () => {
       size: (path) => statSync(new URL(path, OUT)).size,
       sitemap: read("sitemap.xml"),
       headers: read("_headers"),
+      read,
     },
     PRODUCTION_ORIGIN,
   );

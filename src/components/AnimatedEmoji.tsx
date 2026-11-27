@@ -6,11 +6,8 @@ import type { CSSProperties } from "react";
 
 // lottie-react touches the DOM — load it client-only. The light build: SVG
 // only and no expression engine (no eval), which the Noto files never need
-// and the Content-Security-Policy does not allow.
-const Lottie = dynamic(
-  () => import("lottie-react").then((module) => module.LottieLight),
-  { ssr: false },
-);
+// and the Content-Security-Policy does not allow (LottieLightPlayer).
+const Lottie = dynamic(() => import("./LottieLightPlayer"), { ssr: false });
 
 /**
  * A genuinely-animated Google Noto emoji (Apache-2.0), self-hosted in

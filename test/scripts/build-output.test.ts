@@ -110,6 +110,17 @@ describe("buildProblems()", () => {
     expect(buildProblems(good(), ORIGIN)).toEqual([]);
   });
 
+  it("refuses the full Lottie player in the scripts: only the light build, SVG and no expressions, may ship", () => {
+    const chunk = "_next/static/chunks/a.js";
+    const read = (text: string) => (path: string) => (path === chunk ? text : "");
+    // The canvas renderer is in the full player and not in the light one: 700 KB more, and an expression
+    // engine that needs eval, which the Content-Security-Policy refuses anyway.
+    expect(buildProblems({ ...good(), read: read("class CVShapeElement{}") }, ORIGIN)).toEqual([
+      `out/${chunk} holds the full Lottie player; import the light build only (src/components/AnimatedEmoji.tsx)`,
+    ]);
+    expect(buildProblems({ ...good(), read: read("function SVGShapeElement(){}") }, ORIGIN)).toEqual([]);
+  });
+
   it("refuses stray files, symbolic links and missing files", () => {
     const problems = buildProblems(
       { ...good(), files: [...good().files.filter((path) => path !== "_headers"), ".env"], links: ["hosts.txt"] },
