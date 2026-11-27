@@ -67,13 +67,14 @@ jobs:
       # Until deploy.yml can release, a merge would not reach production and
       # merges would pile up unreleased, so updates wait for review. A run
       # Dependabot starts sees no Actions secrets, so this reads the Deploy
-      # runs on main with this job's token instead: the newest run that
+      # runs on main (a push, a dispatch or the nightly schedule) with this
+      # job's token, a hundred to a page, newest first: the newest run that
       # released or tried to decides, by its Release step. Runs that say
       # nothing are passed over: one for an older commit (its head check
-      # passed and it released nothing on purpose) and one cancelled before
-      # it started. A run that failed before its steps (no Release step, not
-      # cancelled) says "did not release". Any error reading them means not
-      # automatic.
+      # passed and it built and released nothing on purpose) and one
+      # cancelled before it started. A run whose build failed, or that failed
+      # before its steps (no Release step, not cancelled), says "did not
+      # release". Any error reading them means not automatic.
       - name: Check that releases are automatic
         id: releases
         env:
@@ -82,14 +83,24 @@ jobs:
         run: |
           automatic=false
           reason="no Deploy run on main has released or tried to"
-          if runs="$(gh api "repos/$GH_REPO/actions/workflows/deploy.yml/runs?branch=main&status=completed&per_page=30")" &&
-            found="$(jq -r '.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch")) | "\(.id):\(.conclusion)"' <<< "$runs")"; then
+          step() { jq -r --arg name "$1" '[.jobs[].steps[]? | select(.name == $name) | .conclusion] | first // "absent"'; }
+          decided=false
+          page=1
+          while [ "$decided" = false ]; do
+            if ! runs="$(gh api "repos/$GH_REPO/actions/workflows/deploy.yml/runs?branch=main&status=completed&per_page=100&page=$page")" ||
+              ! found="$(jq -r '.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch" or .event == "schedule")) | "\(.id):\(.conclusion)"' <<< "$runs")" ||
+              ! count="$(jq '.workflow_runs | length' <<< "$runs")"; then
+              reason="the Actions API could not be read"
+              break
+            fi
             for run in $found; do
               id="${run%%:*}"
               conclusion="${run#*:}"
+              decided=true
               if ! jobs="$(gh api "repos/$GH_REPO/actions/runs/$id/jobs")" ||
-                ! release="$(jq -r '[.jobs[].steps[]? | select(.name == "Release") | .conclusion] | first // "absent"' <<< "$jobs")" ||
-                ! head="$(jq -r '[.jobs[].steps[]? | select(.name == "Check the head of main") | .conclusion] | first // "absent"' <<< "$jobs")"; then
+                ! release="$(step "Release" <<< "$jobs")" ||
+                ! prepare="$(step "Prepare the release" <<< "$jobs")" ||
+                ! head="$(step "Check the head of main" <<< "$jobs")"; then
                 reason="the Actions API could not be read"
                 break
               fi
@@ -99,7 +110,14 @@ jobs:
                 reason="the newest Deploy run on main that tried to release, $id, did not: it ended ($conclusion) before its Release step"
                 break
               fi
+              # Release skipped after a build that ran: the build failed. Skipped with the build, after a
+              # passing head check: an older commit's run, which built and released nothing on purpose.
+              if [ "$release" = "skipped" ] && [ "$prepare" != "skipped" ] && [ "$prepare" != "absent" ]; then
+                reason="the newest Deploy run on main that tried to release, $id, did not: its Prepare the release step was $prepare"
+                break
+              fi
               if [ "$release" = "absent" ] || { [ "$release" = "skipped" ] && [ "$head" = "success" ]; }; then
+                decided=false
                 continue
               fi
               if [ "$release" = "success" ]; then
@@ -110,9 +128,12 @@ jobs:
               fi
               break
             done
-          else
-            reason="the Actions API could not be read"
-          fi
+            # A short page is the last; ten pages of a hundred runs is history enough.
+            if [ "$count" -lt 100 ] || [ "$page" -ge 10 ]; then
+              break
+            fi
+            page=$((page + 1))
+          done
           echo "automatic=$automatic" >> "$GITHUB_OUTPUT"
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
 

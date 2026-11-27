@@ -359,7 +359,8 @@ describe("GitHub workflows", () => {
   describe("the merge job's check that releases are automatic", () => {
     const job = () => jobSection(workflow("ci.yml"), "merge-dependabot");
     const check = () => stepsOf(job())[0] ?? "";
-    const RUNS = "api repos/example/app/actions/workflows/deploy.yml/runs?branch=main&status=completed&per_page=30";
+    const RUNS = (page: number) =>
+      `api repos/example/app/actions/workflows/deploy.yml/runs?branch=main&status=completed&per_page=100&page=${page}`;
     const jobsOf = (id: number) => `api repos/example/app/actions/runs/${id}/jobs`;
 
     /**
@@ -386,12 +387,27 @@ describe("GitHub workflows", () => {
     const noToken = { "Check for a Cloudflare token": "success", "Check the head of main": "skipped", Release: "skipped" };
     const olderCommit = { "Check for a Cloudflare token": "success", "Check the head of main": "success", Release: "skipped" };
     const failed = { "Check for a Cloudflare token": "success", "Check the head of main": "success", Release: "failure" };
+    const buildFailed = {
+      "Check for a Cloudflare token": "success",
+      "Check the head of main": "success",
+      "Prepare the release": "failure",
+      Release: "skipped",
+    };
 
-    /** Runs the check with a stand-in gh that answers these Deploy runs (null: that call fails). */
+    /**
+     * Runs the check with a stand-in gh that answers these Deploy runs, a hundred to a page as the API pages them
+     * (null: that call fails).
+     */
     function decide(runs: ReturnType<typeof deployRun>[] | null, failingJobs: number[] = []) {
-      const routes: Record<string, string | null> = {
-        [RUNS]: runs === null ? null : JSON.stringify({ total_count: runs.length, workflow_runs: runs.map((r) => r.run) }),
-      };
+      const routes: Record<string, string | null> = {};
+      if (runs === null) {
+        routes[RUNS(1)] = null;
+      } else {
+        for (let page = 1; page === 1 || (page - 1) * 100 < runs.length; page += 1) {
+          const slice = runs.slice((page - 1) * 100, page * 100);
+          routes[RUNS(page)] = JSON.stringify({ total_count: runs.length, workflow_runs: slice.map((r) => r.run) });
+        }
+      }
       for (const { run, jobs } of runs ?? []) {
         routes[jobsOf(run.id)] = failingJobs.includes(run.id) ? null : JSON.stringify(jobs);
       }
@@ -439,8 +455,22 @@ describe("GitHub workflows", () => {
       );
     });
 
-    it("counts only runs started by a push or by hand", () => {
+    it("counts runs started by a push, by hand or by the nightly schedule, and no others", () => {
       expect(decide([deployRun(104, released, "repository_dispatch")])).toContain("automatic=false\n");
+      expect(decide([deployRun(105, failed, "schedule"), deployRun(101, released)])).toContain("automatic=false\n");
+      expect(decide([deployRun(105, released, "schedule")])).toBe("automatic=true\nreason=Deploy run 105 on main released\n");
+    });
+
+    it("says not automatic when the newest run's build failed, rather than taking it for an older commit's", () => {
+      // The head check passed and the Release step was skipped, as for an older commit, but because the build failed.
+      expect(decide([deployRun(106, buildFailed, "push", "failure"), deployRun(101, released)])).toBe(
+        "automatic=false\nreason=the newest Deploy run on main that tried to release, 106, did not: its Prepare the release step was failure\n",
+      );
+    });
+
+    it("reads past the first page of runs, a hundred at a time", () => {
+      const quiet = Array.from({ length: 100 }, (_, index) => deployRun(1_000 - index, olderCommit, "schedule"));
+      expect(decide([...quiet, deployRun(101, released)])).toBe("automatic=true\nreason=Deploy run 101 on main released\n");
     });
 
     it("says not automatic when the Actions API cannot be read", () => {
