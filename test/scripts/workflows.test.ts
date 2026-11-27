@@ -263,6 +263,18 @@ describe("GitHub workflows", () => {
     expect(jobSection(deploy, "gate")).toMatch(/\n {4}if: github\.ref == 'refs\/heads\/main'\n/);
   });
 
+  it("pass the head the merge job checked to the release, which refuses if production has moved since", () => {
+    // Releases queue: another may go out between the merge job's check and this one.
+    const deploy = workflow("deploy.yml");
+    expect(deploy).toMatch(/\n {2}workflow_dispatch:\n {4}inputs:\n(?: {6}#.*\n)* {6}expected-live:\n/);
+    const release = stepsOf(jobSection(deploy, "release")).find((step) => stepValue(step, "name") === "Release")!;
+    expect(stepValue(release, "env")).toContain("EXPECTED_LIVE: ${{ inputs.expected-live }}");
+    const start = stepWith(jobSection(workflow("ci.yml"), "merge-dependabot"), "gh workflow run");
+    expect(stepValue(start, "run").trim().split("\n").at(-1)?.trim()).toBe(
+      'gh workflow run deploy.yml --ref main -f expected-live="$CHECKED"',
+    );
+  });
+
   it("check main's head again just before the release: a re-run of the failed release job reuses the old gate", () => {
     // "Re-run failed jobs" keeps the gate's answer and the build, and main may have moved since.
     const deploy = workflow("deploy.yml");
@@ -622,7 +634,7 @@ describe("GitHub workflows", () => {
         PATH: fakeGhRoutes({
           "pr view https://github.com/example/app/pull/7 --json mergeCommit --jq .mergeCommit.oid": merged,
           [`api repos/example/app/commits/${merged} --jq .parents[0].sha`]: parent,
-          "workflow run deploy.yml --ref main": "",
+          [`workflow run deploy.yml --ref main -f expected-live=${checked}`]: "",
         }),
         GH_REPO: "example/app",
         PR_URL: "https://github.com/example/app/pull/7",

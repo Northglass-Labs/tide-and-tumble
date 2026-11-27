@@ -83,10 +83,17 @@ HTML, the page says it is checking NWS beach warnings; without JavaScript a
 given up after ten seconds. A Surf Zone Forecast counts only when it was
 issued on the beach's own calendar day: NWS lists a week of them, and an
 office that stops issuing for the season would otherwise leave a week-old
-rip-current risk on the page as today's. Without one, the page says so: "No
-NWS rip-current forecast for today yet" when the newest is from the last two
-days, and that none are being issued this season when it is older or none is
-listed.
+rip-current risk on the page as today's. A risk is stated only when one is
+read for the beach, from its own section (found by its bundled land zone's
+code or name, src/lib/beach-zones.json, in its bundled office's forecast):
+Low as a line, Moderate and High as advisories. When today's forecast exists
+but no risk is read, the page links to it ("Check today's NWS surf zone
+forecast for rip-current risk") and claims nothing either way: no parser
+covers every office's format, and a false "no risk" is the one failure a
+beach-safety page must not have. Otherwise it says none is out yet today, or
+none is being issued this season. A test checks every in-season beach finds
+its section in recorded forecasts, and test/app/srf-sections.live.test.ts
+checks today's (LIVE_SRF=1).
 
 ### D3. Version URLs off; a release is checked in production
 
@@ -212,9 +219,11 @@ Node on this machine (the same V8):
 | Parsing a 33-day NOAA hi/lo answer (6 KB) | 0.014 ms |
 | Parsing an NWS point and alerts answer | 0.008 ms |
 
-Subrequests: `tides` makes 1, `alerts` at most 4, `marine` at most 7 (five
-buoys, then wind and water temperature at the tide gauge), plus one cache read
-and one cache write each. Waiting on the network is not CPU time.
+Subrequests: `tides` makes 1, `alerts` at most 4, `marine` at most 10 (the
+five nearest NDBC stations and the three nearest wave buoys, up to eight,
+each read only to its first data row by its upper-case id; then wind and
+water temperature at the tide gauge), plus one cache read and one cache
+write each. Waiting on the network is not CPU time.
 
 ## Caching
 
@@ -415,6 +424,19 @@ moving typescript-eslint to 8.74. Dependabot's grouped major update:
 
 Both holds are pinned in `.github/dependabot.yml` with the date and reason.
 
+## Decided after the cutover
+
+- **The `workers.dev` address stays on.** Production is reached through the
+  route now, and no regular release or check uses the Worker's own address.
+  It stays for one case: releasing a fix while production's `/api/health`
+  cannot answer. A broken release is the same version at both addresses, so
+  neither can name it; `promote` refuses at the site's address then, and at
+  `--origin <workers.dev address>` goes ahead with a warning, as Wrangler has
+  read the live version from its own account. `rollback` needs neither: when
+  the address cannot name a version, it rolls back the live version Wrangler
+  reads, with a warning. The address serves the same pages with `noindex`,
+  and its data routes answer 404: only `GET /api/health` answers there.
+
 ## Not in this change
 
 - **One API request per beach view.** A beach view makes three Worker
@@ -423,18 +445,6 @@ Both holds are pinned in `.github/dependabot.yml` with the date and reason.
   would not change; it needs the page to take the three parts' separate
   failures from one answer, and the service worker's offline copy of the
   tides moved to it. A follow-up.
-- **The `workers.dev` address off after the cutover** (`workers_dev: false`):
-  once production is reached through the route, the Worker's own address
-  only serves the release check of last resort. Turning it off removes a
-  second public address for the same Worker, and `--origin` with it.
-- **The station data bugs.** Each station should carry its IANA time zone
-  (next bullet), and the NDBC reader should ask for upper-case station ids,
-  read only to the first data row (the C-MAN files exceed the 256 KB cap)
-  and prefer buoys that report waves.
-- **The time-zone bug.** Every station computes "now", day boundaries and sun
-  times in `America/New_York`, while NOAA returns each station's local time.
-  On the Gulf and Pacific coasts the live tide state is one to three hours
-  off. It predates this move and is a separate fix.
 - **A script-hash Content-Security-Policy** instead of `'unsafe-inline'`
   scripts: possible with a post-build step that hashes each page's inline
   scripts; it needs a browser test suite to be safe, which the repository

@@ -42,14 +42,57 @@ export interface BeachSafety {
   /** e.g. "NWS Wakefield (AKQ)" — attribution for whatever we found. */
   source: string | null;
   /**
-   * Whether the office's Surf Zone Forecast speaks for today: "today"; "not-yet"
-   * (the newest is from the last two days, so today's is still to come);
-   * "out-of-season" (none listed, or none for longer); null when unknown.
+   * What the office's Surf Zone Forecast says for this beach today: "today"
+   * (a rip-current risk was read for it); "check" (today's forecast exists,
+   * but no risk was read for this beach: the page links to it and claims
+   * nothing, since no parser covers every office's format); "not-yet" (the
+   * newest is from the last two days); "out-of-season" (none listed, or none
+   * for longer); null when unknown.
    */
-  ripForecast: "today" | "not-yet" | "out-of-season" | null;
+  ripForecast: "today" | "check" | "not-yet" | "out-of-season" | null;
+  /** The office's Surf Zone Forecast page, for "check". */
+  forecastUrl: string | null;
 }
 
-const EMPTY: BeachSafety = { alerts: [], ripRisk: null, uvIndex: null, source: null, ripForecast: null };
+const EMPTY: BeachSafety = { alerts: [], ripRisk: null, uvIndex: null, source: null, ripForecast: null, forecastUrl: null };
+
+/** A curated beach's NWS land forecast zone, its name, and the office that forecasts it (src/lib/beach-zones.json). */
+export interface BeachZone {
+  zone: string;
+  office: string;
+  name: string;
+}
+
+const LEVELS: RiskLevel[] = ["Low", "Moderate", "High"];
+const level = (word: string) => (word[0]!.toUpperCase() + word.slice(1).toLowerCase()) as RiskLevel;
+
+/**
+ * Today's rip-current risk in a forecast section: the first "Rip Current
+ * Risk" entry is today's. Most offices put the level on the same line; Boston
+ * puts it on "<area>....Level" lines below, one per stretch of coast, and the
+ * highest of them is the beach's.
+ */
+function todaysRipRisk(section: string): RiskLevel | null {
+  const lines = section.split("\n");
+  const at = lines.findIndex((line) => /^\s*Rip Current Risk\b(?!\s+Category)/i.test(line));
+  if (at === -1) return null;
+  const same = lines[at]!.match(/Rip Current Risk[*\s.]+(Low|Moderate|High)\b/i);
+  if (same) return level(same[1]!);
+  let highest = -1;
+  for (const line of lines.slice(at + 1)) {
+    const sub = line.match(/^\s+[A-Za-z][^.\n]*\.{2,}\s*(Low|Moderate|High)\b/i);
+    if (!sub) break;
+    highest = Math.max(highest, LEVELS.indexOf(level(sub[1]!)));
+  }
+  return highest === -1 ? null : LEVELS[highest]!;
+}
+
+/** The zone names a section's name lines give, after its UGC header and before its first blank line. */
+function sectionNames(section: string): string {
+  const header = section.search(/\d{6}-/);
+  if (header === -1) return "";
+  return (section.slice(header + 7).split(/\n\s*\n/)[0] ?? "").replace(/\s+/g, " ").toLowerCase();
+}
 
 const BEACH_EVENTS = [
   "rip current",
@@ -117,25 +160,61 @@ interface ProductList {
   "@graph"?: unknown;
 }
 
-/** Extract this beach's rip-current risk + UV from the office SRF text product. */
-function parseSrf(text: string, zoneCode: string): { rip: RiskLevel | null; uv: string | null } {
-  if (!/^[A-Z]{3}\d{3}$/.test(zoneCode)) {
-    return { rip: null, uv: null };
+/**
+ * The zone codes a section's header (its UGC line) names. NWS writes the
+ * prefix once and carries it ("FLZ141-347-447-272100-" is FLZ141, FLZ347 and
+ * FLZ447), writes ranges with ">" ("CAZ087>089-"), and ends with the
+ * expiry time (six digits), which is not a zone.
+ */
+export function expandUgc(header: string): string[] {
+  const zones: string[] = [];
+  let prefix = "";
+  for (const token of header.trim().split("-")) {
+    const match = token.match(/^([A-Z]{2}[CZ])?(\d{3})(?:>(\d{3}))?$/);
+    if (!match) continue;
+    if (match[1]) prefix = match[1];
+    if (!prefix) continue;
+    const from = Number(match[2]);
+    const to = match[3] ? Number(match[3]) : from;
+    for (let code = from; code <= to && code - from < 200; code += 1) {
+      zones.push(`${prefix}${String(code).padStart(3, "0")}`);
+    }
   }
-  // Segments are separated by "$$"; each starts with its UGC zone code(s).
-  const segments = text.split("$$");
-  const zonePattern = new RegExp(`\\b${zoneCode}\\b`);
-  const seg = segments.find((segment) =>
-    zonePattern.test(segment.slice(0, 600).toUpperCase()),
-  );
-  if (!seg) return { rip: null, uv: null };
-  // First occurrence in the segment == today's period.
-  const ripM = seg.match(/Rip Current Risk[*\s.]+(Low|Moderate|High)/i);
+  return zones;
+}
+
+/** A section's UGC header: from its first zone code to the six-digit expiry, which may span lines. */
+function sectionHeader(segment: string): string {
+  const start = segment.search(/[A-Z]{2}[CZ]\d{3}/);
+  if (start === -1) return "";
+  const rest = segment.slice(start);
+  const end = rest.search(/\d{6}-/);
+  return end === -1 ? "" : rest.slice(0, end + 7).replace(/\s+/g, "");
+}
+
+/**
+ * This beach's section of the office's Surf Zone Forecast, if the forecast
+ * has one, and the rip-current risk and UV index it gives for today.
+ */
+export function parseSrf(
+  text: string,
+  zoneCode: string,
+  zoneName?: string | null,
+): { found: boolean; rip: RiskLevel | null; uv: string | null } {
+  if (!/^[A-Z]{3}\d{3}$/.test(zoneCode)) {
+    return { found: false, rip: null, uv: null };
+  }
+  // Sections are separated by "$$"; each starts with the zone codes it covers,
+  // then their names. A section is the beach's by its code, or else by its
+  // zone's name (offices sometimes keep an older code for the same coast).
+  const sections = text.split("$$");
+  const name = zoneName?.trim().toLowerCase();
+  const seg =
+    sections.find((segment) => expandUgc(sectionHeader(segment.toUpperCase())).includes(zoneCode)) ??
+    (name ? sections.find((segment) => sectionNames(segment).includes(name)) : undefined);
+  if (!seg) return { found: false, rip: null, uv: null };
   const uvM = seg.match(/UV Index[*\s.]+([A-Za-z][A-Za-z ]*?)\s*\./i);
-  const rip = ripM
-    ? ((ripM[1][0].toUpperCase() + ripM[1].slice(1).toLowerCase()) as RiskLevel)
-    : null;
-  return { rip, uv: uvM ? uvM[1].trim() : null };
+  return { found: true, rip: todaysRipRisk(seg), uv: uvM ? uvM[1].trim() : null };
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -181,23 +260,33 @@ export async function fetchBeachSafetyChecked(
   lng: number,
   signal?: AbortSignal,
   now: number = Date.now(),
+  beach?: BeachZone,
 ): Promise<{ safety: BeachSafety; complete: boolean }> {
   const outcome: Outcome = { failed: false };
   const pt = `${lat.toFixed(4)},${lng.toFixed(4)}`;
 
   // Run the point lookup + formal alerts together.
-  const [point, alertData] = await Promise.all([
+  // A curated beach's land zone (src/lib/beach-zones.json): its point may be
+  // on the water, where NWS gives a marine zone that carries no beach alerts.
+  const zone = beach && /^[A-Z]{2}Z\d{3}$/.test(beach.zone) ? beach.zone : null;
+  const [point, alertData, zoneAlertData] = await Promise.all([
     nws<PointProps>(`https://api.weather.gov/points/${pt}`, signal, outcome),
     nws<AlertResp>(
       `https://api.weather.gov/alerts/active?point=${pt}&status=actual`,
       signal,
       outcome,
     ),
+    zone
+      ? nws<AlertResp>(`https://api.weather.gov/alerts/active?zone=${zone}&status=actual`, signal, outcome)
+      : Promise.resolve(null),
   ]);
 
   const alerts: BeachAlert[] = [];
   const seen = new Set<string>();
-  const features = Array.isArray(alertData?.features) ? alertData.features : [];
+  const features = [
+    ...(Array.isArray(alertData?.features) ? alertData.features : []),
+    ...(Array.isArray(zoneAlertData?.features) ? zoneAlertData.features : []),
+  ];
   for (const rawFeature of features) {
     const feature = record(rawFeature);
     const properties = record(feature?.properties);
@@ -217,11 +306,12 @@ export async function fetchBeachSafetyChecked(
   }
 
   const pointProperties = record(point?.properties);
-  const officeCandidate = nonEmptyString(pointProperties?.gridId)?.toUpperCase();
+  // A curated beach's own office: a pier point can fall in a neighboring office's area.
+  const officeCandidate = (beach?.office ?? nonEmptyString(pointProperties?.gridId))?.toUpperCase();
   const office = officeCandidate && /^[A-Z]{3}$/.test(officeCandidate)
     ? officeCandidate
     : null;
-  const zoneCode = forecastZoneCode(pointProperties?.forecastZone);
+  const zoneCode = zone ?? forecastZoneCode(pointProperties?.forecastZone);
   let ripRisk: RiskLevel | null = null;
   let uvIndex: string | null = null;
   let ripForecast: BeachSafety["ripForecast"] = null;
@@ -243,17 +333,22 @@ export async function fetchBeachSafetyChecked(
     const today = Number.isFinite(issued) && localDate(issued, zone) >= localDate(now, zone);
     if (list && !newest) {
       ripForecast = "out-of-season";
-    } else if (Number.isFinite(issued)) {
+    } else if (Number.isFinite(issued) && !today) {
       const daysOld = (Date.parse(localDate(now, zone)) - Date.parse(localDate(issued, zone))) / 86_400_000;
-      ripForecast = today ? "today" : daysOld <= 2 ? "not-yet" : "out-of-season";
+      ripForecast = daysOld <= 2 ? "not-yet" : "out-of-season";
     }
     if (latest && today) {
       const prod = await nws<{ productText?: unknown }>(latest, signal, outcome);
       const productText = nonEmptyString(prod?.productText);
       if (productText) {
-        const parsed = parseSrf(productText, zoneCode);
+        const parsed = parseSrf(productText, zoneCode, beach?.name);
         ripRisk = parsed.rip;
         uvIndex = parsed.uv;
+        // A risk is stated only when one was read for this beach. Otherwise the
+        // page links to today's forecast and claims nothing either way: no
+        // parser covers every office's format, and a false "no risk" is the
+        // one failure a beach-safety page must not have.
+        ripForecast = ripRisk ? "today" : "check";
       }
     }
   }
@@ -272,7 +367,8 @@ export async function fetchBeachSafetyChecked(
   }
 
   const source = office ? `NWS (${office})` : alerts.length ? "NWS" : null;
-  return { safety: { alerts, ripRisk, uvIndex, source, ripForecast }, complete: !outcome.failed };
+  const forecastUrl = office ? `https://forecast.weather.gov/product.php?site=NWS&issuedby=${office}&product=SRF` : null;
+  return { safety: { alerts, ripRisk, uvIndex, source, ripForecast, forecastUrl }, complete: !outcome.failed };
 }
 
 export async function fetchBeachSafety(

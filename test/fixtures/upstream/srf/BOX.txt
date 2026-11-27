@@ -1,0 +1,594 @@
+
+000
+FZUS51 KBOX 270908
+SRFBOX
+
+Surf Zone Forecast
+National Weather Service Boston/Norton MA
+408 AM EST Fri Nov 27 2026
+
+MAZ022-272300-
+Barnstable MA-
+Including the beaches of Chatham, Eastham, and Provincetown
+408 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...
+   East Coast...............High. 
+Surf Height...
+   East Coast...............12 to 15 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Low. 
+Water Temperature...
+   East Coast...............In the lower 50s. 
+Weather.....................Partly sunny until 11 AM, then mostly 
+                            sunny. Patchy fog. A slight chance of 
+                            rain. 
+High Temperature............Around 60. 
+Winds.......................Southwest winds around 15 mph.
+Tides...
+   Nauset Beach.............High 5.1 feet (MLLW) 11:56 AM EST.
+   Hyannisport..............Low 0.2 feet (MLLW) 07:02 AM EST.
+                            High 4.5 feet (MLLW) 01:44 PM EST.
+   Barnstable Harbor........Low 0.0 feet (MLLW) 07:01 AM EST.
+                            High 11.7 feet (MLLW) 12:54 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...
+   East Coast...............Moderate. 
+Surf Height...
+   East Coast...............7 to 11 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly sunny. 
+High Temperature............In the mid 50s. 
+Winds.......................West winds around 15 mph.
+Tides...
+   Nauset Beach.............Low 0.1 feet (MLLW) 06:43 AM EST.
+                            High 5.0 feet (MLLW) 12:52 PM EST.
+   Hyannisport..............Low 0.2 feet (MLLW) 07:58 AM EST.
+                            High 4.3 feet (MLLW) 02:41 PM EST.
+   Barnstable Harbor........Low 0.2 feet (MLLW) 07:56 AM EST.
+                            High 11.3 feet (MLLW) 01:50 PM EST.
+
+.SUNDAY...Surf height 4 to 7 feet. Sunny. Highs in the mid 50s. West
+winds around 10 mph. 
+.MONDAY...Surf height 4 to 8 feet. Partly sunny. Rain. Highs in the
+upper 50s. Southwest winds around 20 mph. 
+.TUESDAY...Surf height 5 to 8 feet. Sunny, cooler. Highs in the upper
+40s. Northwest winds around 15 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/box
+
+$$
+
+MAZ024-272300-
+Nantucket MA-
+Including the beaches of Nantucket
+408 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...
+   East Coast...............High. 
+   South Coast..............High. 
+Surf Height...
+   East Coast...............10 to 14 feet. 
+   South Coast..............10 to 13 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Low. 
+Water Temperature...
+   East Coast...............Around 50. 
+   South Coast..............In the lower 50s. 
+Weather.....................Partly sunny until 10 AM, then sunny 
+                            until 5 PM, then mostly cloudy. A 
+                            slight chance of rain. 
+High Temperature............In the upper 50s. 
+Winds.......................Southwest winds 15 to 20 mph.
+Tides...
+   Nantucket................Low 0.1 feet (MLLW) 07:04 AM EST.
+                            High 4.3 feet (MLLW) 01:51 PM EST.
+   Great Point..............Low 0.0 feet (MLLW) 06:59 AM EST.
+                            High 3.7 feet (MLLW) 01:26 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...
+   East Coast...............High. 
+   South Coast..............High. 
+Surf Height...
+   East Coast...............9 to 13 feet. 
+   South Coast..............12 to 15 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy until 8 AM, then mostly 
+                            sunny. 
+High Temperature............In the lower 50s. 
+Winds.......................Breezy. West winds around 25 mph.
+Tides...
+   Nantucket................Low 0.2 feet (MLLW) 08:01 AM EST.
+                            High 4.2 feet (MLLW) 02:49 PM EST.
+   Great Point..............Low 0.1 feet (MLLW) 07:54 AM EST.
+                            High 3.6 feet (MLLW) 02:22 PM EST.
+
+.SUNDAY...Surf height 6 to 9 feet. Sunny. Highs in the mid 50s. West
+winds around 15 mph. 
+.MONDAY...Surf height 8 to 13 feet. Partly sunny. Rain. Highs in the
+upper 50s. Windy. Southwest winds around 30 mph. 
+.TUESDAY...Surf height 6 to 9 feet. Sunny. Highs in the upper 40s.
+Northwest winds around 20 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/box
+
+$$
+
+MAZ023-272300-
+Dukes MA-
+Including the beaches of Edgartown and Aquinnah
+408 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................10 to 14 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Low. 
+Water Temperature...........In the lower 50s. 
+Weather.....................Mostly sunny until 5 PM, then mostly 
+                            cloudy. A chance of rain. 
+High Temperature............In the lower 60s. 
+Winds.......................Southwest winds around 20 mph.
+Tides...
+   Squibnocket Point........High 3.7 feet (MLLW) 08:43 AM EST.
+                            Low -0.1 feet (MLLW) 03:33 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...........High. 
+Surf Height.................12 to 15 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly sunny. 
+High Temperature............In the mid 50s. 
+Winds.......................Breezy. West winds 20 to 25 mph.
+Tides...
+   Squibnocket Point........High 3.5 feet (MLLW) 09:40 AM EST.
+                            Low 0.0 feet (MLLW) 04:28 PM EST.
+
+.SUNDAY...Surf height 4 to 8 feet. Sunny. Highs in the upper 50s.
+West winds around 10 mph. 
+.MONDAY...Surf height 8 to 12 feet. Partly sunny. Rain. Highs in the
+upper 50s. Windy. Southwest winds around 30 mph. 
+.TUESDAY...Surf height 6 to 9 feet. Sunny. Highs in the upper 40s.
+Northwest winds around 20 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/box
+
+$$
+
+MAZ020-272300-
+Southern Bristol MA-
+Including the beaches of Westport, Dartmouth, and New Bedford
+408 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................10 to 14 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Low. 
+Water Temperature...........In the mid 50s. 
+Weather.....................Partly sunny until 12 PM, then sunny 
+                            until 4 PM, then mostly cloudy. A 
+                            chance of rain. 
+High Temperature............In the lower 60s. 
+Winds.......................Southwest winds 15 to 20 mph.
+Tides...
+   Westport Harbor..........High 3.8 feet (MLLW) 09:37 AM EST.
+                            Low -0.1 feet (MLLW) 04:08 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................11 to 14 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly sunny. 
+High Temperature............In the mid 50s. 
+Winds.......................West winds around 15 mph.
+Tides...
+   Westport Harbor..........High 3.6 feet (MLLW) 10:34 AM EST.
+                            Low 0.0 feet (MLLW) 05:03 PM EST.
+
+.SUNDAY...Surf height 4 to 7 feet. Sunny. Highs in the upper 50s.
+West winds around 10 mph. 
+.MONDAY...Surf height 8 to 11 feet. Partly sunny. Rain. Highs in the
+upper 50s. Breezy. Southwest winds around 25 mph. 
+.TUESDAY...Surf height 5 to 8 feet. Sunny, cooler. Highs in the upper
+40s. Northwest winds around 15 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/box
+
+$$
+
+RIZ007-272300-
+Newport RI-
+Including the beaches of Newport, Middletown, and Little Compton
+408 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................12 to 15 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Low. 
+Water Temperature...........In the mid 50s. 
+Weather.....................Partly sunny until 12 PM, then mostly 
+                            sunny until 4 PM, then mostly cloudy. A 
+                            chance of rain. 
+High Temperature............Around 60. 
+Winds.......................Southwest winds 15 to 20 mph.
+Tides...
+   Newport..................High 4.5 feet (MLLW) 09:28 AM EST.
+                            Low -0.1 feet (MLLW) 03:35 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...........High. 
+Surf Height.................11 to 14 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly sunny. 
+High Temperature............In the mid 50s. 
+Winds.......................West winds 15 to 20 mph.
+Tides...
+   Newport..................High 4.3 feet (MLLW) 10:25 AM EST.
+                            Low 0.0 feet (MLLW) 04:30 PM EST.
+
+.SUNDAY...Surf height 4 to 8 feet. Sunny. Highs in the upper 50s.
+West winds around 10 mph. 
+.MONDAY...Surf height 8 to 11 feet. Partly sunny. Rain. Highs in the
+upper 50s. Breezy. Southwest winds around 25 mph. 
+.TUESDAY...Surf height 5 to 8 feet. Sunny. Highs in the upper 40s.
+Northwest winds around 15 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/box
+
+$$
+
+RIZ006-272300-
+Washington RI-
+Including the beaches of Narragansett, Charlestown, and Westerly
+408 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................11 to 15 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Low. 
+Water Temperature...........In the mid 50s. 
+Weather.....................Mostly cloudy until 10 AM, then mostly 
+                            sunny until 3 PM, then mostly cloudy. A 
+                            chance of rain. 
+High Temperature............Around 60. 
+Winds.......................Southwest winds 15 to 20 mph.
+Tides...
+   Watch Hill Point.........High 3.3 feet (MLLW) 10:09 AM EST.
+                            Low -0.1 feet (MLLW) 04:51 PM EST.
+   Point Judith (Harbor)....High 4.0 feet (MLLW) 09:24 AM EST.
+                            Low -0.3 feet (MLLW) 04:01 PM EST.
+   Narragansett Pier........High 4.1 feet (MLLW) 09:17 AM EST.
+                            Low -0.1 feet (MLLW) 03:46 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................11 to 14 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly sunny. 
+High Temperature............In the mid 50s. 
+Winds.......................West winds around 15 mph.
+Tides...
+   Watch Hill Point.........High 3.2 feet (MLLW) 11:06 AM EST.
+                            Low 0.0 feet (MLLW) 05:46 PM EST.
+   Point Judith (Harbor)....High 3.7 feet (MLLW) 10:20 AM EST.
+                            Low -0.1 feet (MLLW) 05:02 PM EST.
+   Narragansett Pier........High 3.9 feet (MLLW) 10:14 AM EST.
+                            Low 0.0 feet (MLLW) 04:41 PM EST.
+
+.SUNDAY...Surf height 4 to 7 feet. Sunny. Highs in the upper 50s.
+West winds around 10 mph. 
+.MONDAY...Surf height 8 to 11 feet. Partly sunny. Rain. Highs in the
+upper 50s. Southwest winds around 20 mph. 
+.TUESDAY...Surf height 5 to 8 feet. Sunny. Highs in the upper 40s.
+Northwest winds around 10 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/box
+
+$$
+
+RIZ008-272300-
+Block Island RI-
+Including the beaches of Block Island
+408 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................12 to 15 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Low. 
+Water Temperature...........In the mid 50s. 
+Weather.....................Partly sunny until 11 AM, then sunny 
+                            until 3 PM, then mostly cloudy. A 
+                            chance of rain. 
+High Temperature............In the upper 50s. 
+Winds.......................Breezy. Southwest winds 20 to 25 mph.
+Tides...
+   Block Island (Old Harbor)High 3.8 feet (MLLW) 09:12 AM EST.
+                            Low -0.2 feet (MLLW) 03:49 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...........High. 
+Surf Height.................11 to 14 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Partly sunny. 
+High Temperature............In the mid 50s. 
+Winds.......................Breezy. West winds around 25 mph.
+Tides...
+   Block Island (Old Harbor)High 3.6 feet (MLLW) 10:08 AM EST.
+                            Low -0.1 feet (MLLW) 04:51 PM EST.
+
+.SUNDAY...Surf height 4 to 7 feet. Sunny. Highs in the upper 50s.
+West winds around 10 mph. 
+.MONDAY...Surf height 8 to 11 feet. Partly sunny. Rain. Highs in the
+upper 50s. Windy. West winds around 30 mph. 
+.TUESDAY...Surf height 5 to 8 feet. Sunny. Highs in the upper 40s.
+Northwest winds around 20 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/box
+
+$$
+
+MAZ019-272300-
+Eastern Plymouth MA-
+Including the beaches of Cohasset, Duxbury, Hingham, Kingston, 
+Marshfield, Plymouth, and Scituate
+408 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................11 to 14 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Low. 
+Water Temperature...........In the lower 50s. 
+Weather.....................Partly sunny until 1 PM, then sunny 
+                            until 4 PM, then partly sunny. Patchy 
+                            fog. A chance of rain. 
+High Temperature............In the lower 60s. 
+Winds.......................Southwest winds 10 to 15 mph.
+Tides...
+   Scituate Harbor..........Low 0.1 feet (MLLW) 06:31 AM EST.
+                            High 11.2 feet (MLLW) 12:47 PM EST.
+   Plymouth.................Low 0.2 feet (MLLW) 06:55 AM EST.
+                            High 12.1 feet (MLLW) 12:57 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................5 to 8 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly sunny. 
+High Temperature............In the mid 50s. 
+Winds.......................West winds around 15 mph.
+Tides...
+   Scituate Harbor..........Low 0.2 feet (MLLW) 07:26 AM EST.
+                            High 10.9 feet (MLLW) 01:43 PM EST.
+   Plymouth.................Low 0.3 feet (MLLW) 07:50 AM EST.
+                            High 11.8 feet (MLLW) 01:52 PM EST.
+
+.SUNDAY...Surf height 2 to 4 feet. Sunny. Highs in the mid 50s. West
+winds around 10 mph. 
+.MONDAY...Surf height 3 to 5 feet. Partly sunny. Rain. Highs in the
+upper 50s. Southwest winds around 20 mph. 
+.TUESDAY...Surf height 4 to 7 feet. Sunny, cooler. Highs in the upper
+40s. Northwest winds around 15 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/box
+
+$$
+
+MAZ015-016-272300-
+Suffolk MA-Eastern Norfolk MA-
+Including the beaches of Boston, Chelsea, Revere, Winthrop, 
+Braintree, Milton, Quincy, and Weymouth
+408 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................10 to 13 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Low. 
+Water Temperature...........In the lower 50s. 
+Weather.....................Mostly cloudy until 1 PM, then mostly 
+                            sunny until 4 PM, then mostly cloudy. 
+                            Patchy fog. A chance of rain. 
+High Temperature............In the lower 60s. 
+Winds.......................Southwest winds 10 to 15 mph.
+Tides...
+   Boston...................Low 0.0 feet (MLLW) 06:31 AM EST.
+                            High 11.7 feet (MLLW) 12:43 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...........Low. 
+Surf Height.................4 to 8 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly sunny. 
+High Temperature............In the mid 50s. 
+Winds.......................West winds around 15 mph.
+Tides...
+   Boston...................Low 0.2 feet (MLLW) 07:26 AM EST.
+                            High 11.3 feet (MLLW) 01:39 PM EST.
+
+.SUNDAY...Surf height 2 to 3 feet. Sunny. Highs in the mid 50s.
+Southwest winds around 5 mph. 
+.MONDAY...Surf height 3 to 5 feet. Partly sunny. Rain. Highs in the
+upper 50s. Southwest winds around 20 mph. 
+.TUESDAY...Surf height 2 to 6 feet. Sunny, cooler. Highs in the upper
+40s. Northwest winds around 15 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/box
+
+$$
+
+MAZ007-272300-
+Eastern Essex MA-
+Including the beaches of Beverly, Gloucester, and Newburyport
+408 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................12 to 15 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Low. 
+Water Temperature...........In the lower 50s. 
+Weather.....................Mostly cloudy until 1 PM, then mostly 
+                            sunny until 5 PM, then mostly cloudy. 
+                            Patchy fog. A chance of rain. 
+High Temperature............Around 60. 
+Winds.......................Southwest winds around 10 mph.
+Tides...
+   Newburyport..............Low 0.1 feet (MLLW) 07:11 AM EST.
+                            High 10.0 feet (MLLW) 01:12 PM EST.
+   Gloucester Harbor........Low 0.0 feet (MLLW) 06:27 AM EST.
+                            High 11.1 feet (MLLW) 12:43 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................5 to 9 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly sunny. 
+High Temperature............In the mid 50s. 
+Winds.......................West winds around 15 mph.
+Tides...
+   Newburyport..............Low 0.1 feet (MLLW) 08:05 AM EST.
+                            High 9.8 feet (MLLW) 02:07 PM EST.
+   Gloucester Harbor........Low 0.1 feet (MLLW) 07:22 AM EST.
+                            High 10.8 feet (MLLW) 01:39 PM EST.
+
+.SUNDAY...Surf height 2 to 4 feet. Sunny. Highs in the mid 50s.
+Southwest winds around 10 mph. 
+.MONDAY...Surf height 3 to 6 feet. Partly sunny. Rain. Highs in the
+upper 50s. Southwest winds around 20 mph. 
+.TUESDAY...Surf height 3 to 7 feet. Sunny, cooler. Highs in the mid
+40s. Northwest winds around 15 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/box
+
+
+$$
+

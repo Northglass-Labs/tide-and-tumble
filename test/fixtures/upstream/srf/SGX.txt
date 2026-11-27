@@ -1,0 +1,94 @@
+
+000
+FZUS56 KSGX 270812
+SRFSGX
+
+Surf Zone Forecast
+National Weather Service San Diego CA
+1212 AM PST Fri Nov 27 2026
+
+CAZ552-272300-
+Orange County Coastal Areas-
+1212 AM PST Fri Nov 27 2026
+
+...OBSERVED TIDES ARE 1.0 TO 1.2 FEET ABOVE ASTRONOMICAL TIDE PREDICTIONS...
+
+...COASTAL FLOOD WARNING THROUGH 1 PM THIS AFTERNOON...
+...BEACH HAZARDS STATEMENT FROM 1 PM TODAY THROUGH 4 PM SATURDAY...
+...HIGH RIP CURRENT RISK...
+
+.TODAY...
+Rip Current Risk*.............Moderate.
+Surf Height...................2 to 4 feet.
+Thunderstorm Potential........None expected.
+Water Temperature.............71 to 73 degrees.
+Astronomical Tides............
+        Newport Beach.........Low 2.4 feet (MLLW) 03:41 AM PST.
+                              High 6.5 feet (MLLW) 10:08 AM PST.
+                              Low -1.0 feet (MLLW) 05:46 PM PST.
+Remarks.......................Mixed south swell from 190 degrees and west swell from 270 degrees.
+
+.SATURDAY...
+Rip Current Risk*.............High.
+Surf Height...................3 to 5 feet, sets to 6 to 7 feet on west-facing beaches.
+Thunderstorm Potential........None expected.
+Astronomical Tides............
+        Newport Beach.........High 3.6 feet (MLLW) 12:42 AM PST.
+                              Low 2.6 feet (MLLW) 04:45 AM PST.
+                              High 5.9 feet (MLLW) 11:05 AM PST.
+                              Low -0.6 feet (MLLW) 06:45 PM PST.
+Remarks.......................Mixed south swell from 190 degrees and west swell from 270 degrees.
+
+
+&&
+
+Rip Current Risks:
+* Low Risk - Life threatening rip currents are unlikely but still could occur.
+* Moderate Risk - Life threatening rip currents are possible.
+* High Risk - Life threatening rip currents are likely.
+
+$$
+
+
+CAZ043-272300-
+San Diego County Coastal Areas-
+1212 AM PST Fri Nov 27 2026
+
+...OBSERVED TIDES ARE 1.1 TO 1.2 FEET ABOVE ASTRONOMICAL TIDE PREDICTIONS...
+
+...COASTAL FLOOD WARNING THROUGH 1 PM THIS AFTERNOON...
+...HIGH SURF ADVISORY THROUGH 4 AM THIS MORNING...
+...BEACH HAZARDS STATEMENT FROM 1 PM FRIDAY THROUGH 4 PM SATURDAY...
+...HIGH RIP CURRENT RISK...
+
+.TODAY...
+Rip Current Risk*.............High.
+Surf Height...................3 to 6 feet.
+Thunderstorm Potential........None expected.
+Water Temperature.............70 to 73 degrees.
+Astronomical Tides............
+        La Jolla..............Low 2.3 feet (MLLW) 03:40 AM PST.
+                              High 6.4 feet (MLLW) 10:05 AM PST.
+                              Low -1.1 feet (MLLW) 05:41 PM PST.
+Remarks.......................Mixed west swell from 280 degrees and south swell from 200 degrees.
+
+.SATURDAY...
+Rip Current Risk*.............High.
+Surf Height...................4 to 6 feet, sets to 7 feet on west-facing beaches.
+Thunderstorm Potential........None expected.
+Astronomical Tides............
+        La Jolla..............High 3.5 feet (MLLW) 12:37 AM PST.
+                              Low 2.5 feet (MLLW) 04:43 AM PST.
+                              High 5.9 feet (MLLW) 11:01 AM PST.
+                              Low -0.7 feet (MLLW) 06:40 PM PST.
+Remarks.......................West swell from 280 degrees.
+
+
+&&
+
+Rip Current Risks:
+* Low Risk - Life threatening rip currents are unlikely but still could occur.
+* Moderate Risk - Life threatening rip currents are possible.
+* High Risk - Life threatening rip currents are likely.
+
+$$

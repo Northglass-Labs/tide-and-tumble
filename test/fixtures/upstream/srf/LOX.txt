@@ -1,0 +1,168 @@
+
+000
+FZUS56 KLOX 270955
+SRFLOX
+
+Surf Zone Forecast
+National Weather Service Los Angeles/Oxnard
+155 AM PST Fri Nov 27 2026
+
+CAZ362-364-272345-
+Malibu Coast-
+Los Angeles County Beaches-
+155 AM PST Fri Nov 27 2026
+
+...COASTAL FLOOD ADVISORY THROUGH 4 PM THIS AFTERNOON...
+...HIGH RIP CURRENT RISK...
+
+.TODAY...
+Rip Current Risk*.............High.
+Surf Height...................West Facing Beaches - 4 to 7 feet.
+                              South Facing Beaches - 2 to 4 feet.
+Thunderstorm Potential........None expected.
+Water Temperature.............68 to 73 degrees.
+Astronomical Tides............Low 2.5 feet (MLLW) 03:46 AM PST.
+                              High 6.6 feet (MLLW) 10:10 AM PST.
+                              Low -1.0 feet (MLLW) 05:48 PM PST.
+Remarks.......................West swell.
+
+.SATURDAY...
+Rip Current Risk*.............High.
+Surf Height...................West Facing Beaches - 4 to 7 feet.
+                              South Facing Beaches - 2 to 4 feet.
+Thunderstorm Potential........None expected.
+Astronomical Tides............High 3.7 feet (MLLW) 12:46 AM PST.
+                              Low 2.7 feet (MLLW) 04:50 AM PST.
+                              High 6.1 feet (MLLW) 11:07 AM PST.
+                              Low -0.6 feet (MLLW) 06:47 PM PST.
+Remarks.......................West swell.
+
+
+&&
+
+Rip Current Risks:
+* Low Risk - Life threatening rip currents are unlikely but still could occur.
+* Moderate Risk - Life threatening rip currents are possible.
+* High Risk - Life threatening rip currents are likely.
+
+$$
+
+
+CAZ354-272345-
+Ventura County Beaches-
+155 AM PST Fri Nov 27 2026
+
+...COASTAL FLOOD ADVISORY THROUGH 2 PM SATURDAY...
+...HIGH SURF ADVISORY THROUGH 9 PM SATURDAY...
+...HIGH RIP CURRENT RISK...
+
+.TODAY...
+Rip Current Risk*.............High.
+Surf Height...................4 to 7 feet.
+Thunderstorm Potential........None expected.
+Water Temperature.............68 to 70 degrees.
+Astronomical Tides............Low 2.4 feet (MLLW) 03:49 AM PST.
+                              High 6.6 feet (MLLW) 10:13 AM PST.
+                              Low -1.1 feet (MLLW) 05:51 PM PST.
+Remarks.......................West swell.
+
+.SATURDAY...
+Rip Current Risk*.............High.
+Surf Height...................West Facing Beaches - 4 to 7 feet.
+                              South Facing Beaches - 2 to 4 feet.
+Thunderstorm Potential........None expected.
+Astronomical Tides............High 3.6 feet (MLLW) 12:46 AM PST.
+                              Low 2.6 feet (MLLW) 04:51 AM PST.
+                              High 6.0 feet (MLLW) 11:10 AM PST.
+                              Low -0.7 feet (MLLW) 06:48 PM PST.
+Remarks.......................West swell.
+
+
+&&
+
+Rip Current Risks:
+* Low Risk - Life threatening rip currents are unlikely but still could occur.
+* Moderate Risk - Life threatening rip currents are possible.
+* High Risk - Life threatening rip currents are likely.
+
+$$
+
+
+CAZ349-350-272345-
+Santa Barbara County Southwestern Coast-
+Santa Barbara County Southeastern Coast-
+155 AM PST Fri Nov 27 2026
+
+...BEACH HAZARDS STATEMENT THROUGH 3 PM SATURDAY...
+...HIGH RIP CURRENT RISK...
+
+.TODAY...
+Rip Current Risk*.............High.
+Surf Height...................3 to 6 feet.
+Thunderstorm Potential........None expected.
+Water Temperature.............Around 72 degrees.
+Astronomical Tides............High 3.7 feet (MLLW) 12:09 AM PST.
+                              Low 2.6 feet (MLLW) 04:07 AM PST.
+                              High 6.5 feet (MLLW) 10:31 AM PST.
+                              Low -1.1 feet (MLLW) 06:13 PM PST.
+Remarks.......................West swell.
+
+.SATURDAY...
+Rip Current Risk*.............High.
+Surf Height...................3 to 6 feet.
+Thunderstorm Potential........None expected.
+Astronomical Tides............High 3.7 feet (MLLW) 01:12 AM PST.
+                              Low 2.8 feet (MLLW) 05:13 AM PST.
+                              High 6.0 feet (MLLW) 11:28 AM PST.
+                              Low -0.8 feet (MLLW) 07:09 PM PST.
+Remarks.......................West swell.
+
+
+&&
+
+Rip Current Risks:
+* Low Risk - Life threatening rip currents are unlikely but still could occur.
+* Moderate Risk - Life threatening rip currents are possible.
+* High Risk - Life threatening rip currents are likely.
+
+$$
+
+
+CAZ340-346-272345-
+San Luis Obispo County Beaches-
+Santa Barbara Central Coast Beaches-
+155 AM PST Fri Nov 27 2026
+
+...COASTAL FLOOD ADVISORY THROUGH 4 PM THIS AFTERNOON...
+...HIGH SURF ADVISORY THROUGH 3 PM SATURDAY...
+
+.TODAY...
+Surf Height...................Northwest Facing Beaches - 8 to 12 feet.
+                              South Facing Beaches - 5 to 8 feet.
+Thunderstorm Potential........None expected.
+Water Temperature.............Around 69 degrees.
+Astronomical Tides............High 3.8 feet (MLLW) 12:44 AM PST.
+                              Low 2.9 feet (MLLW) 04:40 AM PST.
+                              High 6.4 feet (MLLW) 10:53 AM PST.
+                              Low -1.2 feet (MLLW) 06:37 PM PST.
+Remarks.......................West swell.
+
+.SATURDAY...
+Surf Height...................West Facing Beaches - 6 to 10 feet.
+                              South Facing Beaches - 3 to 6 feet.
+Thunderstorm Potential........None expected.
+Astronomical Tides............High 3.9 feet (MLLW) 01:46 AM PST.
+                              Low 3.0 feet (MLLW) 05:49 AM PST.
+                              High 5.9 feet (MLLW) 11:50 AM PST.
+                              Low -0.8 feet (MLLW) 07:33 PM PST.
+Remarks.......................West swell.
+
+
+&&
+
+Rip Current Risks:
+* Low Risk - Life threatening rip currents are unlikely but still could occur.
+* Moderate Risk - Life threatening rip currents are possible.
+* High Risk - Life threatening rip currents are likely.
+
+$$

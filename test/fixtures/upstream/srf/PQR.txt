@@ -1,0 +1,179 @@
+
+000
+FZUS56 KPQR 271402
+SRFPQR
+
+SURF ZONE FORECAST
+National Weather Service Portland
+602 AM PST Fri Nov 27 2026
+
+This is an automated product. If you find that there is missing 
+information or errors, please send an email to 
+pqr.feedback@noaa.gov
+
+WAZ201-281400-
+LONG BEACH WASHINGTON-
+602 AM PST Fri Nov 27 2026
+
+...COASTAL FLOOD ADVISORY FROM 11 AM FRIDAY THROUGH 7 PM THIS EVENING...
+
+.TODAY...
+Surf Height...................14 to 18 ft.
+Offshore Swell................West 12 ft at 17 seconds.
+Thunderstorm Potential........None expected.
+Weather.......................Cloudy with rain.
+High Temperature..............50 to 55.
+Wind..........................W at 5 MPH.
+Tides.........................High  8.2 feet - 03:08 AM PST.
+                              Low   3.7 feet - 08:12 AM PST.
+                              High 10.5 feet - 02:10 PM PST.
+                              Low  -1.5 feet - 09:09 PM PST.
+Sunrise/Sunset Times..........Sunrise - 7:36 AM PST.
+                              Sunset  - 4:32 PM PST.
+
+.SATURDAY...
+Surf Height...................7 to 10 ft.
+Offshore Swell................West 7 ft at 12 seconds.
+Thunderstorm Potential........None expected.
+Weather.......................Mostly cloudy.
+High Temperature..............50 to 55.
+Wind..........................E at 10 MPH.
+Tides.........................High  8.2 feet - 04:01 AM PST.
+                              Low   3.8 feet - 09:10 AM PST.
+                              High  9.9 feet - 03:06 PM PST.
+                              Low  -0.9 feet - 10:02 PM PST.
+Sunrise/Sunset Times..........Sunrise - 7:37 AM PST.
+                              Sunset  - 4:32 PM PST.
+
+
+$$
+
+
+ORZ101-281400-
+SEASIDE AND CANNON BEACH OREGON-
+602 AM PST Fri Nov 27 2026
+
+
+.TODAY...
+Surf Height...................14 to 18 ft.
+Offshore Swell................West 12 ft at 17 seconds.
+Thunderstorm Potential........None expected.
+Weather.......................Cloudy with rain.
+High Temperature..............50 to 55.
+Wind..........................N at 3 MPH.
+Tides.........................High  7.9 feet - 03:36 AM PST.
+                              Low   3.4 feet - 08:48 AM PST.
+                              High  9.9 feet - 02:29 PM PST.
+                              Low  -1.1 feet - 09:50 PM PST.
+Sunrise/Sunset Times..........Sunrise - 7:33 AM PST.
+                              Sunset  - 4:34 PM PST.
+
+.SATURDAY...
+Surf Height...................7 to 10 ft.
+Offshore Swell................West 7 ft at 12 seconds.
+Thunderstorm Potential........None expected.
+Weather.......................Mostly cloudy.
+High Temperature..............50 to 55.
+Wind..........................E at 5 MPH.
+Tides.........................High  7.8 feet - 04:28 AM PST.
+                              Low   3.3 feet - 09:44 AM PST.
+                              High  9.4 feet - 03:24 PM PST.
+                              Low  -0.6 feet - 10:40 PM PST.
+Sunrise/Sunset Times..........Sunrise - 7:34 AM PST.
+                              Sunset  - 4:33 PM PST.
+
+
+$$
+
+
+ORZ102-281400-
+MANZANITA, ROCKAWAY BEACH AND PACIFIC CITY OREGON-
+602 AM PST Fri Nov 27 2026
+
+
+.TODAY...
+Surf Height...................14 to 18 ft.
+Offshore Swell................West 12 ft at 17 seconds.
+Thunderstorm Potential........None expected.
+Weather.......................Cloudy with rain.
+High Temperature..............Around 55.
+Wind..........................N at 3 MPH.
+Tides.........................High  7.7 feet - 03:03 AM PST.
+                              Low   3.7 feet - 07:55 AM PST.
+                              High  9.7 feet - 02:02 PM PST.
+                              Low  -1.4 feet - 08:52 PM PST.
+Sunrise/Sunset Times..........Sunrise - 7:32 AM PST.
+                              Sunset  - 4:35 PM PST.
+
+.SATURDAY...
+Surf Height...................7 to 10 ft.
+Offshore Swell................West 7 ft at 13 seconds.
+Thunderstorm Potential........None expected.
+Weather.......................Mostly cloudy.
+High Temperature..............Around 55.
+Wind..........................E at 6 MPH.
+Tides.........................High  7.6 feet - 03:54 AM PST.
+                              Low   3.7 feet - 08:51 AM PST.
+                              High  9.1 feet - 02:57 PM PST.
+                              Low  -0.9 feet - 09:43 PM PST.
+Sunrise/Sunset Times..........Sunrise - 7:33 AM PST.
+                              Sunset  - 4:34 PM PST.
+
+
+$$
+
+
+ORZ103-281400-
+LINCOLN CITY OREGON-
+602 AM PST Fri Nov 27 2026
+
+
+.TODAY...
+Surf Height...................14 to 18 ft.
+Offshore Swell................West 12 ft at 17 seconds.
+Thunderstorm Potential........None expected.
+Weather.......................Mostly cloudy with rain.
+High Temperature..............Around 55.
+Wind..........................NE at 4 MPH.
+Tides.........................High  7.8 feet - 02:33 AM PST.
+                              Low   3.8 feet - 07:29 AM PST.
+                              High  9.8 feet - 01:30 PM PST.
+                              Low  -1.6 feet - 08:29 PM PST.
+Sunrise/Sunset Times..........Sunrise - 7:30 AM PST.
+                              Sunset  - 4:37 PM PST.
+
+.SATURDAY...
+Surf Height...................7 to 10 ft.
+Offshore Swell................West 7 ft at 13 seconds.
+Thunderstorm Potential........None expected.
+Weather.......................Mostly cloudy.
+High Temperature..............Around 55.
+Wind..........................E at 6 MPH.
+Tides.........................High  7.7 feet - 03:25 AM PST.
+                              Low   3.8 feet - 08:26 AM PST.
+                              High  9.2 feet - 02:24 PM PST.
+                              Low  -1.0 feet - 09:21 PM PST.
+Sunrise/Sunset Times..........Sunrise - 7:32 AM PST.
+                              Sunset  - 4:37 PM PST.
+
+
+$$
+
+
+*  Cold water, sneaker waves and rip currents can all pose a
+daily threat to life for visitors on the Oregon and Washington
+coast. This is true for everyone visiting the beach, not just
+those venturing into or near the water. The forecast wave heights
+presented here are considered experimental. When headed to the
+beach, always remain vigilant and keep an eye on the waves and
+currents.
+
+*  A sneaker wave is a wave running up on shore significantly
+further than any other recent wave, such that it is a surprise
+to the casual observer. Rip currents are powerful, narrow channels
+of fast-moving water in the surf zone, flowing outward from shore.
+
+*  This product is issued once per day after 6 am, with no
+updates.
+
+

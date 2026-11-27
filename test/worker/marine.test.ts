@@ -30,7 +30,7 @@ function upstreamsAnswer(answering = "44056") {
 }
 
 /** The five buoys nearest the station's beach, nearest first (src/lib/ndbc-stations.json). */
-const NEAREST_BUOYS = ["dukn7", "44056", "44100", "44086", "orin7"].map((id) => `/data/realtime2/${id}.txt`);
+const NEAREST_BUOYS = ["DUKN7", "44056", "44100", "44086", "ORIN7"].map((id) => `/data/realtime2/${id}.txt`);
 
 const buoysAsked = (calls: { url: URL }[]) =>
   calls.filter((call) => call.url.toString().startsWith(NDBC)).map((call) => call.url.pathname);
@@ -122,4 +122,94 @@ describe("GET /api/marine", () => {
     await t.request("/api/marine?station=8651370");
     expect(upstream.calls.length).toBeGreaterThan(calls);
   });
+
+  it("reads a buoy's file only to its first data row, then stops: the files run to a megabyte", async () => {
+    let cancelled = false;
+    let sent = 0;
+    const big = () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          pull(controller) {
+            // The header and the newest row first, then about a megabyte of older rows.
+            const chunk = sent === 0 ? buoy : `${"2026 11 26 00 00 230  7.0  9.0   1.1    10   6.6 125 1017.0  13.4  15.3  10.1   MM   MM    MM\n".repeat(200)}`;
+            controller.enqueue(new TextEncoder().encode(chunk));
+            sent += 1;
+            if (sent > 60) controller.close();
+          },
+          cancel() {
+            cancelled = true;
+          },
+        }),
+      );
+    stubUpstream([
+      [`${NDBC}44056.txt`, big],
+      [NDBC, () => new Response("Not Found", { status: 404 })],
+      [/[?&]product=wind(?:&|$)/, () => json(wind)],
+      [/[?&]product=water_temperature(?:&|$)/, () => json(noWaterTemperature)],
+    ]);
+    const body = await (await testApp().request("/api/marine?station=8651370")).json<MarineBody>();
+    expect(body.surfFt).toBeCloseTo(2.8 * 3.28084, 6);
+    expect(cancelled).toBe(true);
+    expect(sent).toBeLessThan(5);
+  });
+
+  /** A buoy file's header and rows, newest first, each `minutesAgo` before the test clock (15:00 UTC). */
+  const buoyFile = (rows: [minutesAgo: number, wvht: string, wtmp: string][]) => {
+    const header = "#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD   PRES  ATMP  WTMP  DEWP  VIS PTDY  TIDE\n#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT   hPa  degC  degC  degC  nmi  hPa    ft\n";
+    return (
+      header +
+      rows
+        .map(([minutesAgo, wvht, wtmp]) => {
+          const at = new Date(Date.UTC(2026, 10, 27, 15, 0) - minutesAgo * 60_000);
+          const p = (n: number) => String(n).padStart(2, "0");
+          return `${at.getUTCFullYear()} ${p(at.getUTCMonth() + 1)} ${p(at.getUTCDate())} ${p(at.getUTCHours())} ${p(at.getUTCMinutes())}  MM   MM   MM  ${wvht}    10   6.7 134     MM    MM  ${wtmp}    MM   MM   MM    MM`;
+        })
+        .join("\n") +
+      "\n"
+    );
+  };
+  const onlyBuoy = (file: string) =>
+    stubUpstream([
+      [`${NDBC}44056.txt`, () => text(file)],
+      [NDBC, () => new Response("Not Found", { status: 404 })],
+      [/[?&]product=wind(?:&|$)/, () => json(wind)],
+      [/[?&]product=water_temperature(?:&|$)/, () => json(noWaterTemperature)],
+    ]);
+
+  it("takes each reading from the newest recent row that has it: waves are measured less often than weather", async () => {
+    onlyBuoy(buoyFile([[10, "MM", "15.0"], [40, "2.1", "15.1"], [70, "2.4", "15.1"]]));
+    const body = await (await testApp().request("/api/marine?station=8651370")).json<MarineBody>();
+    expect(body.surfFt).toBeCloseTo(2.1 * 3.28084, 6);
+    expect(body.waterTempF).toBeCloseTo((15.0 * 9) / 5 + 32, 6);
+  });
+
+  it("shows nothing from a buoy that stopped reporting hours ago, or from rows without a date", async () => {
+    onlyBuoy(buoyFile([[200, "2.1", "15.1"]]));
+    expect((await (await testApp().request("/api/marine?station=8651370")).json<MarineBody>()).surfFt).toBeNull();
+    onlyBuoy("#header\n#units\n  MM   MM   MM   2.1    10   6.7 134\n");
+    expect((await (await testApp().request("/api/marine?station=8651370")).json<MarineBody>()).surfFt).toBeNull();
+  });
+
+  it("asks at most six NDBC stations at once, the connections a request may hold open", async () => {
+    let open = 0;
+    let most = 0;
+    const upstream = stubUpstream([
+      [
+        NDBC,
+        async () => {
+          open += 1;
+          most = Math.max(most, open);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          open -= 1;
+          return new Response("Not Found", { status: 404 });
+        },
+      ],
+      [/./, () => json({})],
+    ]);
+    // St. Petersburg: five fixed stations and three wave buoys, eight in all.
+    await testApp().request("/api/marine?station=8726520");
+    expect(buoysAsked(upstream.calls)).toHaveLength(8);
+    expect(most).toBeLessThanOrEqual(6);
+  });
 });
+

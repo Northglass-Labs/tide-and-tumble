@@ -616,6 +616,22 @@ describe("promote", () => {
     });
   });
 
+  describe("a release the merge job started, after checking production against main's head", () => {
+    const CHECKED = `0d0d0d0d0d0d${"0".repeat(28)}`;
+
+    it("goes ahead while production still runs the head the merge job checked", async () => {
+      const fake = fakeTools({ tags: { [OLD]: "0d0d0d0d0d0d" } });
+      expect(await promote(PROJECT, fake.tools, { expectedLive: CHECKED })).toMatchObject({ released: true });
+    });
+
+    it("changes nothing when another release went out in between", async () => {
+      const fake = fakeTools({ tags: { [OLD]: "0e0e0e0e0e0e" } });
+      const error = await failure(promote(PROJECT, fake.tools, { expectedLive: CHECKED }));
+      expect(error.message).toContain("not 0d0d0d0d0d0d, the head the merge job checked");
+      expect(fake.wranglerCommands().some((line) => /versions (upload|deploy)/.test(line))).toBe(false);
+    });
+  });
+
   describe("the nightly run, which only refreshes the release production runs", () => {
     const nightly = { github: { ref: "refs/heads/main", sha: FULL_SHA, event: "schedule" } };
 
@@ -763,8 +779,8 @@ describe("rollback", () => {
     expect((await failure(rollback(PROJECT, undefined, onlyOne.tools))).message).toContain("ran an earlier commit");
   });
 
-  it("changes nothing when the site is not served by the live version, and says how to roll back by hand", async () => {
-    const fake = fakeTools({ answering: null });
+  it("changes nothing when the site answers with another version, and says how to roll back by hand", async () => {
+    const fake = fakeTools({ answering: NEW });
 
     const error = await failure(rollback(PROJECT, undefined, fake.tools));
 
@@ -773,11 +789,18 @@ describe("rollback", () => {
     expect(fake.wranglerCommands().some((line) => line.startsWith("wrangler rollback"))).toBe(false);
   });
 
-  it("refuses at workers.dev when it cannot say which version answers, rather than roll back unconfirmed", async () => {
-    const fake = fakeTools({ devAnswering: null });
-    const error = await failure(rollback(PROJECT, undefined, fake.tools, { origin: WORKERS_DEV }));
-    expect(error.message).toContain("did not say which version answers");
-    expect(fake.wranglerCommands().some((line) => line.startsWith("wrangler rollback"))).toBe(false);
+  it("goes ahead with a warning when neither address can say which version answers: a broken release", async () => {
+    // A release that broke /api/health is the same version at both addresses, and is what a rollback is for.
+    // Wrangler has read the live version from the account it is signed in to already.
+    for (const [scenario, options] of [
+      [{ answering: null }, {}],
+      [{ devAnswering: null }, { origin: WORKERS_DEV }],
+    ] as const) {
+      const fake = fakeTools(scenario);
+      const summary = await rollback(PROJECT, undefined, fake.tools, options);
+      expect(summary).toMatchObject({ ok: true, versionId: OLDER });
+      expect(fake.said.some((line) => line.includes("could not say which version answers"))).toBe(true);
+    }
   });
 
   it("reports a blocked check of the rollback as unconfirmed, not unhealthy", async () => {

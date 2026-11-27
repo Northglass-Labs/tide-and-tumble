@@ -99,3 +99,14 @@ cutover are the operator's, after an adversarial review.
   the 256 KB read cap, so the reader should stop at the first data row.
 - From before: the owner's real-iPhone spot check (calendar wheel, hero swipe,
   safe area) is still open.
+
+## Follow-up (2026-11-27, after the merge of #18 at 52a7f98)
+
+Branch `fix/stations-ndbc-rip`, from origin/main:
+
+1. Station time zones (src/lib/time-zones.ts): done.
+2. NDBC: upper-case ids, first data row only, wave buoys among candidates: done.
+3. Rip forecast: "today" only for the zone's own risk, "none" otherwise, Low shown: done.
+4. A merge's release carries the head the merge job checked and refuses if production moved: done.
+5. workers.dev stays on, for releasing or rolling back while production's health check is broken (design note, "Decided after the cutover").
+

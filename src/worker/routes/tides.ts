@@ -8,6 +8,7 @@ import {
   type ResolvedStation,
 } from "../../lib/api-guard";
 import { fetchExtrema, NoPredictionsError, stationNow } from "../../lib/tides";
+import { stationTimeZone } from "../../lib/time-zones";
 import type { AppDeps, AppEnv } from "../env";
 import { CapacityReached, cacheKey, readThrough } from "../lib/cache";
 import { fail, INVALID_STATION, logFailure } from "../lib/http";
@@ -61,10 +62,11 @@ export function tidesRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
           station: describe(station),
           extrema: await fetchExtrema(
             station.noaaId,
-            new Date(stationNow(new Date(now))),
+            new Date(stationNow(new Date(now), stationTimeZone(station))),
             1,
             31,
             AbortSignal.timeout(NOAA_DEADLINE_MS),
+            stationTimeZone(station),
           ),
         }),
         lifetime: () => ({ freshMs: 15 * MINUTE, staleMs: 60 * MINUTE }),

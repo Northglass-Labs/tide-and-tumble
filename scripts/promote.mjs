@@ -47,7 +47,11 @@ await runMain(async () => {
   } else if (args.length > 0) {
     throw new Error(`Usage: npm run promote [-- --origin <address>]\n${ORIGIN_USAGE}`);
   }
-  const summary = await promote(readProject(), realTools, { origin });
+  const expectedLive = process.env.EXPECTED_LIVE ?? "";
+  if (expectedLive !== "" && !/^[0-9a-f]{40}$/.test(expectedLive)) {
+    throw new Error("EXPECTED_LIVE must be a full commit id, as ci.yml's merge job passes it.");
+  }
+  const summary = await promote(readProject(), realTools, { origin, expectedLive: expectedLive || undefined });
   if (process.env.GITHUB_OUTPUT) {
     // deploy.yml's Released step, which the Dependabot merge job reads, runs only for a real release.
     appendFileSync(process.env.GITHUB_OUTPUT, `released=${summary.released}\n`);

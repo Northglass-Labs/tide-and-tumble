@@ -476,10 +476,16 @@ function refreshRefusal(project, live, tag, tools) {
  * @param {{ url: string, domain: boolean }} at
  * @param {string | null} liveVersionId
  * @param {Tools} tools
+ * @param {{ silentIsUnconfirmed?: boolean }} [options] For rollback: an address that cannot say which
+ *   version answers resolves `confirmed: false` instead of refusing.
  * @returns {Promise<{ confirmed: boolean, detail: string }>}
  */
-async function confirmAddress(project, at, liveVersionId, tools) {
+async function confirmAddress(project, at, liveVersionId, tools, { silentIsUnconfirmed = false } = {}) {
   const answer = await tools.answeringVersion(at.url);
+  if (silentIsUnconfirmed && answer.versionId === null) {
+    // It cannot say which version answers: production is down, which a rollback is for.
+    return { confirmed: false, detail: answer.detail };
+  }
   if (at.domain) {
     if (answer.versionId === null || answer.versionId !== liveVersionId) {
       const said =
@@ -602,10 +608,11 @@ async function rollBackTo(project, versionId, reason, tools, checkAt) {
  *
  * @param {Project} project
  * @param {Tools} tools
- * @param {{ origin?: string }} [options] Where production is checked (`checkAddress`).
+ * @param {{ origin?: string, expectedLive?: string }} [options] Where production is checked (`checkAddress`);
+ *   and, for a release the merge job started, the commit production must still run.
  * @returns {Promise<{ ok: true, released: true, tag: string, versionId: string | null, previousVersionId: string | null, url: string, p95Ms: number | null } | { ok: true, released: false, tag: string, reason: string, url: string }>}
  */
-export async function promote(project, tools, { origin } = {}) {
+export async function promote(project, tools, { origin, expectedLive } = {}) {
   refuseStrayConfigs(tools);
   const at = checkAddress(project, origin);
   // A scheduled run only refreshes what production runs (refreshRefusal).
@@ -644,6 +651,19 @@ export async function promote(project, tools, { origin } = {}) {
   }
 
   const before = liveVersion(project, tools);
+
+  if (expectedLive) {
+    // Releases queue: another may have gone out since the merge job checked production against this commit.
+    const expected = expectedLive.slice(0, 12);
+    const liveTag = before.exists && before.versionId !== null ? versionTag(project, before.versionId, tools) : null;
+    if (liveTag !== expected) {
+      throw new StepFailed(
+        `release after a merge: production runs ${liveTag ?? "no single tagged version"}, not ${expected}, the head ` +
+          "the merge job checked: another release or a rollback came in between, so this one changes nothing. " +
+          "Check production, then run Deploy on main by hand",
+      );
+    }
+  }
 
   if (refresh) {
     const refusal = refreshRefusal(project, before, tag, tools);
@@ -939,7 +959,7 @@ export async function rollback(project, requested, tools, { origin } = {}) {
     `--name ${project.worker} --config wrangler.jsonc, then check: npm run health -- <address> --expect-version ${target}`;
   let confirmed;
   try {
-    confirmed = await confirmAddress(project, at, live.versionId, tools);
+    confirmed = await confirmAddress(project, at, live.versionId, tools, { silentIsUnconfirmed: true });
   } catch (error) {
     if (error instanceof StepFailed) {
       throw new StepFailed(`${error.message.replace(/^Failed to /, "").replace(/\.$/, "")}. ${handCommands}`, error.details);
@@ -947,9 +967,11 @@ export async function rollback(project, requested, tools, { origin } = {}) {
     throw error;
   }
   if (!confirmed.confirmed) {
-    throw new StepFailed(
-      `confirm the account: the workers.dev address did not say which version answers (${confirmed.detail}), so ` +
-        `nothing shows that Wrangler is signed in to the account that serves it. ${handCommands}`,
+    // As promote does at workers.dev: a broken release is the same version at both addresses, and Wrangler has
+    // already read the live version from the account it is signed in to.
+    tools.say(
+      `rollback: ${at.url} could not say which version answers (${confirmed.detail}); rolling back the live ` +
+        `version Wrangler reads, ${live.versionId ?? "a split deployment"}, without confirming the address first`,
     );
   }
 

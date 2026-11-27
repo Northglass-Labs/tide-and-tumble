@@ -25,6 +25,8 @@ export interface ActiveStation {
   /** Short note shown in the picker */
   note?: string;
   region?: string;
+  /** The state NOAA gives the station, for its time zone (src/lib/time-zones.ts). */
+  state?: string;
 }
 
 export interface Station extends ActiveStation {
@@ -329,6 +331,7 @@ export function activeFromNoaa(ns: {
     stationName: ns.name + (ns.state ? `, ${ns.state}` : ""),
     lat: ns.lat,
     lng: ns.lng,
+    ...(ns.state ? { state: ns.state } : {}),
   };
 }
 

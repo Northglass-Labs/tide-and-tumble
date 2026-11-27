@@ -1,0 +1,154 @@
+
+000
+FZUS54 KMOB 270902
+SRFMOB
+
+Surf Zone Forecast
+National Weather Service Mobile AL
+302 AM CST Fri Nov 27 2026
+
+ALZ265-266-280900-
+Mobile Coastal-Baldwin Coastal-
+Including the beaches of Dauphin Island, Fort Morgan, Gulf Shores, 
+and Orange Beach
+302 AM CST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........Low. 
+Surf Height.................2 to 3 feet. 
+UV Index**..................Moderate. 
+Water Temperature...........In the lower 60s. 
+Weather.....................Partly sunny. 
+High Temperature............In the upper 50s. 
+Winds.......................West winds around 10 mph.
+Tides...
+   Dauphin Island...........Low -0.6 feet (MLLW) 11:42 AM CST.
+
+.TONIGHT...
+Rip Current Risk*...........Low. 
+Surf Height.................1 to 2 feet. 
+Weather.....................Mostly cloudy. 
+Low Temperature.............In the mid 40s. 
+Winds.......................Northwest winds 5 to 10 mph.
+Tides...
+   Dauphin Island...........High 1.8 feet (MLLW) 12:03 AM CST.
+
+.SATURDAY...
+Rip Current Risk*...........Low. 
+Surf Height.................Around 1 foot. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the mid 60s. 
+Winds.......................Light and variable winds, becoming 
+                            south around 5 mph in the afternoon.
+Tides...
+   Dauphin Island...........Low -0.5 feet (MLLW) 12:43 PM CST.
+
+.EXTENDED...
+.SATURDAY NIGHT...Low rip current risk*. Surf height 1 to 2 feet.
+Mostly cloudy. Warmer. Lows in the upper 50s. South winds around
+10 mph. 
+.SUNDAY...High rip current risk*. Surf height 3 to 5 feet. Mostly
+cloudy. Showers likely. Highs in the lower 70s. Southwest winds
+around 20 mph. 
+.SUNDAY NIGHT...High rip current risk*. Surf height 3 to 5 feet.
+Mostly cloudy. A slight chance of showers. Lows around 50. North
+winds around 15 mph. 
+.MONDAY...Moderate rip current risk*. Surf height 1 to 2 feet. Mostly
+sunny. Cooler. Highs in the lower 60s. Northeast winds around 10 mph.
+.MONDAY NIGHT...Low rip current risk*. Surf height around 1 foot.
+Mostly clear. Lows in the lower 50s. Northeast winds around 5 mph. 
+.TUESDAY...Low rip current risk*. Surf height 1 to 2 feet. Sunny.
+Highs in the mid 60s. East winds around 5 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/mob
+
+$$
+
+FLZ202-204-206-280900-
+Escambia Coastal-Santa Rosa Coastal-Okaloosa Coastal-
+Including the beaches of Pensacola Beach, Gulf Breeze, Navarre Beach, 
+Fort Walton Beach, and Destin
+302 AM CST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........Low. 
+Surf Height.................2 to 3 feet. 
+UV Index**..................Moderate. 
+Water Temperature...........In the lower 60s. 
+Weather.....................Partly sunny. 
+High Temperature............In the upper 50s. 
+Winds.......................West winds 10 to 15 mph.
+Tides...
+   Pensacola Pass...........Low -0.4 feet (MLLW) 11:16 AM CST.
+   Navarre Beach............Low -0.5 feet (MLLW) 09:05 AM CST.
+   East Pass (Destin).......Low -0.2 feet (MLLW) 11:16 AM CST.
+
+.TONIGHT...
+Rip Current Risk*...........Low. 
+Surf Height.................1 to 2 feet. 
+Weather.....................Mostly cloudy. 
+Low Temperature.............In the upper 40s. 
+Winds.......................Northwest winds 5 to 10 mph.
+Tides...
+   Pensacola Pass...........High 1.4 feet (MLLW) 11:43 PM CST.
+   Navarre Beach............High 2.0 feet (MLLW) 09:46 PM CST.
+   East Pass (Destin).......High 0.8 feet (MLLW) 12:33 AM CST.
+
+.SATURDAY...
+Rip Current Risk*...........Low. 
+Surf Height.................Around 1 foot. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the mid 60s. 
+Winds.......................Northwest winds around 5 mph, becoming 
+                            southwest in the afternoon.
+Tides...
+   Pensacola Pass...........Low -0.3 feet (MLLW) 12:06 PM CST.
+   Navarre Beach............Low -0.4 feet (MLLW) 10:03 AM CST.
+   East Pass (Destin).......Low -0.1 feet (MLLW) 12:06 PM CST.
+
+.EXTENDED...
+.SATURDAY NIGHT...Low rip current risk*. Surf height 1 to 2 feet.
+Mostly cloudy. Warmer. Lows in the upper 50s. South winds around
+10 mph. 
+.SUNDAY...High rip current risk*. Surf height 3 to 5 feet. Mostly
+cloudy. Showers likely. Highs in the lower 70s. Southwest winds
+around 20 mph. 
+.SUNDAY NIGHT...High rip current risk*. Surf height 3 to 5 feet.
+Mostly cloudy. A chance of showers. Lows in the lower 50s. Northwest
+winds around 20 mph. 
+.MONDAY...Moderate rip current risk*. Surf height 1 to 2 feet. Mostly
+sunny. Cooler. Highs in the lower 60s. Northeast winds around 10 mph.
+.MONDAY NIGHT...Low rip current risk*. Surf height around 1 foot.
+Mostly clear. Lows in the lower 50s. Northeast winds around 10 mph. 
+.TUESDAY...Low rip current risk*. Surf height 1 to 2 feet. Sunny.
+Highs in the mid 60s. East winds around 5 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/mob
+
+
+$$
+

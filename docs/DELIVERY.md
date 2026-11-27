@@ -180,9 +180,11 @@ nightly refreshes (marked "Nightly refresh:"); `npm run rollback -- <versionId>`
 named one (`npx wrangler versions list --config wrangler.jsonc`). Each
 version carries the static export it was uploaded with, so the pages go back
 too. It confirms the address first, as `promote` does, then checks the
-rollback. When the address cannot say which version answers, it refuses and
+rollback. When the address answers with another version, it refuses and
 prints the commands to roll back by hand once `npx wrangler whoami` shows the
-right account. A rollback is itself a deployment: running it twice returns to
+right account. When it cannot say which version answers (a release that
+broke `/api/health`, which is what a rollback is for), it rolls back the live
+version Wrangler reads, with a warning. A rollback is itself a deployment: running it twice returns to
 where you started. Without a version it looks only at the 10 most recent
 deployments, which is all `wrangler deployments list` returns: about a week
 of nightly refreshes. To go further back, name the version: `npx wrangler
@@ -230,9 +232,9 @@ How the app stays inside them:
   station keep NOAA, NDBC and NWS calls to one per station per cache period per
   Cloudflare location.
 - The heaviest handler work measured is parsing the 300 KB station list once
-  per Worker instance (1.3 ms) and a 200 KB buoy file (0.06 ms). `marine`
-  makes at most 7 subrequests, `alerts` 4, `tides` 1, plus a cache read and
-  write.
+  per Worker instance (1.3 ms) and a buoy file's newest row, the only part
+  read. `marine` makes at most 10 subrequests (up to eight NDBC stations, two
+  at the tide gauge), `alerts` 4, `tides` 1, plus a cache read and write.
 - Per-client limits slow a noisy client (60 tide, 30 marine, 30 alert
   requests a minute, an IPv6 client counted by its /64); a request for an
   unknown station is refused before it counts, and the per-instance cap
@@ -322,8 +324,9 @@ done once, after production is reached through the zone route (the release
 checks `https://tideandtumble.app`): the release credentials go into the
 repository's Actions secrets, Dependabot security updates are turned on, and
 Deploy is run once on `main` (the merge job merges only once a Deploy run on
-`main` has released, and starts the release only when the merge commit's
-parent is the head production was checked against). How the credentials are made and kept is in the
+`main` has released, starts the release only when the merge commit's
+parent is the head production was checked against, and passes that head to
+the release, which changes nothing unless production still runs it). How the credentials are made and kept is in the
 private operations record. The release credential is an account-owned API
 token scoped to this one Worker with the Workers Editor role: it can upload,
 deploy and roll back this Worker, and it cannot create or delete a Worker,
@@ -400,13 +403,5 @@ so review holds the rest of the boundary.
 
 ## Known issues
 
-- **Time zones.** Every station computes "now", day boundaries and sun times
-  in `America/New_York`, while NOAA returns each station's local time, so on
-  the Gulf and Pacific coasts the live tide state is one to three hours off.
-  It predates the move to Workers.
-- **NDBC coastal stations.** 544 of the 869 bundled NDBC stations have
-  lettered ids (`dukn7`); NDBC serves their files only in upper case
-  (`DUKN7.txt`), so those stations never contribute conditions. It predates
-  the move.
 - **ESLint 9** is out of upstream support; ESLint 10 is held until
   `eslint-config-next`'s plugins support it.

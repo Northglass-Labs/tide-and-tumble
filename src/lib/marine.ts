@@ -7,12 +7,40 @@ import ndbcRaw from "./ndbc-stations.json";
 import { distanceMiles } from "./stations";
 import {
   fetchWithTimeout,
+  readDataLines,
   readJsonBounded,
-  readTextBounded,
 } from "./upstream";
 
 const UPSTREAM_TIMEOUT_MS = 4_000;
-const NDBC_MAX_BYTES = 256 * 1024;
+/** Two hours of ten-minute rows and the header fit well within this; the rest is never read. */
+const NDBC_HEAD_BYTES = 32 * 1024;
+/** How far back rows are read: moored buoys measure waves every 30 to 60 minutes. */
+const NDBC_LOOKBACK_MS = 2 * 3_600_000;
+/** A buoy whose newest row is older than this has stopped reporting, and shows nothing. */
+const NDBC_STALE_MS = 3 * 3_600_000;
+/** Connections a Worker request may hold open at once. */
+const NDBC_CONCURRENCY = 6;
+
+/** A row's time, from its "YYYY MM DD hh mm" prefix (UTC); null for a row without one. */
+function rowTime(row: string): number | null {
+  const m = row.match(/^(\d{4}) (\d{2}) (\d{2}) (\d{2}) (\d{2})\s/);
+  return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5])) : null;
+}
+
+/** Runs `work` over `items` with at most `limit` running at once, results in order. */
+async function mapLimit<T, R>(items: T[], limit: number, work: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const index = next++;
+        results[index] = await work(items[index]);
+      }
+    }),
+  );
+  return results;
+}
 const COOPS_MAX_BYTES = 256 * 1024;
 
 export interface Marine {
@@ -34,10 +62,34 @@ interface NdbcRaw {
 const NDBC = ndbcRaw as NdbcRaw[];
 const MAX_MI = 170; // don't attribute far-away buoy conditions to a beach
 
-function nearestNdbc(lat: number, lng: number, n: number) {
-  return NDBC.map((s) => ({ s, d: distanceMiles(lat, lng, s.a, s.o) }))
-    .sort((x, y) => x.d - y.d)
-    .slice(0, n);
+/** An NDBC station to ask, nearest first: its id, whether it is a buoy with wave sensors, its file. */
+export interface BuoyCandidate {
+  id: string;
+  wave: boolean;
+  d: number;
+  url: string;
+}
+
+/**
+ * The stations asked for a beach: the five nearest of any kind (water
+ * temperature, wind), and the three nearest buoys, which alone measure waves:
+ * almost every fixed (C-MAN) station has no wave sensor, and near a harbor
+ * the five nearest are often all fixed ones. Within MAX_MI, nearest first.
+ * NDBC names its files by upper-case id.
+ */
+export function buoyCandidates(lat: number, lng: number): BuoyCandidate[] {
+  const ranked = NDBC.map((s) => ({ s, d: distanceMiles(lat, lng, s.a, s.o) }))
+    .filter((c) => c.d <= MAX_MI)
+    .sort((x, y) => x.d - y.d);
+  const chosen = new Set([...ranked.slice(0, 5), ...ranked.filter((c) => c.s.t === "b").slice(0, 3)]);
+  return ranked
+    .filter((c) => chosen.has(c))
+    .map((c) => ({
+      id: c.s.i,
+      wave: c.s.t === "b",
+      d: c.d,
+      url: `https://www.ndbc.noaa.gov/data/realtime2/${c.s.i.toUpperCase()}.txt`,
+    }));
 }
 
 const COMPASS = [
@@ -61,30 +113,43 @@ interface Buoy {
 }
 
 async function fetchBuoy(
-  id: string,
+  url: string,
+  now: number,
   signal?: AbortSignal,
 ): Promise<Buoy | null> {
   try {
-    const res = await fetchWithTimeout(
-      `https://www.ndbc.noaa.gov/data/realtime2/${id}.txt`,
-      { signal },
-      UPSTREAM_TIMEOUT_MS,
-    );
-    if (!res.ok) return null;
-    const text = await readTextBounded(res, NDBC_MAX_BYTES);
-    // First non-# line is newest. Columns: 5=WDIR 6=WSPD 7=GST 8=WVHT 9=DPD
-    // ... 14=WTMP (see NDBC realtime2 header).
-    const row = text.split("\n").find((l) => l.trim() && !l.startsWith("#"));
-    if (!row) return null;
-    const c = row.trim().split(/\s+/);
-    const wvht = num(c[8]);
-    const wtmp = num(c[14]);
-    const wspd = num(c[6]);
-    const wdir = num(c[5]);
-    const gst = num(c[7]);
+    const res = await fetchWithTimeout(url, { signal }, UPSTREAM_TIMEOUT_MS);
+    if (!res.ok) {
+      await res.body?.cancel();
+      return null;
+    }
+    // Rows are newest first, each dated; only the last two hours are read,
+    // and a buoy whose newest row is three hours old shows nothing.
+    let newest: number | null = null;
+    const rows = await readDataLines(res, NDBC_HEAD_BYTES, (line) => {
+      const at = rowTime(line);
+      if (at === null) return true; // read past it, and drop it below
+      newest ??= at;
+      return at >= newest - NDBC_LOOKBACK_MS;
+    });
+    const recent = rows
+      .filter((row) => {
+        const at = rowTime(row);
+        return at !== null && now - at <= NDBC_STALE_MS;
+      })
+      .map((row) => row.trim().split(/\s+/));
+    if (recent.length === 0) return null;
+    // Each field from the newest row that has it: waves are measured less
+    // often than wind. Columns: 5=WDIR 6=WSPD 7=GST 8=WVHT 9=DPD ... 14=WTMP.
+    const field = (column: number) => recent.map((c) => num(c[column])).find((value) => value != null) ?? null;
+    const wvht = field(8);
+    const wtmp = field(14);
+    const wspd = field(6);
+    const wdir = field(5);
+    const gst = field(7);
     return {
       waveFt: wvht != null ? wvht * 3.28084 : null,
-      periodS: num(c[9]),
+      periodS: field(9),
       waterTempF: wtmp != null ? (wtmp * 9) / 5 + 32 : null,
       windMph: wspd != null ? wspd * 2.23694 : null,
       windDir: wdir != null ? compass(wdir) : null,
@@ -160,18 +225,16 @@ export async function fetchMarine(opts: {
   lat: number;
   lng: number;
   signal?: AbortSignal;
+  /** The current time, for telling a buoy that stopped reporting; now by default. */
+  now?: number;
 }): Promise<Marine> {
   if (!Number.isFinite(opts.lat) || !Number.isFinite(opts.lng)) return EMPTY;
 
-  const cands = nearestNdbc(opts.lat, opts.lng, 5).filter((c) => c.d <= MAX_MI);
-  const settled = await Promise.allSettled(
-    cands.map((c) => fetchBuoy(c.s.i, opts.signal)),
-  );
-  const readings = cands.map((c, i) => ({
-    id: c.s.i,
-    d: c.d,
-    r: settled[i].status === "fulfilled" ? settled[i].value : null,
-  }));
+  const cands = buoyCandidates(opts.lat, opts.lng);
+  const now = opts.now ?? Date.now();
+  // fetchBuoy never throws; at most six run at once, each timed from its own start.
+  const values = await mapLimit(cands, NDBC_CONCURRENCY, (c) => fetchBuoy(c.url, now, opts.signal));
+  const readings = cands.map((c, i) => ({ id: c.id, d: c.d, r: values[i] }));
 
   const surf = readings.find((x) => x.r?.waveFt != null);
   const temp = readings.find((x) => x.r?.waterTempF != null);

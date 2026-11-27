@@ -15,6 +15,7 @@ import {
 } from "./tides";
 import { sunTimes, moonPhase, moonTimes } from "./sun";
 import type { Beach } from "./slugs";
+import { stationTimeZone } from "./time-zones";
 import type { Exposure } from "./stations";
 import { noaaId } from "./stations";
 
@@ -54,8 +55,8 @@ export async function fetchBeachWeek(beach: Beach, days = 7): Promise<BeachWeek>
   let failure: unknown;
   for (let attempt = 1; attempt <= BUILD_ATTEMPTS; attempt += 1) {
     try {
-      const extrema = await fetchExtrema(noaaId(beach), new Date(), 1, days + 1);
-      return buildBeachWeek(extrema, beach, stationNow(), days);
+      const extrema = await fetchExtrema(noaaId(beach), new Date(), 1, days + 1, undefined, stationTimeZone(beach));
+      return buildBeachWeek(extrema, beach, stationNow(new Date(), stationTimeZone(beach)), days);
     } catch (error) {
       failure = error;
       if (attempt < BUILD_ATTEMPTS) {
@@ -69,7 +70,7 @@ export async function fetchBeachWeek(beach: Beach, days = 7): Promise<BeachWeek>
 /** Shape NOAA extrema into the table model for `days` days from the station's day containing `nowMs`. */
 export function buildBeachWeek(
   extrema: Extremum[],
-  beach: Pick<Beach, "lat" | "lng">,
+  beach: Pick<Beach, "lat" | "lng"> & { state?: string },
   nowMs: number,
   days = 7,
 ): BeachWeek {
@@ -88,8 +89,8 @@ export function buildBeachWeek(
       if (e.height > weekMax) weekMax = e.height;
     }
     const noon = new Date(dayStart + 12 * 3_600_000);
-    const sun = sunTimes(beach.lat, beach.lng, noon);
-    const moonRS = moonTimes(beach.lat, beach.lng, dayStart);
+    const sun = sunTimes(beach.lat, beach.lng, noon, stationTimeZone(beach));
+    const moonRS = moonTimes(beach.lat, beach.lng, dayStart, stationTimeZone(beach));
     const moon = moonPhase(noon);
     out.push({
       dayStartMs: dayStart,

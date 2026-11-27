@@ -1,0 +1,241 @@
+
+000
+FZUS52 KMLB 271600
+SRFMLB
+
+Surf Zone Forecast
+National Weather Service Melbourne FL
+1100 AM EST Fri Nov 27 2026
+
+FLZ141-347-447-272100-
+Coastal Volusia-Mainland Northern Brevard-
+Northern Brevard Barrier Islands-
+Including the beaches of Ormond Beach, Daytona Beach, 
+New Smyrna Beach, and Canaveral National Seashore
+1100 AM EST Fri Nov 27 2026
+
+.REST OF TODAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................Around 3 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........Around 70. 
+Weather.....................Sunny until 3 PM, then partly sunny. 
+High Temperature............In the mid 60s. 
+Winds.......................West winds around 10 mph.
+Tides...
+   Daytona Beach............Low 0.1 feet (MLLW) 04:08 PM EST.
+   Port Canaveral...........Low 0.4 feet (MLLW) 03:56 PM EST. 
+Sunrise.....................6:57 AM. 
+Sunset......................5:26 PM.
+
+.SATURDAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................Around 2 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the mid 60s. 
+Winds.......................Northwest winds around 5 mph.
+Tides...
+   Daytona Beach............High 4.8 feet (MLLW) 10:48 AM EST.
+                            Low 0.2 feet (MLLW) 05:04 PM EST.
+   Port Canaveral...........High 4.8 feet (MLLW) 10:27 AM EST.
+                            Low 0.4 feet (MLLW) 04:57 PM EST. 
+Sunrise.....................6:57 AM. 
+Sunset......................5:26 PM.
+
+.SUNDAY...Mostly cloudy. Highs in the lower 70s. Southeast winds
+around 5 mph. 
+.MONDAY...Cloudy. A slight chance of showers. Highs in the lower 70s.
+Northwest winds around 10 mph. 
+.TUESDAY...Mostly cloudy. Showers likely and a slight chance of
+thunderstorms. Highs in the lower 70s. Northeast winds around 5 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/mlb
+
+$$
+
+FLZ154-272100-
+Coastal Indian River-
+Including the beaches of Vero Beach
+1100 AM EST Fri Nov 27 2026
+
+...HIGH RIP CURRENT RISK IN EFFECT UNTIL 7 PM EST THIS EVENING...
+
+.REST OF TODAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................Around 3 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........In the mid 70s. 
+Weather.....................Sunny until 3 PM, then partly sunny. 
+High Temperature............In the upper 60s. 
+Winds.......................West winds around 10 mph. 
+Tides...
+None. 
+Sunrise.....................6:51 AM. 
+Sunset......................5:27 PM.
+
+.SATURDAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................Around 2 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the upper 60s. 
+Winds.......................Northwest winds around 5 mph. 
+Tides...
+None. 
+Sunrise.....................6:52 AM. 
+Sunset......................5:27 PM.
+
+.SUNDAY...Mostly cloudy. Highs in the mid 70s. East winds around
+5 mph. 
+.MONDAY...Cloudy. Highs in the mid 70s. West winds around 5 mph. 
+.TUESDAY...Cloudy. Showers likely and a chance of thunderstorms.
+Highs in the mid 70s. Northeast winds around 5 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/mlb
+
+$$
+
+FLZ647-747-272100-
+Mainland Southern Brevard-Southern Brevard Barrier Islands-
+Including the beaches of Cocoa Beach, Satellite Beach, 
+and Melbourne Beach
+1100 AM EST Fri Nov 27 2026
+
+.REST OF TODAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................Around 3 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........In the mid 70s. 
+Weather.....................Sunny until 3 PM, then partly sunny. 
+High Temperature............In the upper 60s. 
+Winds.......................West winds around 10 mph.
+Tides...
+   Port Canaveral...........Low 0.4 feet (MLLW) 03:56 PM EST.
+   Sebastian Inlet..........Low 0.3 feet (MLLW) 03:51 PM EST. 
+Sunrise.....................6:53 AM. 
+Sunset......................5:27 PM.
+
+.SATURDAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................Around 2 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the upper 60s. 
+Winds.......................Northwest winds around 5 mph.
+Tides...
+   Port Canaveral...........High 4.8 feet (MLLW) 10:27 AM EST.
+                            Low 0.4 feet (MLLW) 04:57 PM EST.
+   Sebastian Inlet..........High 2.7 feet (MLLW) 10:40 AM EST.
+                            Low 0.3 feet (MLLW) 04:50 PM EST. 
+Sunrise.....................6:54 AM. 
+Sunset......................5:27 PM.
+
+.SUNDAY...Mostly cloudy. Highs in the mid 70s. East winds around
+5 mph. 
+.MONDAY...Cloudy. Highs in the mid 70s. West winds around 5 mph. 
+.TUESDAY...Cloudy. Showers likely and a chance of thunderstorms.
+Highs in the mid 70s. Northeast winds around 5 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/mlb
+
+$$
+
+FLZ159-164-272100-
+Coastal Saint Lucie-Coastal Martin-
+Including the beaches of Fort Pierce Inlet, Jensen Beach, 
+St Lucie Inlet, and Hobe Sound
+1100 AM EST Fri Nov 27 2026
+
+...HIGH RIP CURRENT RISK IN EFFECT UNTIL 7 PM EST THIS EVENING...
+
+.REST OF TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................Around 3 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........In the mid 70s. 
+Weather.....................Sunny until 3 PM, then partly sunny. 
+High Temperature............In the lower 70s. 
+Winds.......................West winds 5 to 10 mph.
+Tides...
+   Fort Pierce Inlet........Low 0.2 feet (MLLW) 04:22 PM EST. 
+Sunrise.....................6:50 AM. 
+Sunset......................5:27 PM.
+
+.SATURDAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................2 to 3 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the lower 70s. 
+Winds.......................Northwest winds around 5 mph.
+Tides...
+   Fort Pierce Inlet........High 2.7 feet (MLLW) 11:05 AM EST.
+                            Low 0.2 feet (MLLW) 05:17 PM EST. 
+Sunrise.....................6:51 AM. 
+Sunset......................5:27 PM.
+
+.SUNDAY...Cloudy. Highs in the upper 70s. Southeast winds around
+5 mph. 
+.MONDAY...Cloudy. Highs in the upper 70s. Northwest winds around
+5 mph. 
+.TUESDAY...Cloudy. Showers likely and a chance of thunderstorms.
+Highs in the upper 70s. Southeast winds around 5 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/mlb
+
+
+$$
+

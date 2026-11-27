@@ -61,6 +61,51 @@ export async function fetchWithTimeout(
   }
 }
 
+/**
+ * The data lines (neither blank nor "#" headers) at the start of a text body,
+ * read only while `wanted` accepts them: the first line it refuses ends the
+ * read, and the rest of the body is cancelled. At most `maxBytes` are read;
+ * what was read by then is returned.
+ */
+export async function readDataLines(
+  response: BoundedBody,
+  maxBytes: number,
+  wanted: (line: string) => boolean,
+): Promise<string[]> {
+  if (!response.body) return [];
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const lines: string[] = [];
+  let total = 0;
+  let pending = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (!done) {
+        total += value.byteLength;
+        pending += decoder.decode(value, { stream: true });
+      }
+      const parts = pending.split("\n");
+      pending = done ? "" : (parts.pop() ?? "");
+      for (const line of parts) {
+        if (line.trim() === "" || line.startsWith("#")) continue;
+        if (!wanted(line)) {
+          if (!done) await reader.cancel();
+          return lines;
+        }
+        lines.push(line);
+      }
+      if (done) return lines;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return lines;
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 /** Read a response without ever buffering more than maxBytes. */
 export async function readTextBounded(
   response: BoundedBody,

@@ -60,6 +60,7 @@ export function marineRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
             lat: station.lat,
             lng: station.lng,
             signal: AbortSignal.timeout(DEADLINE_MS),
+            now,
           }),
         lifetime: (value) => ({ freshMs: isEmpty(value) ? MINUTE : 10 * MINUTE, staleMs: 0 }),
         waitUntil: (promise) => c.executionCtx.waitUntil(promise),

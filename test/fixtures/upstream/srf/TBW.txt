@@ -1,0 +1,191 @@
+
+000
+FZUS52 KTBW 270800
+SRFTBW
+
+Surf Zone Forecast for West Central and Southwest Florida
+National Weather Service Tampa Bay Ruskin FL
+300 AM EST Fri Nov 27 2026
+
+FLZ139-142-148-149-272115-
+Coastal Levy-Coastal Citrus-Coastal Hernando-Coastal Pasco-
+Including the beaches of Cedar Key, Yankeetown, Crystal River, 
+Homosassa, Pine Island, Bayport, Hernando Beach, Hudson, 
+and Port Richey
+300 AM EST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................1 to 2 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........In the upper 60s. 
+Weather.....................Mostly sunny until 4 PM, then mostly 
+                            cloudy. 
+High Temperature............Around 60. 
+Winds.......................West winds around 15 mph.
+Tides...
+   Cedar Key................Low at 09:54 AM EST.
+                            High at 04:41 PM EST.
+   Saint Petersburg.........Low at 10:34 AM EST.
+
+.TONIGHT...
+Rip Current Risk*...........Moderate. 
+Surf Height.................1 to 2 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+Low Temperature.............In the lower 50s. 
+Winds.......................Northwest winds 10 to 15 mph.
+Tides...
+   Cedar Key................Low at 09:37 PM EST.
+                            High at 03:12 AM EST.
+   Saint Petersburg.........High at 02:56 AM EST.
+
+.SATURDAY...
+Rip Current Risk*...........Low. 
+Surf Height.................1 foot or less. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the lower 60s. 
+Winds.......................North winds around 5 mph in the 
+                            morning, becoming light and variable.
+Tides...
+   Cedar Key................Low at 10:43 AM EST.
+                            High at 05:26 PM EST.
+   Saint Petersburg.........Low at 11:30 AM EST.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/tbw
+
+$$
+
+FLZ050-151-155-160-272115-
+Pinellas-Coastal Hillsborough-Coastal Manatee-Coastal Sarasota-
+Including the beaches of Clearwater Beach, Saint Pete Beach, 
+Bradenton Beach, Longboat Key, Siesta Key, Turtle Beach, and Venice
+300 AM EST Fri Nov 27 2026
+
+...HIGH RIP CURRENT RISK IN EFFECT THROUGH THIS EVENING...
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................2 to 3 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........In the lower 70s. 
+Weather.....................Mostly sunny until 12 PM, then mostly 
+                            cloudy. 
+High Temperature............In the upper 60s. 
+Winds.......................West winds around 15 mph.
+Tides...
+   Saint Petersburg.........Low at 10:34 AM EST.
+   Venice Inlet.............Low at 08:56 AM EST.
+
+.TONIGHT...
+Rip Current Risk*...........High. 
+Surf Height.................2 to 3 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+Low Temperature.............In the lower 60s. 
+Winds.......................Northwest winds 5 to 10 mph.
+Tides...
+   Saint Petersburg.........High at 02:56 AM EST.
+   Venice Inlet.............High at 12:54 AM EST.
+
+.SATURDAY...
+Rip Current Risk*...........High. 
+Surf Height.................1 to 2 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Cloudy. 
+High Temperature............In the upper 60s. 
+Winds.......................Northeast winds around 5 mph.
+Tides...
+   Saint Petersburg.........Low at 11:30 AM EST.
+   Venice Inlet.............Low at 09:52 AM EST.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/tbw
+
+$$
+
+FLZ162-165-272115-
+Coastal Charlotte-Coastal Lee-
+Including the beaches of Manasota Key, Palm Island, Captiva, Sanibel, 
+and Fort Myers Beach
+300 AM EST Fri Nov 27 2026
+
+...HIGH RIP CURRENT RISK IN EFFECT THROUGH THIS EVENING...
+
+.TODAY...
+Rip Current Risk*...........High. 
+Surf Height.................1 to 2 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........In the mid 70s. 
+Weather.....................Partly sunny. 
+High Temperature............In the lower 70s. 
+Winds.......................West winds 10 to 15 mph.
+Tides...
+   Venice Inlet.............Low at 08:56 AM EST.
+   Fort Myers Beach.........Low at 09:00 AM EST.
+
+.TONIGHT...
+Rip Current Risk*...........High. 
+Surf Height.................1 to 2 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+Low Temperature.............Around 60. 
+Winds.......................North winds around 5 mph.
+Tides...
+   Venice Inlet.............High at 12:54 AM EST.
+   Fort Myers Beach.........High at 01:46 AM EST.
+
+.SATURDAY...
+Rip Current Risk*...........High. 
+Surf Height.................1 to 2 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the lower 70s. 
+Winds.......................Northeast winds around 5 mph.
+Tides...
+   Venice Inlet.............Low at 09:52 AM EST.
+   Fort Myers Beach.........Low at 09:56 AM EST.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/tbw
+
+
+$$
