@@ -616,6 +616,22 @@ describe("promote", () => {
     });
   });
 
+  describe("a release the merge job started, after checking production against main's head", () => {
+    const CHECKED = `0d0d0d0d0d0d${"0".repeat(28)}`;
+
+    it("goes ahead while production still runs the head the merge job checked", async () => {
+      const fake = fakeTools({ tags: { [OLD]: "0d0d0d0d0d0d" } });
+      expect(await promote(PROJECT, fake.tools, { expectedLive: CHECKED })).toMatchObject({ released: true });
+    });
+
+    it("changes nothing when another release went out in between", async () => {
+      const fake = fakeTools({ tags: { [OLD]: "0e0e0e0e0e0e" } });
+      const error = await failure(promote(PROJECT, fake.tools, { expectedLive: CHECKED }));
+      expect(error.message).toContain("not 0d0d0d0d0d0d, the head the merge job checked");
+      expect(fake.wranglerCommands().some((line) => /versions (upload|deploy)/.test(line))).toBe(false);
+    });
+  });
+
   describe("the nightly run, which only refreshes the release production runs", () => {
     const nightly = { github: { ref: "refs/heads/main", sha: FULL_SHA, event: "schedule" } };
 

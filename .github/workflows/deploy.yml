@@ -27,6 +27,14 @@ on:
   # The merge job in ci.yml starts a release this way: a merge made with a
   # workflow's own token starts no push workflow.
   workflow_dispatch:
+    inputs:
+      # The head of main the merge job checked production against. The
+      # release refuses unless production still runs it: releases queue, and
+      # another may have gone out in between.
+      expected-live:
+        description: Commit production must still run (set by ci.yml's merge job)
+        required: false
+        type: string
   # 08:17 UTC: after midnight in every US mainland time zone, so "today" in
   # the rebuilt tables is today everywhere; off the hour, when GitHub's
   # scheduler is least busy.
@@ -184,6 +192,7 @@ jobs:
         if: steps.head.outputs.current == 'true'
         run: node scripts/promote.mjs
         env:
+          EXPECTED_LIVE: ${{ inputs.expected-live }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 

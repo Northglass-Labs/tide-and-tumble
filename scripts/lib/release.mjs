@@ -602,10 +602,11 @@ async function rollBackTo(project, versionId, reason, tools, checkAt) {
  *
  * @param {Project} project
  * @param {Tools} tools
- * @param {{ origin?: string }} [options] Where production is checked (`checkAddress`).
+ * @param {{ origin?: string, expectedLive?: string }} [options] Where production is checked (`checkAddress`);
+ *   and, for a release the merge job started, the commit production must still run.
  * @returns {Promise<{ ok: true, released: true, tag: string, versionId: string | null, previousVersionId: string | null, url: string, p95Ms: number | null } | { ok: true, released: false, tag: string, reason: string, url: string }>}
  */
-export async function promote(project, tools, { origin } = {}) {
+export async function promote(project, tools, { origin, expectedLive } = {}) {
   refuseStrayConfigs(tools);
   const at = checkAddress(project, origin);
   // A scheduled run only refreshes what production runs (refreshRefusal).
@@ -644,6 +645,19 @@ export async function promote(project, tools, { origin } = {}) {
   }
 
   const before = liveVersion(project, tools);
+
+  if (expectedLive) {
+    // Releases queue: another may have gone out since the merge job checked production against this commit.
+    const expected = expectedLive.slice(0, 12);
+    const liveTag = before.exists && before.versionId !== null ? versionTag(project, before.versionId, tools) : null;
+    if (liveTag !== expected) {
+      throw new StepFailed(
+        `release after a merge: production runs ${liveTag ?? "no single tagged version"}, not ${expected}, the head ` +
+          "the merge job checked: another release or a rollback came in between, so this one changes nothing. " +
+          "Check production, then run Deploy on main by hand",
+      );
+    }
+  }
 
   if (refresh) {
     const refusal = refreshRefusal(project, before, tag, tools);

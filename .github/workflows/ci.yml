@@ -237,7 +237,7 @@ jobs:
             echo "::notice title=Release not started::main moved from ${CHECKED:-an unchecked head} to $parent before the merge, so production was not checked against the merge commit's parent and the release was not started. Check production, then run Deploy on main."
             exit 1
           fi
-          gh workflow run deploy.yml --ref main
+          gh workflow run deploy.yml --ref main -f expected-live="$CHECKED"
 
       # Nobody is emailed about this run (Dependabot started it), so the
       # summary says what happened, and audit.yml checks every day that
