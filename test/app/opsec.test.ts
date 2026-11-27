@@ -165,7 +165,8 @@ describe("public-release OPSEC boundary", () => {
     );
   });
 
-  test("scans an exported copy with no git work tree the same way, skipping what git ignores", () => {
+  // In an exported copy there is no git to compare the walk with; the walk itself is what scans it.
+  test.skipIf(trackedFiles() === null)("scans an exported copy with no git work tree the same way, skipping what git ignores", () => {
     // `git archive` output has no index: the walk must find every tracked file, and nothing git ignores, such as
     // the worker-configuration.d.ts that `npm run typecheck` writes.
     const walked = walkTree();
@@ -182,21 +183,22 @@ describe("public-release OPSEC boundary", () => {
     expect(walked.filter((path) => path.startsWith(".claude/"))).toEqual([".claude/context/progress.md"]);
   });
 
-  test("catches the leak lines the review found, in a file of their own", () => {
-    // The kinds of line the 2026-11-27 review removed from the public documents.
+  test("catches the kinds of leak line the review found, in made-up text", () => {
+    // Each line has the shape of a kind of line the 2026-11-27 review removed, about a fictional site:
+    // none states anything true about this deployment.
     const leaks = [
-      "gh secret set CLOUDFLARE_API_TOKEN -R example/app",
-      "Bot Fight Mode is off for the zone, so GitHub's runners are not challenged.",
-      "Recommended: that rule on /api/, at 30 requests in 10 seconds.",
-      "The zone's edge certificate already covers the apex and www and is active.",
-      "Set the SSL/TLS encryption mode to Full (strict).",
-      '(starts_with(http.request.uri.path, "/api/") and not any(http.request.headers["sec-fetch-site"][*] eq "same-origin"))',
-      "The project is on the Hobby plan.",
-      "The uptime monitor asks /api/tides every five minutes.",
-      "Switch the apex record from DNS-only to proxied.",
-      "Account 1f2e3d4c5b6a79881f2e3d4c5b6a7988 owns the zone.",
-      "Check https://tide-and-tumble.someone.workers.dev first.",
-      "Set the route to fail closed.",
+      "gh secret set EXAMPLE_TOKEN -R example/fictional-app",
+      "Bot Fight Mode came up in a 1999 example.org workshop.",
+      "The example.org rule allowed 7 requests in 3 seconds.",
+      "The example.org edge certificate expired in 1999.",
+      "A textbook chapter compares SSL/TLS modes, Full (strict) among them, for example.org.",
+      '(http.request.method eq "PATCH" and http.request.uri.path eq "/example")',
+      "The fictional example.org project sat on the Hobby plan in 1999.",
+      "An example.org uptime monitor pinged its home page hourly in 1999.",
+      "In the example.org lab, a record went from DNS-only to proxied.",
+      "Account abcdefabcdefabcdefabcdefabcdefab is fictional.",
+      "See https://demo-worker.fictional-subdomain.workers.dev for a made-up Worker.",
+      "The example.org route was set to fail open in a 1999 drill.",
     ];
     const caught = leaks.filter((line) => PRIVATE_DETAIL.some(({ pattern }) => pattern.test(line)));
     expect(caught).toEqual(leaks);
