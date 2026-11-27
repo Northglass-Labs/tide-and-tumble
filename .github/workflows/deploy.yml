@@ -1,12 +1,19 @@
 name: Deploy
 
-# A push to main is a release: verify, check for known vulnerabilities, then
-# `npm run promote`, which checks production afterwards and rolls back by
-# itself if it is unhealthy. So is the nightly run: the beach pages carry a
-# tide table built with them, and rebuilding main's head each night keeps
-# what crawlers see at most a day old (docs/DELIVERY.md, "The nightly
-# release"). promote checks production at https://tideandtumble.app, which
-# it first confirms is served by this Worker (the zone route is attached).
+# A push to main is a release: check for known vulnerabilities, build and
+# check the commit with no Cloudflare credential in reach
+# (node scripts/prepare-release.mjs: install scripts off, a clean copy of the
+# commit, npm run verify), then release that build with promote, which holds
+# the token, runs no build and no package code but Wrangler's, checks
+# production afterwards and rolls back by itself if it is unhealthy.
+#
+# The nightly run only refreshes: the beach pages carry a tide table built
+# with them, so main's head is rebuilt each night while production runs it,
+# keeping what crawlers see at most a day old. When production runs another
+# commit (a rollback, a failed release), it changes nothing and says why, and
+# it never releases a build that lacks a beach page's table (docs/DELIVERY.md,
+# "The nightly release"). promote checks production at
+# https://tideandtumble.app, which it first confirms is served by this Worker.
 #
 # It needs a Cloudflare API token in the repository secret
 # CLOUDFLARE_API_TOKEN and the account id in the repository secret
@@ -69,14 +76,7 @@ jobs:
           node-version-file: .node-version
           cache: npm
 
-      - name: Install
-        if: steps.token.outputs.present == 'true'
-        run: npm ci
-
-      - name: Verify
-        if: steps.token.outputs.present == 'true'
-        run: npm run verify
-
+      # npm audit reads package-lock.json; nothing needs installing for it.
       - name: Audit
         if: steps.token.outputs.present == 'true'
         run: npm run audit
@@ -98,11 +98,21 @@ jobs:
             echo "current=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Only this step can see the token. ci.yml's merge job reads this step's
-      # result by its name, as do the steps above it.
+      # The build, with no credential in its environment: a clean copy of the
+      # commit, npm ci --ignore-scripts, npm run verify, then that out/ copied
+      # here and recorded with a digest. npm ci --ignore-scripts here too, for
+      # the locked Wrangler.
+      - name: Prepare the release
+        if: steps.token.outputs.present == 'true' && steps.head.outputs.current == 'true'
+        run: node scripts/prepare-release.mjs
+
+      # Only this step can see the token, and it runs no npm: promote uploads
+      # the recorded out/ with Wrangler, only while out/ is still exactly what
+      # was checked. On a scheduled run it only refreshes (GITHUB_EVENT_NAME).
+      # ci.yml's merge job reads this step's result by its name.
       - name: Release
         if: steps.token.outputs.present == 'true' && steps.head.outputs.current == 'true'
-        run: npm run promote
+        run: node scripts/promote.mjs
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

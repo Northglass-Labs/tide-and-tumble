@@ -1,4 +1,5 @@
-import { readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -61,6 +62,51 @@ export function listOutput(dir) {
   };
   walk("");
   return { files, links };
+}
+
+/**
+ * A digest of every file under `dir`: its path, size and bytes, in path
+ * order. Two folders with the same digest hold the same files. Throws for a
+ * folder holding a symbolic link, which is never uploaded.
+ *
+ * @param {string} dir
+ * @returns {string}
+ */
+export function outDigest(dir) {
+  const { files, links } = listOutput(dir);
+  if (links.length > 0) {
+    throw new Error(`it holds symbolic links: ${links.join(", ")}`);
+  }
+  const hash = createHash("sha256");
+  for (const file of [...files].sort()) {
+    const bytes = readFileSync(join(dir, file));
+    hash.update(`${file}\0${bytes.length}\0`);
+    hash.update(bytes);
+  }
+  return hash.digest("hex");
+}
+
+/**
+ * What a beach page holds in place of its tide table when the build could
+ * not get NOAA's predictions (src/components/BeachTideTable.tsx).
+ */
+export const TABLE_UNAVAILABLE = 'data-tide-table="unavailable"';
+
+/**
+ * The beach pages under `dir` (an export) that were built without their tide
+ * table, as paths relative to it.
+ *
+ * @param {string} dir
+ * @returns {string[]}
+ */
+export function pagesWithoutTable(dir) {
+  const tides = join(dir, "tides");
+  if (!existsSync(tides)) return [];
+  return readdirSync(tides)
+    .filter((name) => name.endsWith(".html"))
+    .sort()
+    .filter((name) => readFileSync(join(tides, name), "utf8").includes(TABLE_UNAVAILABLE))
+    .map((name) => `tides/${name}`);
 }
 
 /** The free plan's static-asset limits, from Cloudflare's documentation on 2026-11-27. */

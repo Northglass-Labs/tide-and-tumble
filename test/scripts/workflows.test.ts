@@ -138,19 +138,47 @@ describe("GitHub workflows", () => {
     const steps = deploy.split(/\n\s{6}- /).slice(1);
     const withToken = steps.filter((step) => step.includes("secrets.CLOUDFLARE_API_TOKEN"));
 
-    // The step that checks whether the secret exists, and `npm run promote`.
+    // The step that checks whether the secret exists, and promote.
     expect(withToken).toHaveLength(2);
     expect(withToken[0]).toContain("Deploy skipped");
-    expect(withToken[1]).toContain("npm run promote");
+    expect(stepValue(withToken[1]!, "run")).toBe("node scripts/promote.mjs");
     // The account id is not a credential, but it is an identifier this public repository and its public logs never
     // show: as a secret, GitHub masks it in the logs; a variable is printed in the clear.
     expect(withToken[1]).toContain("CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}");
     for (const { text } of workflows) {
       expect(text).not.toMatch(/vars\.CLOUDFLARE/);
     }
-    for (const step of steps.filter((candidate) => /npm (ci|run verify)/.test(candidate))) {
+    for (const step of steps.filter((candidate) => /npm (ci|run verify)|prepare-release/.test(candidate))) {
       expect(step).not.toContain("CLOUDFLARE_API_TOKEN");
     }
+  });
+
+  it("build the release in a step without the token, and give the token to a step that runs only Wrangler", () => {
+    // The build runs project and dependency code; promote runs no build, no npm and no package code but
+    // Wrangler's, on the out/ prepare-release built and checked (scripts/lib/release.mjs).
+    const steps = stepsOf(jobSection(workflow("deploy.yml"), "deploy"));
+    const prepare = steps.findIndex((step) => stepValue(step, "run") === "node scripts/prepare-release.mjs");
+    const release = steps.findIndex((step) => stepValue(step, "name") === "Release");
+    expect(prepare).toBeGreaterThan(-1);
+    expect(release).toBe(prepare + 1);
+    expect(steps[prepare]).not.toContain("secrets.");
+    expect(stepValue(steps[release]!, "run")).toBe("node scripts/promote.mjs");
+    // Nothing else in the job installs or builds: prepare-release does both, in a clean copy of the commit.
+    for (const step of steps) {
+      expect(stepValue(step, "run")).not.toMatch(/npm (ci|install|run (verify|build))/);
+    }
+  });
+
+  it("install dependencies with their install scripts off, in every workflow", () => {
+    // No package's own install script is needed (the safe ones are already denied in package.json), and one
+    // that ran would run before any check.
+    const installs = workflows.flatMap(({ name, text }) =>
+      text
+        .split("\n")
+        .filter((line) => !/^\s*#/.test(line) && /\bnpm (?:ci|install|i)\b/.test(line))
+        .map((line) => `${name}: ${line.trim()}`),
+    );
+    expect(installs).toEqual(["audit.yml: - run: npm ci --ignore-scripts", "ci.yml: - run: npm ci --ignore-scripts"]);
   });
 
   it("ask for no more than read access to the repository", () => {
@@ -159,13 +187,13 @@ describe("GitHub workflows", () => {
     }
   });
 
-  it("check a release for known vulnerabilities after verify and before promote, without the token", () => {
+  it("check a release for known vulnerabilities before it is built and released, without the token", () => {
     const deploy = stepsOf(jobSection(workflow("deploy.yml"), "deploy"));
     const at = (command: string) => deploy.findIndex((step) => stepValue(step, "run") === command);
     const audit = at("npm run audit");
-    expect(at("npm run verify")).toBeGreaterThan(-1);
-    expect(audit).toBeGreaterThan(at("npm run verify"));
-    expect(audit).toBeLessThan(at("npm run promote"));
+    expect(audit).toBeGreaterThan(-1);
+    expect(audit).toBeLessThan(at("node scripts/prepare-release.mjs"));
+    expect(audit).toBeLessThan(at("node scripts/promote.mjs"));
     expect(deploy[audit]).not.toContain("CLOUDFLARE_API_TOKEN");
   });
 
@@ -188,14 +216,17 @@ describe("GitHub workflows", () => {
     // A re-run runs for the commit it first ran for: GITHUB_SHA, which main may have left since.
     const steps = stepsOf(jobSection(workflow("deploy.yml"), "deploy"));
     const index = steps.findIndex((step) => stepValue(step, "run").includes("/commits/main"));
-    const promote = steps.findIndex((step) => stepValue(step, "run") === "npm run promote");
-    expect(index).toBe(promote - 1);
+    const prepare = steps.findIndex((step) => stepValue(step, "run") === "node scripts/prepare-release.mjs");
+    const promote = steps.findIndex((step) => stepValue(step, "run") === "node scripts/promote.mjs");
+    // Checked before the build, so a run for an old commit builds nothing either.
+    expect(index).toBe(prepare - 1);
+    expect(prepare).toBe(promote - 1);
     const head = steps[index]!;
     expect(stepValue(head, "env")).toContain("GH_TOKEN: ${{ github.token }}");
     expect(stepValue(head, "if")).toBe("steps.token.outputs.present == 'true'");
-    expect(stepValue(steps[promote]!, "if")).toBe(
-      "steps.token.outputs.present == 'true' && steps.head.outputs.current == 'true'",
-    );
+    for (const step of [steps[prepare]!, steps[promote]!]) {
+      expect(stepValue(step, "if")).toBe("steps.token.outputs.present == 'true' && steps.head.outputs.current == 'true'");
+    }
 
     const main = "0123456789abcdef0123456789abcdef01234567";
     const old = "fedcba9876543210fedcba9876543210fedcba98";
@@ -317,13 +348,12 @@ describe("GitHub workflows", () => {
       "Check for a Cloudflare token",
       "Check out",
       "Set up Node",
-      "Install",
-      "Verify",
       "Audit",
       "Check the head of main",
+      "Prepare the release",
       "Release",
     ]);
-    expect(stepValue(steps.at(-1)!, "run")).toBe("npm run promote");
+    expect(stepValue(steps.at(-1)!, "run")).toBe("node scripts/promote.mjs");
   });
 
   describe("the merge job's check that releases are automatic", () => {
@@ -523,7 +553,8 @@ describe("GitHub workflows", () => {
     // 08:00 UTC is midnight in the Pacific (standard time); the daily production check runs at 11:41 UTC.
     expect(Number(hour)).toBeGreaterThanOrEqual(8);
     expect(Number(hour)).toBeLessThan(11);
-    // A scheduled run takes the same path as a push: verify, audit, main's head, promote.
+    // A scheduled run takes the same path as a push: audit, main's head, prepare-release, promote, which only
+    // refreshes what production runs on a scheduled run (GITHUB_EVENT_NAME; test/scripts/release.test.ts).
     expect(stepsOf(jobSection(deploy, "deploy")).map((step) => stepValue(step, "name"))).toContain("Check the head of main");
   });
 

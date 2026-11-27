@@ -26,20 +26,20 @@ export const WRANGLER_BIN = fileURLToPath(new URL("node_modules/wrangler/bin/wra
 export const WRANGLER_TIMEOUT_MS = 2 * 60 * 1000;
 
 /**
- * Runs a command in the repository root and waits for it. Arguments are
- * passed as a list, never through a shell, and output is captured rather
- * than shown: callers print one line per step and the details only on failure.
- * With `timeoutMs`, a command still running after that long is stopped and
- * reported as failed.
+ * Runs a command in the repository root (or `cwd`) and waits for it.
+ * Arguments are passed as a list, never through a shell, and output is
+ * captured rather than shown: callers print one line per step and the details
+ * only on failure. With `timeoutMs`, a command still running after that long
+ * is stopped and reported as failed.
  *
  * @param {string} command
  * @param {string[]} args
- * @param {{ timeoutMs?: number }} [options]
+ * @param {{ timeoutMs?: number, cwd?: string }} [options]
  * @returns {RunResult}
  */
-export function run(command, args, { timeoutMs } = {}) {
+export function run(command, args, { timeoutMs, cwd = ROOT_PATH } = {}) {
   const result = spawnSync(command, args, {
-    cwd: ROOT_PATH,
+    cwd,
     encoding: "utf8",
     env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
     maxBuffer: 64 * 1024 * 1024,

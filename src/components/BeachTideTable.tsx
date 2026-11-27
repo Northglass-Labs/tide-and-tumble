@@ -45,8 +45,14 @@ export default function BeachTideTable({
   }, [live, beach, days, initialWeek, today]);
 
   if (!week) {
+    // The marker tells a release that this page was built without its table
+    // (scripts/lib/build-output.mjs, pagesWithoutTable): a nightly refresh
+    // never ships such a build.
     return (
-      <p className="mt-2 rounded-2xl bg-coral-soft/40 p-3 font-body text-sm text-ink">
+      <p
+        data-tide-table="unavailable"
+        className="mt-2 rounded-2xl bg-coral-soft/40 p-3 font-body text-sm text-ink"
+      >
         The live tide table is temporarily unavailable — the interactive chart
         above has the latest NOAA predictions.
       </p>

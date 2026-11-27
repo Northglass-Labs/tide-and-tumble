@@ -2,7 +2,16 @@ import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildProblems, LIMITS, listOutput, REQUIRED_FILES, strayFiles } from "../../scripts/lib/build-output.mjs";
+import {
+  buildProblems,
+  LIMITS,
+  listOutput,
+  outDigest,
+  pagesWithoutTable,
+  REQUIRED_FILES,
+  strayFiles,
+  TABLE_UNAVAILABLE,
+} from "../../scripts/lib/build-output.mjs";
 
 const ORIGIN = "https://tideandtumble.app";
 const SITEMAP = `<urlset><url><loc>${ORIGIN}</loc></url><url><loc>${ORIGIN}/tides/nags-head</loc></url></urlset>`;
@@ -55,6 +64,44 @@ describe("listOutput()", () => {
 
   it("lists nothing for a directory that does not exist", () => {
     expect(listOutput(join(tmpdir(), "no-such-build-output-dir"))).toEqual({ files: [], links: [] });
+  });
+});
+
+describe("outDigest()", () => {
+  const exportWith = (files: Record<string, string>) => {
+    const dir = mkdtempSync(join(tmpdir(), "tnt-digest-"));
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(join(dir, path, ".."), { recursive: true });
+      writeFileSync(join(dir, path), text);
+    }
+    return dir;
+  };
+
+  it("is the same for two folders holding the same files, and changes with any name or byte", () => {
+    const files = { "index.html": "<p>tides</p>", "tides/duck.html": "<table></table>" };
+    const digest = outDigest(exportWith(files));
+    expect(outDigest(exportWith(files))).toBe(digest);
+    expect(outDigest(exportWith({ ...files, "tides/duck.html": "<table> </table>" }))).not.toBe(digest);
+    expect(outDigest(exportWith({ "index.html": "<p>tides</p>", "tides/corolla.html": "<table></table>" }))).not.toBe(digest);
+    expect(outDigest(exportWith({ ...files, ".env": "" }))).not.toBe(digest);
+  });
+
+  it("refuses a folder holding a symbolic link", () => {
+    const dir = exportWith({ "index.html": "" });
+    symlinkSync("/etc/hosts", join(dir, "hosts"));
+    expect(() => outDigest(dir)).toThrow("symbolic links: hosts");
+  });
+});
+
+describe("pagesWithoutTable()", () => {
+  it("names the beach pages built without their tide table, and nothing else", () => {
+    const dir = mkdtempSync(join(tmpdir(), "tnt-tables-"));
+    mkdirSync(join(dir, "tides"));
+    writeFileSync(join(dir, "tides", "duck.html"), "<table><tr><td>High 6:12 AM</td></tr></table>");
+    writeFileSync(join(dir, "tides", "nags-head.html"), `<p ${TABLE_UNAVAILABLE}>The live tide table is unavailable</p>`);
+    writeFileSync(join(dir, "index.html"), `<p ${TABLE_UNAVAILABLE}></p>`);
+    expect(pagesWithoutTable(dir)).toEqual(["tides/nags-head.html"]);
+    expect(pagesWithoutTable(join(dir, "missing"))).toEqual([]);
   });
 });
 

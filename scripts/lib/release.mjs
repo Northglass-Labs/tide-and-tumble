@@ -1,7 +1,9 @@
-import { fileURLToPath } from "node:url";
-import { listOutput, strayFiles } from "./build-output.mjs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, join } from "node:path";
+import { listOutput, outDigest, pagesWithoutTable, strayFiles } from "./build-output.mjs";
 import { answeringVersion, checkHealth, realDeps, VERSION_ID } from "./health-check.mjs";
-import { ASSETS_DIR, ROOT, strayConfigs } from "./project.mjs";
+import { ASSETS_DIR, ROOT_PATH, strayConfigs } from "./project.mjs";
 import { jsonFrom, must, run, say, StepFailed, wrangler } from "./run.mjs";
 import {
   activeVersionId,
@@ -13,14 +15,23 @@ import {
 } from "./wrangler-output.mjs";
 
 /**
- * The release flow behind `npm run promote` and `npm run rollback`, from the
- * app template's reviewed scripts, changed for this app: no database, Version
- * URLs off (design note, D3), and production checked where the operator says it is
- * served (docs/DELIVERY.md, "Where production is checked").
+ * The release flow behind `node scripts/prepare-release.mjs`, `npm run
+ * promote` and `npm run rollback`, from the app template's reviewed scripts,
+ * changed for this app: no database, Version URLs off (design note, D3), and
+ * production checked where the operator says it is served (docs/DELIVERY.md,
+ * "Where production is checked").
  *
- * Everything that touches the outside world (git, npm, Wrangler, the
- * network) comes in through `tools`, so the order of steps and what happens
- * when one fails is tested with stand-ins (test/scripts/release.test.ts).
+ * The build runs before any step that holds the Cloudflare token.
+ * `prepare-release` builds and checks a clean copy of the commit (a detached
+ * worktree in a temporary folder) with no Cloudflare credential in its
+ * environment and install scripts off, copies that out/ into the checkout and
+ * records the commit and a digest of out/. `promote` holds the token, runs no
+ * build and no package code but Wrangler's, and uploads that out/ only while
+ * it is still exactly what was checked.
+ *
+ * Everything that touches the outside world (git, npm, Wrangler, the files,
+ * the network) comes in through `tools`, so the order of steps and what
+ * happens when one fails is tested with stand-ins (test/scripts/release.test.ts).
  */
 
 /** @typedef {import("./wrangler-output.mjs").Deployment} Deployment */
@@ -37,14 +48,32 @@ import {
  */
 
 /**
+ * @typedef {object} Prepared What prepare-release recorded for promote.
+ * @property {string} commit The commit it built.
+ * @property {string} tag    Its tag.
+ * @property {string} digest A digest of the out/ it checked (`outDigest`).
+ */
+
+/**
  * @typedef {object} Tools
- * @property {(command: string, args: string[]) => RunResult} run
+ * @property {(command: string, args: string[]) => RunResult} run In the checkout.
+ * @property {(dir: string, command: string, args: string[]) => RunResult} runIn In another folder: the clean copy.
  * @property {(args: string[]) => RunResult} wrangler
  * @property {(check: string, request: HealthRequest) => Promise<HealthResult>} health
  * @property {(line: string) => void} say
- * @property {{ ref: string, sha: string } | null} github On GitHub Actions, the ref and commit
- *   GitHub says the run is for; null anywhere else.
- * @property {() => { files: string[], links: string[] }} buildOutput What is in out/, relative to it.
+ * @property {{ ref: string, sha: string, event: string } | null} github On GitHub Actions, the ref, commit and
+ *   event (push, workflow_dispatch, schedule) GitHub says the run is for; null anywhere else.
+ * @property {() => string[]} credentials Names of the Cloudflare credentials in the environment.
+ * @property {(root?: string) => { files: string[], links: string[] }} buildOutput What is in `<root>/out/`
+ *   (the checkout's by default), relative to it.
+ * @property {(root?: string) => string} outDigest A digest of `<root>/out/` as it is now.
+ * @property {(root?: string) => string[]} missingTables Beach pages in `<root>/out/` built without their tide table.
+ * @property {() => void} clearGenerated Removes the checkout's out/, left by an earlier build.
+ * @property {(commit: string) => string} createBuildTree Checks out `commit` alone in a new temporary folder; returns it.
+ * @property {(dir: string) => void} removeBuildTree Removes a folder createBuildTree made.
+ * @property {(from: string) => void} copyBuild Copies `<from>/out/` to the checkout's out/, which must not exist.
+ * @property {() => Prepared | null} prepared What prepare-release recorded, if anything.
+ * @property {(record: Prepared) => void} writePrepared
  * @property {() => string[]} strayConfigs wrangler.json or wrangler.toml files in the repository or above it.
  * @property {(baseUrl: string) => Promise<{ versionId: string | null, detail: string }>} answeringVersion
  *   The version the site says is answering, or null with the reason.
@@ -59,6 +88,42 @@ export const SETTLE_MS = 90_000;
  * production with the same.
  */
 export const TAG_ARGS = ["rev-parse", "--short=12", "HEAD"];
+
+/** How a nightly refresh marks the versions and deployments it makes. */
+export const NIGHTLY_REFRESH = "Nightly refresh:";
+
+/** The Cloudflare credentials Wrangler reads from the environment. The account id is an identifier, not one. */
+const CREDENTIALS = Object.freeze(["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_KEY", "CF_API_TOKEN", "CF_API_KEY"]);
+
+/**
+ * Names of the Cloudflare credentials set in an environment.
+ *
+ * @param {Record<string, string | undefined>} env
+ */
+export function credentialVariables(env) {
+  return CREDENTIALS.filter((name) => (env[name] ?? "") !== "");
+}
+
+/** Where createBuildTree makes its folders, and the only folders removeBuildTree removes. */
+const BUILD_TREE_PREFIX = join(tmpdir(), "tide-and-tumble-release-");
+
+/** Where prepare-release records what it built: under node_modules/, which git ignores and `npm ci` replaces. */
+const PREPARED_PATH = join(ROOT_PATH, "node_modules", ".cache", "tide-and-tumble-release.json");
+
+/** Brings GitHub's main into origin/main, whatever the local remote configuration says. */
+const FETCH_MAIN = Object.freeze(["fetch", "--quiet", "--no-tags", "origin", "+refs/heads/main:refs/remotes/origin/main"]);
+
+/** @returns {Prepared | null} */
+function readPrepared() {
+  try {
+    const record = JSON.parse(readFileSync(PREPARED_PATH, "utf8"));
+    return typeof record?.commit === "string" && typeof record.tag === "string" && typeof record.digest === "string"
+      ? { commit: record.commit, tag: record.tag, digest: record.digest }
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 export const ORIGIN_USAGE =
   "--origin takes the site's own address or this Worker's workers.dev address " +
@@ -103,16 +168,53 @@ function refuseStrayConfigs(tools) {
   }
 }
 
-/** The real git, npm, Wrangler and network. @type {Tools} */
+/** The real git, npm, Wrangler, files and network. @type {Tools} */
 export const realTools = {
   run,
   wrangler,
   say,
+  runIn: (dir, command, args) => run(command, args, { cwd: dir }),
   github:
     process.env.GITHUB_ACTIONS === "true"
-      ? { ref: process.env.GITHUB_REF ?? "", sha: process.env.GITHUB_SHA ?? "" }
+      ? { ref: process.env.GITHUB_REF ?? "", sha: process.env.GITHUB_SHA ?? "", event: process.env.GITHUB_EVENT_NAME ?? "" }
       : null,
-  buildOutput: () => listOutput(fileURLToPath(new URL(`${ASSETS_DIR}/`, ROOT))),
+  credentials: () => credentialVariables(process.env),
+  buildOutput: (root = ROOT_PATH) => listOutput(join(root, ASSETS_DIR)),
+  outDigest: (root = ROOT_PATH) => outDigest(join(root, ASSETS_DIR)),
+  missingTables: (root = ROOT_PATH) => pagesWithoutTable(join(root, ASSETS_DIR)),
+  clearGenerated: () => rmSync(join(ROOT_PATH, ASSETS_DIR), { recursive: true, force: true }),
+  createBuildTree(commit) {
+    const parent = mkdtempSync(BUILD_TREE_PREFIX);
+    const dir = join(parent, "tree");
+    const added = run("git", ["worktree", "add", "--detach", dir, commit]);
+    if (!added.ok) {
+      rmSync(parent, { recursive: true, force: true });
+      throw new StepFailed("make a clean copy of the commit to build", redact(added.output.trim()));
+    }
+    return dir;
+  },
+  removeBuildTree(dir) {
+    const parent = dirname(dir);
+    if (basename(dir) !== "tree" || !parent.startsWith(BUILD_TREE_PREFIX)) {
+      throw new Error(`${dir} is not a folder createBuildTree made, so it was not removed`);
+    }
+    // This worktree only: `git worktree prune` would also drop the records of other worktrees whose folders are gone.
+    run("git", ["worktree", "remove", "--force", dir]);
+    rmSync(parent, { recursive: true, force: true });
+  },
+  copyBuild(from) {
+    cpSync(join(from, ASSETS_DIR), join(ROOT_PATH, ASSETS_DIR), {
+      recursive: true,
+      errorOnExist: true,
+      force: false,
+      verbatimSymlinks: true,
+    });
+  },
+  prepared: () => readPrepared(),
+  writePrepared(record) {
+    mkdirSync(dirname(PREPARED_PATH), { recursive: true });
+    writeFileSync(PREPARED_PATH, `${JSON.stringify(record)}\n`);
+  },
   strayConfigs: () => strayConfigs(),
   answeringVersion: (baseUrl) => answeringVersion(baseUrl, realDeps),
   /** Checks a site and prints the result as one JSON line, labelled with what was checked. */
@@ -157,6 +259,208 @@ function liveVersion(project, tools) {
   }
   const deployment = /** @type {Deployment} */ (jsonFrom(result));
   return { exists: true, versionId: activeVersionId(deployment), traffic: trafficOf(deployment) };
+}
+
+/**
+ * The tag a version was uploaded with, or null when it has none.
+ *
+ * @param {Project} project
+ * @param {string} versionId
+ * @param {Tools} tools
+ * @returns {string | null}
+ */
+function versionTag(project, versionId, tools) {
+  const view = must(
+    `read version ${versionId}`,
+    tools.wrangler(["versions", "view", versionId, "--name", project.worker, "--json", "--config", project.configPath]),
+  );
+  const tag = /** @type {{ annotations?: Record<string, unknown> }} */ (jsonFrom(view)).annotations?.["workers/tag"];
+  return typeof tag === "string" && tag !== "" ? tag : null;
+}
+
+/**
+ * The commit a release is made of: GitHub's main, exactly, with nothing else
+ * in the working tree. An unpushed or unreviewed commit is refused.
+ *
+ * @param {Tools} tools
+ * @returns {{ commit: string, tag: string, subject: string }}
+ */
+function releasableCommit(tools) {
+  const changes = must("read the git status", tools.run("git", ["status", "--porcelain"])).stdout.trim();
+  if (changes !== "") {
+    throw new StepFailed("start: commit or stash these changes first, so that a release is exactly one commit", changes);
+  }
+  // `git status` says nothing about a file marked assume-unchanged or skip-worktree, however it differs from the
+  // commit, and Wrangler bundles the Worker from the checkout.
+  const hidden = must("read git's index", tools.run("git", ["ls-files", "-v", "-z"]))
+    .stdout.split("\0")
+    .filter((entry) => entry !== "" && !entry.startsWith("H "));
+  if (hidden.length > 0) {
+    throw new StepFailed(
+      "start from a checkout git fully sees: these files are marked assume-unchanged or skip-worktree, or are " +
+        "unmerged, so `git status` would not show a change to them. Clear the marks (git update-index " +
+        "--no-assume-unchanged --no-skip-worktree <file>), then start again",
+      hidden.join("\n"),
+    );
+  }
+
+  // Only main's commit is released: the commit main is on, on GitHub.
+  const commit = must("read the commit", tools.run("git", ["rev-parse", "HEAD"])).stdout.trim();
+  if (tools.github) {
+    // deploy.yml checks out the commit main pointed at when the run started, and keeps no credential to fetch with.
+    if (tools.github.ref !== "refs/heads/main" || tools.github.sha !== commit) {
+      throw new StepFailed(
+        `release only main: this run is for ${tools.github.ref} at ${tools.github.sha}, and HEAD is ${commit}`,
+      );
+    }
+  } else {
+    must("fetch main from GitHub", tools.run("git", [...FETCH_MAIN]));
+    const main = must("read origin/main", tools.run("git", ["rev-parse", "refs/remotes/origin/main"])).stdout.trim();
+    if (main !== commit) {
+      throw new StepFailed(
+        `release only main: HEAD is ${commit}, but GitHub's main (origin/main) is ${main}. Release from a checkout ` +
+          "of main that matches GitHub's: git switch --detach origin/main",
+      );
+    }
+  }
+  const tag = must("read the commit", tools.run("git", TAG_ARGS)).stdout.trim();
+  const subject = must("read the commit", tools.run("git", ["log", "-1", "--format=%s"])).stdout.trim();
+  return { commit, tag, subject };
+}
+
+/**
+ * Refuses a build that holds what must never be uploaded, or nothing.
+ *
+ * @param {{ files: string[], links: string[] }} output
+ */
+function checkOutput(output) {
+  const stray = [...strayFiles(output.files), ...output.links];
+  if (stray.length > 0) {
+    throw new StepFailed(
+      "check the build: it holds dotfiles, private keys or symbolic links, which must never be uploaded",
+      stray.map((path) => `out/${path}`).join("\n"),
+    );
+  }
+  if (output.files.length === 0) {
+    throw new StepFailed("check the build: out/ is empty");
+  }
+}
+
+/**
+ * Reads out/ for a check, turning what it must not hold (a symbolic link, say) into a failed step.
+ *
+ * @template T
+ * @param {string} step
+ * @param {() => T} read
+ * @returns {T}
+ */
+function readOut(step, read) {
+  try {
+    return read();
+  } catch (error) {
+    throw new StepFailed(`${step}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Builds GitHub's main and checks the build with no Cloudflare credential in
+ * reach, then records the commit and a digest of out/ for `promote`. The
+ * build runs project and dependency code, which could read a token from its
+ * own environment.
+ *
+ * It builds in a clean copy of the commit, a detached worktree in a new
+ * temporary folder, so nothing in the working tree but the commit (a file git
+ * ignores, a stale out/ or node_modules/) can reach the build or the upload.
+ * Dependencies are installed with their install scripts off. The checked
+ * out/ is copied into the checkout, where `promote` uploads it, and the
+ * worktree is removed.
+ *
+ * @param {Project} project
+ * @param {Tools} tools
+ * @returns {Promise<{ ok: true } & Prepared>}
+ */
+export async function prepareRelease(project, tools) {
+  const credentials = tools.credentials();
+  if (credentials.length > 0) {
+    throw new StepFailed(
+      `prepare without Cloudflare credentials: ${credentials.join(", ")} ${credentials.length === 1 ? "is" : "are"} ` +
+        "set. The build runs project and dependency code, which can read any credential in its environment; give " +
+        "the token to `npm run promote` only",
+    );
+  }
+  refuseStrayConfigs(tools);
+  const { commit, tag } = releasableCommit(tools);
+  // Mode 120000 is a symbolic link: checked out, a build that follows one could copy any file on this machine.
+  const links = must("list the commit's files", tools.run("git", ["ls-tree", "-r", "-z", "--full-tree", commit]))
+    .stdout.split("\0")
+    .filter((entry) => entry.startsWith("120000 "))
+    .map((entry) => entry.slice(entry.indexOf("\t") + 1));
+  if (links.length > 0) {
+    throw new StepFailed(
+      "prepare without symbolic links: these files in the commit are links, and a build that follows one could " +
+        "copy whatever it points to. Commit the files themselves",
+      links.join("\n"),
+    );
+  }
+
+  // Nothing generated by an earlier build may reach this one.
+  tools.clearGenerated();
+  const tree = tools.createBuildTree(commit);
+  /** @type {string} */
+  let digest;
+  try {
+    tools.say(`prepare-release: building ${tag} in a clean copy of the commit, with install scripts off`);
+    must("install the locked dependencies (npm ci --ignore-scripts)", tools.runIn(tree, "npm", ["ci", "--ignore-scripts"]));
+    tools.say(`prepare-release: verifying ${tag} (types, lint, tests, the export and its check)`);
+    must("verify the release (npm run verify)", tools.runIn(tree, "npm", ["run", "verify"]));
+    checkOutput(readOut("check the build", () => tools.buildOutput(tree)));
+    digest = readOut("check the build", () => tools.outDigest(tree));
+    tools.copyBuild(tree);
+  } finally {
+    tools.removeBuildTree(tree);
+  }
+  if (readOut("check out/", () => tools.outDigest()) !== digest) {
+    throw new StepFailed(
+      "copy the checked build into out/: the copy is not exactly the build that was checked. Run prepare-release again",
+    );
+  }
+  // promote runs this checkout's Wrangler: the locked version, installed afresh.
+  tools.say("prepare-release: installing the locked dependencies here too, for the Wrangler promote runs");
+  must("install the locked dependencies for promote (npm ci --ignore-scripts)", tools.run("npm", ["ci", "--ignore-scripts"]));
+
+  const record = { commit, tag, digest };
+  tools.writePrepared(record);
+  tools.say(`prepare-release: ${tag} is ready; release it with npm run promote`);
+  return { ok: true, ...record };
+}
+
+/**
+ * Why a nightly refresh must change nothing, or null when it may go ahead: it
+ * only rebuilds the release production already runs, so it never advances
+ * production, and never undoes a rollback.
+ *
+ * @param {Project} project
+ * @param {{ exists: boolean, versionId: string | null }} live
+ * @param {string} tag This commit's tag.
+ * @param {Tools} tools
+ * @returns {string | null}
+ */
+function refreshRefusal(project, live, tag, tools) {
+  if (!live.exists) {
+    return "nothing is live yet, and a nightly refresh only rebuilds the release production runs";
+  }
+  if (live.versionId === null) {
+    return "traffic is split between versions, and a nightly refresh only rebuilds the release production runs";
+  }
+  const liveTag = versionTag(project, live.versionId, tools);
+  if (liveTag !== tag) {
+    return (
+      `production runs ${liveTag ?? "a version with no tag"}, not main's head ${tag}: a rollback or a failed release ` +
+      "is in place. A nightly refresh only rebuilds what production runs, so nothing was released. A push to main, " +
+      "or Deploy run by hand, releases main's head"
+    );
+  }
+  return null;
 }
 
 /**
@@ -299,60 +603,54 @@ async function rollBackTo(project, versionId, reason, tools, checkAt) {
  * @param {Project} project
  * @param {Tools} tools
  * @param {{ origin?: string }} [options] Where production is checked (`checkAddress`).
- * @returns {Promise<{ ok: true, tag: string, versionId: string | null, previousVersionId: string | null, url: string, p95Ms: number | null }>}
+ * @returns {Promise<{ ok: true, released: true, tag: string, versionId: string | null, previousVersionId: string | null, url: string, p95Ms: number | null } | { ok: true, released: false, tag: string, reason: string, url: string }>}
  */
 export async function promote(project, tools, { origin } = {}) {
   refuseStrayConfigs(tools);
   const at = checkAddress(project, origin);
-  const changes = must("read the git status", tools.run("git", ["status", "--porcelain"])).stdout.trim();
-  if (changes !== "") {
-    throw new StepFailed("start: commit or stash these changes first, so that a release is exactly one commit", changes);
-  }
+  // A scheduled run only refreshes what production runs (refreshRefusal).
+  const refresh = tools.github?.event === "schedule";
+  const { commit, tag, subject } = releasableCommit(tools);
+  const message = `${refresh ? `${NIGHTLY_REFRESH} ` : ""}${tag} ${subject}`.slice(0, 100);
+  tools.say(
+    `promote: ${refresh ? "refreshing" : "releasing"} ${tag}, checked at ` +
+      `${at.domain ? at.url : "the Worker's workers.dev address"}`,
+  );
 
-  // Only main's commit is released: the commit main is on, on GitHub.
-  const head = must("read the commit", tools.run("git", ["rev-parse", "HEAD"])).stdout.trim();
-  if (tools.github) {
-    // deploy.yml checks out the commit main pointed at when the run started,
-    // and keeps no credential to fetch with.
-    if (tools.github.ref !== "refs/heads/main" || tools.github.sha !== head) {
-      throw new StepFailed(
-        `release only main: this run is for ${tools.github.ref} at ${tools.github.sha}, and HEAD is ${head}`,
-      );
-    }
-  } else {
-    must("fetch main from origin, to compare it with this commit", tools.run("git", ["fetch", "--quiet", "origin", "main"]));
-    const main = must("read origin/main", tools.run("git", ["rev-parse", "origin/main"])).stdout.trim();
-    if (main !== head) {
-      throw new StepFailed(
-        `release only main: HEAD is ${head}, but origin/main is ${main}. Release from a checkout of main that matches GitHub's`,
-      );
-    }
-  }
-
-  const tag = must("read the commit", tools.run("git", TAG_ARGS)).stdout.trim();
-  const subject = must("read the commit", tools.run("git", ["log", "-1", "--format=%s"])).stdout.trim();
-  const message = `${tag} ${subject}`.slice(0, 100);
-  tools.say(`promote: releasing ${tag}, checked at ${at.domain ? at.url : "the Worker's workers.dev address"}`);
-
-  // The build uses exactly what the lockfile lists, whatever node_modules held before.
-  tools.say("promote: installing the dependencies from package-lock.json");
-  must("install exactly what package-lock.json lists (npm ci)", tools.run("npm", ["ci"]));
-
-  tools.say("promote: building the static export");
-  must("build", tools.run("npm", ["run", "build"]));
-  const output = tools.buildOutput();
-  const stray = [...strayFiles(output.files), ...output.links];
-  if (stray.length > 0) {
+  // No build here: promote holds the token, so the build ran before it, in prepare-release, and out/ must still be
+  // exactly what was checked there.
+  const prepared = tools.prepared();
+  if (prepared === null || prepared.commit !== commit) {
     throw new StepFailed(
-      "check the build: it holds dotfiles, private keys or symbolic links, which must never be uploaded",
-      stray.map((path) => `out/${path}`).join("\n"),
+      `find the prepared build of ${tag}: run \`node scripts/prepare-release.mjs\` first, with no Cloudflare ` +
+        "credential in its environment (docs/DELIVERY.md)",
     );
   }
-  if (output.files.length === 0) {
-    throw new StepFailed("check the build: out/ is empty");
+  checkOutput(readOut("check out/", () => tools.buildOutput()));
+  if (readOut("check out/", () => tools.outDigest()) !== prepared.digest) {
+    throw new StepFailed("check out/: it changed after prepare-release built and checked it. Run prepare-release again");
+  }
+  if (refresh) {
+    const missing = readOut("check out/", () => tools.missingTables());
+    if (missing.length > 0) {
+      throw new StepFailed(
+        `refresh: ${missing.length} beach ${missing.length === 1 ? "page was" : "pages were"} built without their ` +
+          "tide table (NOAA did not answer the build), so this build is not released; production keeps the tables " +
+          "it has",
+        missing.join("\n"),
+      );
+    }
   }
 
   const before = liveVersion(project, tools);
+
+  if (refresh) {
+    const refusal = refreshRefusal(project, before, tag, tools);
+    if (refusal !== null) {
+      tools.say(`promote: ${refusal}`);
+      return { ok: true, released: false, tag, reason: refusal, url: at.url };
+    }
+  }
 
   if (!before.exists) {
     // `wrangler versions upload` refuses a Worker that does not exist yet, so the first release is a plain deploy,
@@ -380,7 +678,15 @@ export async function promote(project, tools, { origin } = {}) {
     if (!first.ok) {
       throw new StepFailed("pass the health check after the first release; there is no earlier version to roll back to");
     }
-    return { ok: true, tag, versionId: first.versionId, previousVersionId: null, url: at.url, p95Ms: first.p95Ms };
+    return {
+      ok: true,
+      released: true,
+      tag,
+      versionId: first.versionId,
+      previousVersionId: null,
+      url: at.url,
+      p95Ms: first.p95Ms,
+    };
   }
 
   // Before anything changes: the address that will be checked is served by this Worker, in this account.
@@ -399,6 +705,14 @@ export async function promote(project, tools, { origin } = {}) {
       tools.wrangler(["versions", "upload", "--tag", tag, "--message", message, "--config", project.configPath]),
     ).output,
   );
+  // Wrangler has read out/ for the upload: it must still be exactly what prepare-release checked, or the version
+  // may hold something else.
+  if (readOut("check out/ after the upload", () => tools.outDigest()) !== prepared.digest) {
+    throw new StepFailed(
+      `check out/ after the upload: it changed while version ${upload.versionId} was uploading, so that version may ` +
+        "not be what prepare-release checked; production was not changed. Run prepare-release again",
+    );
+  }
   if (upload.previewUrl) {
     // The address itself is not printed: it carries the account's workers.dev subdomain.
     throw new StepFailed(
@@ -452,8 +766,10 @@ export async function promote(project, tools, { origin } = {}) {
     tools.say("promote: Wrangler reported a failure, but the new version is live; checking production");
   }
 
-  // Version URLs are off, so production is the new version's first check (design note, D3).
-  let production = await checkSafely(tools, "production", { baseUrl: at.url, expectTag: tag, waitMs: SETTLE_MS });
+  // Version URLs are off, so production is the new version's first check (design note, D3). It must answer with
+  // this version, not only this tag: a nightly refresh uploads the same commit again, under the same tag.
+  const expected = { baseUrl: at.url, expectTag: tag, expectVersion: upload.versionId, waitMs: SETTLE_MS };
+  let production = await checkSafely(tools, "production", expected);
   if (production.blocked) {
     // A blocked check says nothing about health, so it never causes a rollback.
     throw new StepFailed(
@@ -465,7 +781,7 @@ export async function promote(project, tools, { origin } = {}) {
     // One bad answer, such as a 502 among the timed samples, fails the check of a healthy release, and a rollback
     // undoes it: check once more first.
     tools.say(`promote: production failed its check at ${at.url}; checking once more before rolling back`);
-    production = await checkSafely(tools, "production", { baseUrl: at.url, expectTag: tag, waitMs: SETTLE_MS });
+    production = await checkSafely(tools, "production", expected);
     if (production.blocked) {
       throw new StepFailed(
         `check production: it failed its check at ${at.url}, and Cloudflare's bot protection blocked the second ` +
@@ -526,6 +842,7 @@ export async function promote(project, tools, { origin } = {}) {
 
   return {
     ok: true,
+    released: true,
     tag,
     versionId: upload.versionId,
     previousVersionId: before.versionId,
@@ -535,9 +852,39 @@ export async function promote(project, tools, { origin } = {}) {
 }
 
 /**
+ * The newest version, among the recent deployments, of a commit other than the
+ * live one: going back past the nightly refreshes of the live commit, which
+ * carry its tag. With no tag on the live version, the version live before it.
+ *
+ * @param {Project} project
+ * @param {Deployment[]} history
+ * @param {string} liveVersionId
+ * @param {Tools} tools
+ * @returns {string | null}
+ */
+function earlierRelease(project, history, liveVersionId, tools) {
+  const liveTag = versionTag(project, liveVersionId, tools);
+  if (liveTag === null) {
+    return previousVersionId(history, liveVersionId);
+  }
+  const newestFirst = [...history].sort((a, b) => b.created_on.localeCompare(a.created_on));
+  /** @type {Set<string>} */
+  const seen = new Set([liveVersionId]);
+  for (const deployment of newestFirst) {
+    const versionId = activeVersionId(deployment);
+    if (versionId === null || seen.has(versionId)) continue;
+    seen.add(versionId);
+    if (versionTag(project, versionId, tools) !== liveTag) {
+      return versionId;
+    }
+  }
+  return null;
+}
+
+/**
  * Sends all traffic back to an earlier version and checks production.
- * Without `requested`, that is the version that was live before the current
- * one. Resolves with a summary whose `ok` says whether production is healthy;
+ * Without `requested`, that is the newest version of an earlier commit than
+ * the live one (`earlierRelease`). Resolves with a summary whose `ok` says whether production is healthy;
  * `blocked` is true when Cloudflare's bot protection blocked the check, so the
  * rollback is unconfirmed rather than unhealthy.
  *
@@ -573,10 +920,13 @@ export async function rollback(project, requested, tools, { origin } = {}) {
         ),
       )
     );
-    target = previousVersionId(history, live.versionId);
+    target = earlierRelease(project, history, live.versionId, tools);
   }
   if (target === null) {
-    throw new StepFailed("choose a version: no earlier version was found. Name one: npm run rollback -- <versionId>");
+    throw new StepFailed(
+      "choose a version: none of the recent deployments ran an earlier commit than the live one. Name one " +
+        "(npx wrangler versions list --config wrangler.jsonc shows them): npm run rollback -- <versionId>",
+    );
   }
   if (target === live.versionId) {
     throw new StepFailed(`roll back: version ${target} is already the live one`);
