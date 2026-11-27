@@ -1,10 +1,8 @@
 # Tide & Tumble on Cloudflare Workers
 
 Date: 2026-11-27. Status: built on branch `feat/workers-hosting`, not yet
-released. Decision records: [ADR-005](../adr/005-static-export-and-one-api-worker.md),
-[ADR-006](../adr/006-version-urls-off.md) and
-[ADR-007](../adr/007-public-decisions-private-operations.md). The commands and
-the release contract are in [DELIVERY.md](../DELIVERY.md).
+released. The decisions are recorded [below](#decisions); the commands and the
+release contract are in [DELIVERY.md](../DELIVERY.md).
 
 Tide & Tumble moves from a Next.js server deployment to Cloudflare Workers on
 the free plan: the pages become static files, and one small Worker answers
@@ -13,8 +11,8 @@ this note calls out: their precise location no longer leaves their device, and
 the beach pages stop baking live conditions into their HTML.
 
 This document is public. It records engineering decisions and the measurements
-behind them. Accounts, identifiers, DNS records and the operator's cutover
-steps are kept in the private operations record (ADR-007).
+behind them. Accounts, identifiers, traffic figures, DNS, the zone's settings
+and the operator's cutover steps are kept in the private operations record.
 
 ## Before the move
 
@@ -38,6 +36,10 @@ Measured on 2026-11-27, read-only:
 
 ## Decisions
 
+The repository keeps the 2026-08-10 public/private boundary: no `docs/adr` or
+`docs/runbooks` in the public tree. The engineering decisions are recorded
+here instead, with no operator detail.
+
 | Question | Decision |
 |---|---|
 | Pages | Static export (`output: "export"`); Cloudflare serves them as static assets. |
@@ -47,8 +49,61 @@ Measured on 2026-11-27, read-only:
 | `/api/marine` | The Worker (NDBC does not allow browser calls), keyed by station, cached per station for 10 minutes. |
 | `/api/alerts` | The Worker (NWS wants an identifying User-Agent, and calling it from the browser would hand NWS every visitor's address), keyed by station, cached per station for 15 minutes. |
 | Abuse and the shared quota | Only `/api/*` runs the Worker; data answers only on the production address; station ids only, from a fixed list; per-client limits; caching bounds the calls upstream ([below](#protecting-the-shared-quota)). |
-| Release | The template's commands; Version URLs off, so a release is checked in production and rolled back if unhealthy (ADR-006). |
-| How production is reached | A Workers route on the site's own zone, attached by the operator, never declared in `wrangler.jsonc` ([below](#reaching-production)). |
+| Release | The template's commands, with Version URLs off ([D3](#d3-version-urls-off-a-release-is-checked-in-production)). |
+| How production is reached | A Workers route that the operator attaches outside this repository; `wrangler.jsonc` never declares one ([below](#reaching-production)). |
+
+### D1. Static export and one API Worker
+
+Northglass apps run on Cloudflare's free plan until a product has a path to
+revenue. On that plan every Worker in the account shares 100,000 requests a
+day, each request gets 10 ms of CPU and 50 subrequests, and static files are
+served at no cost and count against no limit. So the pages are a static
+export, and one Hono Worker answers only `/api/*` (`run_worker_first:
+["/api/*"]`). The handler logic is the code that ran before; `marine` and
+`alerts` are keyed by station id and the Worker resolves the coordinates.
+
+Trade-offs: three Worker requests per beach view (calling NOAA and NWS from
+the browser would save two, but would give every visitor's address to NOAA
+and NWS, cannot send the User-Agent NWS asks for, and would break the offline
+tide copy); every request that reaches a Worker counts, refused or not, so a
+patient client can spend the shared allowance here as through any public
+Worker; crawlers see a tide table up to a day old instead of an hour.
+
+### D2. Nothing live baked into a page
+
+Alerts, the rip-current risk, the UV index and buoy conditions are fetched by
+the page; the tide table is baked with dates and rebuilt in the browser
+([What replaces ISR](#what-replaces-isr)). A static page must never show a
+stale warning or a stale all-clear.
+
+### D3. Version URLs off; a release is checked in production
+
+With Version URLs on, every uploaded version answers at an address of its own
+for as long as Cloudflare keeps it, so a superseded version stays callable,
+and that address carries the account's `workers.dev` subdomain, which this
+public repository and its public Actions logs never name. So `wrangler.jsonc`
+sets `"preview_urls": false`, written out (left out, Wrangler keeps whatever
+Cloudflare has). `promote` uploads a version, sends it all traffic, checks
+production, checks once more if that fails, and rolls back only its own
+version. If Wrangler names a version address anyway, it stops before traffic
+moves. The cost: a bad build serves production until its check fails and the
+rollback lands, up to about three minutes.
+
+### D4. The nightly release
+
+The beach pages carry a tide table built with them, so `main`'s head is
+released again every night (08:17 UTC, after midnight in every US mainland
+time zone) through the same checks and rollback. Visitors are unaffected if it
+fails; only the baked copy ages.
+
+### D5. Dependency holds
+
+TypeScript is held below 6.1 (6.0 is taken) because typescript-eslint
+supports TypeScript below 6.1 and TypeScript 7 ships without the compiler API
+it and Next's type check call. ESLint is held below 10 because
+`eslint-config-next`'s React, import and accessibility plugins declare ESLint 9
+at most. Both holds are in `.github/dependabot.yml` with their date and reason
+([Dependencies](#dependencies)).
 
 ## The four handlers
 
@@ -127,7 +182,7 @@ and one cache write each. Waiting on the network is not CPU time.
 
 ## Caching
 
-Vercel cached the `/api/tides` answer at its edge for 15 minutes
+The previous host cached the `/api/tides` answer at its edge for 15 minutes
 (`s-maxage=900`) and served it stale for up to an hour while refreshing
 (`stale-while-revalidate=3600`). The other two answered `private, no-store`,
 but Next's data cache kept the upstream answers they were built from for 10
@@ -157,23 +212,16 @@ free plan they would count against the daily limit.
 The account's free plan allows 100,000 Worker requests a day, shared by every
 Worker in it. Static files are free and do not count.
 
-**Measured.** Over the two weeks to 2026-11-26 the account's Workers handled
-about 6,500 requests a day in all (Cloudflare analytics, read-only), so about
-93,500 a day are free.
+**Measured.** The account's current Worker use leaves most of the shared
+allowance free; the figures are in the private operations record.
 
-**Not measured: today's API traffic.** The Vercel project is on the Hobby
-plan: Web Analytics is not enabled (the app promises no analytics), the
-observability query endpoints return "not found", runtime logs are kept for
-one hour and hold nothing (the handlers do not log), and the billing endpoint
-is not available for the plan. The known floor is the uptime monitor that
-asks `/api/tides` every five minutes: 288 requests a day. The zone's DNS
-analytics show 1,600 to 4,100 queries a day for the apex over the same two
-weeks, which is consistent with a small site but is not a request count.
+**Not measured: today's API traffic.** The previous host's plan gives no
+request counts for the API routes, and the handlers do not log.
 
 **Estimate.** A beach view makes three Worker requests (tides, marine,
 alerts); changing beaches makes three more. At 1,000 beach views a day that is
-about 3,300 requests a day with the monitor, 3% of the account's allowance;
-ten times that is still a third of it. Scanners' requests for unknown paths
+about 3,000 requests a day, 3% of the account's allowance; ten times that is
+still a third of it. Scanners' requests for unknown paths
 cost nothing unless they are under `/api/` ([below](#protecting-the-shared-quota)).
 
 ## Protecting the shared quota
@@ -216,13 +264,9 @@ What the build does:
 
 What it cannot do on the free plan, stated plainly: a client that sends
 about one request a second for a day spends the account's whole allowance,
-here or through any other public Worker in the account. The zone can carry one
-rate-limiting rule on the free plan (per IP, counted over 10 seconds, blocking
-for 10 seconds), which stops bursts before they reach the Worker but not a
-patient client under its threshold. Recommended for the operator: that rule
-on `/api/`, at 30 requests in 10 seconds. If the allowance is ever spent,
-`/api/*` answers errors until midnight UTC while every page keeps loading; the
-app shows its "unavailable" states.
+here or through any other public Worker in the account. Rules on the zone can
+stop some requests before they reach the Worker; which ones are set is the
+operator's.
 
 ## What replaces ISR
 
@@ -287,8 +331,9 @@ The six commands are the template's (`verify`, `build`, `preview`,
 - The build is `next build` (pages into `out/`); Wrangler bundles the Worker
   from `src/worker/index.ts` at upload. `promote` refuses a build that holds a
   dotfile or a key-like file, as the template does.
-- Version URLs are off (ADR-006): `promote` uploads, sends all traffic to the
-  new version, checks production, and rolls back if it fails twice.
+- Version URLs are off ([D3](#d3-version-urls-off-a-release-is-checked-in-production)):
+  `promote` uploads, sends all traffic to the new version, checks production,
+  and rolls back if it fails twice.
 - Where production is checked: `https://tideandtumble.app` by default, but
   only after `promote` has confirmed that the address is served by this
   Worker (it must answer with the live version); otherwise it refuses and
@@ -302,22 +347,13 @@ The six commands are the template's (`verify`, `build`, `preview`,
 
 ## Reaching production
 
-Production is reached through a Workers route on the site's own Cloudflare
-zone, pointing the whole apex at this Worker. The operator attaches it, with
-one API call, read back; `wrangler.jsonc` never declares a route or a custom
-domain, and a test refuses both, so no deploy can attach or move one (Wrangler
-silently replaces a hostname's DNS record when it attaches a custom domain
-without a terminal).
-
-A route rather than a custom domain because of the rollback: going back to
-the previous host is deleting the route, one call, with no DNS record
-recreated and no certificate to issue. A `.app` name is HSTS-preloaded, so a
-browser will not connect at all without a valid certificate; the zone's edge
-certificate already covers the apex and `www` and is active. The exact steps,
-the records involved and the rollback are in the private operations record.
-
-`www` keeps redirecting to the apex with path and query; at the cutover the
-redirect moves from the previous host to a zone redirect rule.
+Production is reached through a Workers route on the site's own zone, which
+the operator attaches outside this repository. `wrangler.jsonc` never declares
+a route or a custom domain, and a test refuses both, so no deploy can attach
+or move one (Wrangler silently replaces a hostname's DNS record when it
+attaches a custom domain without a terminal). `www` keeps redirecting to the
+apex with path and query. The steps, and how to go back to the previous host,
+are in the private operations record.
 
 ## Dependencies
 
@@ -327,7 +363,7 @@ moving typescript-eslint to 8.74. Dependabot's grouped major update:
 
 | Package | Taken | Why |
 |---|---|---|
-| lottie-react 3 | yes | default export and props unchanged |
+| lottie-react 3 | yes | named exports; the data prop is `src`; the emoji use the light build |
 | motion 14 | yes | only `useReducedMotion` is used |
 | @types/node 26 | yes | matches Node 26 |
 | jsdom 31, vitest 5 | yes | need Node 22 or newer (`Iterator`); CI ran Node 20, which is why the group failed |

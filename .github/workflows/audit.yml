@@ -72,9 +72,9 @@ jobs:
 
       # promote tags a release with the same short commit. The address is the
       # site's own: the workers.dev one carries the account's subdomain, which
-      # this public repository and its public logs never name. Bot Fight Mode
-      # is off for the zone, so GitHub's runners are not challenged; if it is
-      # ever turned on, this check reports itself blocked and fails.
+      # this public repository and its public logs never name. If the zone's bot
+      # protection challenges GitHub's runners, this check reports itself
+      # blocked and fails.
       - name: Production runs the head of main
         if: steps.releases.outputs.automatic == 'true'
         run: npm run health -- https://tideandtumble.app --expect-tag "$(git rev-parse --short=12 HEAD)"

@@ -70,10 +70,10 @@ describe("wrangler.jsonc", () => {
 
   it("refuses Version URLs on, or left to Cloudflare", () => {
     const config = real();
-    expect(configProblems({ ...config, preview_urls: true })).toEqual(['"preview_urls" must be false, written out (ADR-006).']);
+    expect(configProblems({ ...config, preview_urls: true })).toEqual(['"preview_urls" must be false, written out (design note, D3).']);
     const without: Partial<Config> = { ...config };
     delete without.preview_urls;
-    expect(configProblems(without)).toEqual(['"preview_urls" must be false, written out (ADR-006).']);
+    expect(configProblems(without)).toEqual(['"preview_urls" must be false, written out (design note, D3).']);
   });
 
   it("refuses invocation logs, which would record each request", () => {

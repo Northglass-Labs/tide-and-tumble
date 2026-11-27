@@ -2,7 +2,7 @@
 
 The shared, public handoff record for this repository. Operations detail
 (accounts, DNS, the cutover steps, monitoring) belongs in the private
-operations record, never here (ADR-007).
+operations record, never here (the 2026-08-10 boundary).
 
 ## Active objective
 
@@ -13,8 +13,9 @@ cutover are the operator's, after an adversarial review.
 
 ## Plan and state (2026-11-27)
 
-1. Design note and decisions: done (`docs/specs/2026-11-27-workers-hosting.md`,
-   ADR-005, ADR-006, ADR-007).
+1. Design note with its Decisions section: done
+   (`docs/specs/2026-11-27-workers-hosting.md`; no `docs/adr`, by the
+   repository's boundary).
 2. Dependencies: done. Node 26; lottie-react 3, motion 14, @types/node 26,
    jsdom 31, vitest 5 taken; TypeScript held below 6.1 (6.0 taken) and
    ESLint 10 held, both pinned in `dependabot.yml` with the reason; the

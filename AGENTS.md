@@ -14,8 +14,8 @@ conditions and National Weather Service beach safety data. No accounts, no
 database, no secrets. It runs on Cloudflare's free plan.
 
 Read `README.md` for the tour, `docs/DELIVERY.md` before releasing, and
-`docs/specs/2026-11-27-workers-hosting.md` with `docs/adr/` for why it is
-built this way.
+`docs/specs/2026-11-27-workers-hosting.md` (its Decisions section) for why it
+is built this way.
 
 ## Rules that do not bend
 
@@ -46,8 +46,9 @@ built this way.
   path, a provider account identifier (account, zone or route ids, the
   account's `workers.dev` subdomain), a credential or where one is kept, DNS
   administration, incident notes or recovery procedures. Those live in the
-  private operations record (ADR-007). `test/app/opsec.test.ts` scans for
-  them.
+  private operations record. There is no `docs/adr` or `docs/runbooks` here;
+  decisions go in the design note's Decisions section.
+  `test/app/opsec.test.ts` scans for all of it.
 - **Never bypass a git hook.** If a commit or push is refused, fix the cause
   or stop and report.
 - **Wrangler reads only `wrangler.jsonc`.** Give any Wrangler command
@@ -85,7 +86,7 @@ built this way.
 | `test/app`, `test/worker`, `test/scripts` | Tests: Node (jsdom by file), the Workers runtime, Node |
 | `wrangler.jsonc` | The Worker's name, static assets, bindings and `APP_ORIGIN` |
 | `docs/DELIVERY.md` | The delivery contract: commands, release, rollback, limits, releasing from GitHub |
-| `docs/adr/`, `docs/specs/` | Decisions and the hosting design note |
+| `docs/specs/` | The hosting design note, with the Decisions section |
 | `.github/` | `ci.yml` (verify, audit, the Dependabot merge job), `deploy.yml` (push, dispatch, nightly), `audit.yml` (daily), `dependabot.yml` |
 
 ## Commands
@@ -126,7 +127,8 @@ releases on, a push to `main` and the nightly run release by themselves.
 
 ## Where facts live
 
-- This repository: code, tests, the delivery contract and the decisions.
+- This repository: code, tests, the delivery contract and the engineering
+  decisions (the design note).
 - The private operations record: where the site is hosted, accounts, DNS, the
   zone route, monitoring, and the cutover and hosting-rollback steps. Do not
   copy those facts here.

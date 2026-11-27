@@ -9,7 +9,7 @@
 
   // workers.dev is the Worker's own address: the first release is checked
   // there, and so is a release while production cannot answer. Version URLs
-  // stay off, written out (ADR-006).
+  // stay off, written out (design note, Decisions, D3).
   "workers_dev": true,
   "preview_urls": false,
 

@@ -91,8 +91,8 @@ Node 26 (`.node-version`). No environment variables or secrets are needed —
 every data source is free and keyless (see below). The pages are a static
 export (`out/`); `src/worker/` is the API. Releasing, rolling back and the free
 plan's limits are in **[docs/DELIVERY.md](./docs/DELIVERY.md)**; why it is built
-this way is in [docs/specs/2026-11-27-workers-hosting.md](./docs/specs/2026-11-27-workers-hosting.md)
-and [docs/adr/](./docs/adr/).
+this way is in [docs/specs/2026-11-27-workers-hosting.md](./docs/specs/2026-11-27-workers-hosting.md),
+whose Decisions section records the engineering decisions.
 
 ---
 
@@ -102,8 +102,8 @@ and [docs/adr/](./docs/adr/).
   to its nearest NOAA station; the smooth curve and current level are reconstructed
   from published high/low events with cosine interpolation (the "rule of twelfths"), so
   harmonic and subordinate stations render identically. One request pulls a ~32-day
-  window so the day switcher is instant. Proxied by the API Worker, by station id,
-  and cached per station for 15 minutes.
+  window so the day switcher is instant. Fetched through the API Worker, by station
+  id, and cached per station for 15 minutes.
 - **Marine conditions:** NDBC buoys (`realtime2`) for wave height/period/water temp, and
   NOAA CO-OPS for wind/water temp where a station has live sensors — each beach mapped to
   its nearest source with graceful per-field fallback. Asked by station id; the

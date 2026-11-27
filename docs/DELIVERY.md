@@ -5,8 +5,9 @@ allows, and how contributions reach production. The commands and their
 logic come from the Northglass app template; the differences for this app are
 in `docs/specs/2026-11-27-workers-hosting.md` ("Release").
 
-This file is public. Accounts, identifiers, DNS, the zone route and the
-operator's cutover steps are kept in the private operations record (ADR-007).
+This file is public. Accounts, identifiers, DNS, the zone's settings, how the
+release credentials are made and kept, and the operator's cutover and
+hosting-rollback steps are kept in the private operations record.
 
 ## The commands
 
@@ -99,7 +100,7 @@ release back.
    A blocked check never causes a rollback: it stops and prints the commands
    to check the new version and to go back.
 
-Version URLs are off (ADR-006), so production is a new version's first
+Version URLs are off (the design note, "Decisions", D3), so production is a new version's first
 check: a broken build can serve for up to about three minutes before its
 rollback lands.
 
@@ -150,9 +151,8 @@ nightly release that is about three months.
 There is no data to roll back: the API keeps nothing but caches of public
 data, which expire within 75 minutes.
 
-**Hosting.** Going back to the previous host is the operator's: the zone
-route is deleted and the previous host answers again. The steps are in the
-private operations record.
+**Hosting.** Going back to the previous host is the operator's; the steps are
+in the private operations record.
 
 ## What the free plan allows
 
@@ -180,10 +180,10 @@ How the app stays inside them:
   write.
 - Per-client limits slow a noisy client (60 tide, 30 marine, 30 alert
   requests a minute, an IPv6 client counted by its /64), but every request
-  that reaches the Worker counts, refused or not. Only Cloudflare's own
-  rate-limiting rule on the zone can keep requests from reaching it; the free
-  plan allows one, counted per IP over 10 seconds. A patient client can still
-  spend the account's allowance, here as through any public Worker.
+  that reaches the Worker counts, refused or not. Only rules on the zone can
+  keep requests from reaching it, and those are the operator's. A patient
+  client can still spend the account's allowance, here as through any public
+  Worker.
 - When the daily allowance is spent, `/api/*` fails until midnight UTC while
   every page keeps loading; the app shows its "unavailable" states.
 - Invocation logs are off, so a request is not logged; the Worker logs only
@@ -227,8 +227,8 @@ Dependabot's weekly updates keep it active.
 once releases are automatic, a check that production runs the head of `main`
 (`npm run health -- https://tideandtumble.app --expect-tag <commit>`). GitHub
 emails a failed scheduled run to the person who last changed its `cron` line.
-Bot Fight Mode is off for the zone, so GitHub's runners are not challenged; if
-it is turned on, the check reports itself blocked and fails.
+If the zone's bot protection challenges GitHub's runners, the check reports
+itself blocked and fails.
 
 **Dependabot (`dependabot.yml`).** Weekly, grouped (minor and patch together,
 majors together), for releases at least three days old. Two packages are held,
@@ -236,43 +236,28 @@ each with its date and reason in the file: TypeScript from 6.1 and ESLint 10.
 
 ### Turning it on
 
-Until these are done, CI and the daily audit run, the merge job leaves every
-update for review, and nothing is released from GitHub. They are the owner's,
-done once, and only after production is reached through the zone route (the
-release checks `https://tideandtumble.app`):
+Until it is done, CI and the daily audit run, the merge job leaves every
+update for review, and nothing is released from GitHub. It is the owner's,
+done once, after production is reached through the zone route (the release
+checks `https://tideandtumble.app`): the release credentials go into the
+repository's Actions secrets, Dependabot security updates are turned on, and
+Deploy is run once on `main` (the merge job merges only once a Deploy run on
+`main` has released). How the credentials are made and kept is in the
+private operations record. The release credential can deploy this Worker and
+nothing else: no DNS, routes or custom domains.
 
-1. **A Cloudflare API token** limited to this one account, with **Workers
-   Scripts: Edit** and nothing else: no zone permission, so no DNS, routes or
-   custom domains. Where the dashboard offers it, limit it to this Worker.
-2. **Give it to GitHub from your own terminal**:
-   `gh secret set CLOUDFLARE_API_TOKEN -R Northglass-Labs/tide-and-tumble`,
-   pasting the token when asked. It is never typed into an agent's session.
-3. **The account id**, which is not secret but stays out of this repository:
-   `gh variable set CLOUDFLARE_ACCOUNT_ID -R Northglass-Labs/tide-and-tumble`.
-4. **Dependabot security updates**:
-   `gh api -X PUT repos/Northglass-Labs/tide-and-tumble/automated-security-fixes`.
-5. **Run Deploy once on `main`**: `gh workflow run deploy.yml --ref main -R
-   Northglass-Labs/tide-and-tumble`. The merge job merges only once a Deploy
-   run on `main` has released.
-
-Each is undone the same way: delete the secret or the variable, `gh api -X
-DELETE .../automated-security-fixes`, and removing the `merge-dependabot` job
-stops merges.
-
-### Where the Cloudflare credentials reach
+### Where the release credential reaches
 
 `promote` installs and builds the site, which runs the code of every package
 in the lockfile, so whatever credential `promote` runs with is within that
-code's reach. On a workstation, `npx wrangler login` keeps an OAuth token in a
-file every process of the user can read, with every permission the login
-asked for, DNS and routes included. So release with an API token scoped as in
-step 1, set in your own terminal for that one command, rather than with the
-login session. Changing a route, a custom domain or DNS needs a zone
-permission and is done by hand, never by `promote`.
+code's reach. Release with a credential limited to deploying Workers, given to
+that one command, never with a session that can change DNS or routes. Changing
+a route, a custom domain or DNS needs a zone permission and is done by hand,
+never by `promote`.
 
 ## Version URLs and the workers.dev address
 
-Version URLs are off (`"preview_urls": false`, written out; ADR-006): no
+Version URLs are off (`"preview_urls": false`, written out; the design note, D3): no
 version answers at an address of its own, so no superseded version stays
 callable. The Worker's own `workers.dev` address stays on: the first release,
 and a release while production cannot answer, are checked there. It serves
@@ -282,15 +267,12 @@ the same pages with `X-Robots-Tag: noindex`, and its API answers only
 
 ## Reaching production
 
-Production is reached through a Workers route on the site's own zone that
-points the apex at this Worker; `www` redirects to the apex with a zone
-redirect rule. The operator attaches both with one API call each and reads
-them back. Nothing in this repository can attach, move or remove them:
-`wrangler.jsonc` declares no route or domain, and the release token has no
-zone permission. Going back to the previous host is deleting the route.
-
-The exact cutover and hosting-rollback steps, the records involved and their
-identifiers are in the private operations record.
+Production is reached through a Workers route on the site's own zone, and
+`www` redirects to the apex. The operator sets both up outside this
+repository. Nothing here can attach, move or remove them: `wrangler.jsonc`
+declares no route or domain, and the release credential has no zone
+permission. The cutover and hosting-rollback steps are in the private
+operations record.
 
 ## Contributing and the release gate
 
@@ -311,7 +293,7 @@ issues go to [hello@northglass.io](mailto:hello@northglass.io).
 
 Safe public facts: the framework, the Node version, the site's address, the
 public data providers, the commands and checks, and the decisions in
-`docs/adr/`. Never commit or publish:
+the design note's Decisions section. Never commit or publish:
 
 - provider account, zone, route, team, project or tenant identifiers, or the
   account's `workers.dev` subdomain;

@@ -21,8 +21,8 @@ export const ASSETS_DIR = "out";
 
 /**
  * Everything wrong with a parsed wrangler.jsonc for this app, one sentence
- * each (docs/specs/2026-11-27-workers-hosting.md and ADR-006 give the
- * reasons). Empty when it keeps the contract.
+ * each (docs/specs/2026-11-27-workers-hosting.md gives the reasons). Empty
+ * when it keeps the contract.
  *
  * @param {Record<string, any>} config
  * @returns {string[]}
@@ -47,7 +47,7 @@ export function configProblems(config) {
   if (has("env")) problems.push('"env" must not be set: one configuration, one Worker.');
   if (has("triggers")) problems.push('"triggers" must not be set: the app has no scheduled work.');
   if (config.workers_dev !== true) problems.push('"workers_dev" must be true: the first release and a release while production cannot answer are checked there.');
-  if (config.preview_urls !== false) problems.push('"preview_urls" must be false, written out (ADR-006).');
+  if (config.preview_urls !== false) problems.push('"preview_urls" must be false, written out (design note, D3).');
 
   const assets = config.assets ?? {};
   if (assets.directory !== `./${ASSETS_DIR}`) problems.push(`"assets.directory" must be "./${ASSETS_DIR}".`);

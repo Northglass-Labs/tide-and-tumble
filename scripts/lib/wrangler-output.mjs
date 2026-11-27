@@ -9,7 +9,7 @@ const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 /**
  * What `wrangler versions upload` printed: the id of the new version and,
  * when version addresses are on in Cloudflare, the address where it answers.
- * This app turns them off (ADR-006), so an address means they are on anyway.
+ * This app turns them off (design note, D3), so an address means they are on anyway.
  *
  * @param {string} output
  * @returns {{ versionId: string, previewUrl: string | null }}
@@ -104,7 +104,7 @@ export function previousVersionId(deployments, currentVersionId) {
  * Wrangler prints the deploying person's email address in places, and
  * account ids and the account's workers.dev subdomain in others. Anything of
  * Wrangler's or of a site's that these scripts echo goes through this first:
- * this repository is public, and so are its Actions logs (ADR-007).
+ * this repository is public, and so are its Actions logs.
  *
  * @param {string} text
  * @returns {string}

@@ -15,7 +15,7 @@ import {
 /**
  * The release flow behind `npm run promote` and `npm run rollback`, from the
  * app template's reviewed scripts, changed for this app: no database, Version
- * URLs off (ADR-006), and production checked where the operator says it is
+ * URLs off (design note, D3), and production checked where the operator says it is
  * served (docs/DELIVERY.md, "Where production is checked").
  *
  * Everything that touches the outside world (git, npm, Wrangler, the
@@ -403,7 +403,7 @@ export async function promote(project, tools, { origin } = {}) {
     // The address itself is not printed: it carries the account's workers.dev subdomain.
     throw new StepFailed(
       `send traffic to version ${upload.versionId}: Wrangler named an address for it, so Version URLs are on in ` +
-        "Cloudflare although wrangler.jsonc turns them off (ADR-006), and every version answers at an address of " +
+        "Cloudflare although wrangler.jsonc turns them off (design note, D3), and every version answers at an address of " +
         "its own. Production was not changed. Turn Preview URLs off in the dashboard (the Worker's Settings, Domains " +
         "& Routes), then release again",
     );
@@ -452,7 +452,7 @@ export async function promote(project, tools, { origin } = {}) {
     tools.say("promote: Wrangler reported a failure, but the new version is live; checking production");
   }
 
-  // Version URLs are off, so production is the new version's first check (ADR-006).
+  // Version URLs are off, so production is the new version's first check (design note, D3).
   let production = await checkSafely(tools, "production", { baseUrl: at.url, expectTag: tag, waitMs: SETTLE_MS });
   if (production.blocked) {
     // A blocked check says nothing about health, so it never causes a rollback.
