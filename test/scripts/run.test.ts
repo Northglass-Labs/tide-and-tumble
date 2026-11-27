@@ -107,7 +107,7 @@ describe("a command that never finishes", () => {
 describe("what the delivery scripts print", () => {
   // The scripts are run with --origin naming the Worker's workers.dev address, which carries the account's
   // subdomain, and Actions logs are public: progress lines and failures are scrubbed like Wrangler's output.
-  const ADDRESS = "https://tide-and-tumble.example-account.workers.dev";
+  const ADDRESS = "https://tide-and-tumble.example.workers.dev";
 
   it("scrubs the workers.dev subdomain and email addresses from progress lines", () => {
     const lines: string[] = [];
@@ -135,7 +135,8 @@ describe("what the delivery scripts print", () => {
       spy.mockRestore();
       process.exitCode = before;
     }
-    expect(lines.join("\n")).not.toContain("example-account");
+    expect(lines.join("\n")).not.toContain(".example.workers.dev");
+    expect(lines.join("\n")).toContain("tide-and-tumble.[subdomain].workers.dev");
     expect(lines).toHaveLength(3);
   });
 });
