@@ -77,7 +77,13 @@ the page; the tide table is baked with dates and rebuilt in the browser
 stale warning or a stale all-clear. The alerts answer says whether NWS
 answered every call (`complete`); when it did not, the page says the safety
 data is unavailable and shows whatever warnings did arrive, so a failed lookup
-never reads as "no warnings".
+never reads as "no warnings". Until the answer arrives, and in the static
+HTML, the page says it is checking NWS beach warnings; without JavaScript a
+`<noscript>` line points to weather.gov and the lifeguards; the request is
+given up after ten seconds. A Surf Zone Forecast counts only when it was
+issued on the beach's own calendar day: NWS lists a week of them, and an
+office that stops issuing for the season would otherwise leave a week-old
+rip-current risk on the page as today's.
 
 ### D3. Version URLs off; a release is checked in production
 
@@ -278,8 +284,10 @@ What the build does:
 4. **Caching bounds the upstream calls.** At most one refresh per station per
    cache period per Cloudflare location, however many requests arrive.
 5. **Per-client limits** (ported from `api-guard.ts`): per minute, 60 tide,
-   30 marine and 30 alert requests per client address (IPv6 by its /64), with
-   an overall cap per Worker instance. Workers keeps them per instance, so
+   30 marine and 30 alert requests per client address (IPv6 by its /64),
+   counted after the station is found valid, and an overall cap per Worker
+   instance that counts only requests that would ask an upstream (a miss it
+   refuses answers 429). Workers keeps them per instance, so
    they slow one noisy client rather than enforce an exact limit; they stop
    the Worker being driven hard against NOAA, not the spending of requests.
 6. **Methods.** `GET` and `HEAD` only; no CORS headers, so other sites'
@@ -441,7 +449,8 @@ Both holds are pinned in `.github/dependabot.yml` with the date and reason.
     for a failed service-worker fetch; that was a stale local `wrangler dev`
     state, not Cloudflare. The service worker leaves requests with a query to
     the browser so that a query never becomes a cache key.)
-  - The payloads themselves (`*.txt`) answer 200, as on the previous host.
+  - The payloads themselves (`*.txt`) answer 200 here; on the previous host
+    the same addresses answered 404.
   - `/404`, the 404 page asked for by its own name, is a file and answers
     200; every other unknown path gets that page with a 404. Only a Worker
     could change that status, and pages never run the Worker, so `/404`

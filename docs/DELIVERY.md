@@ -72,6 +72,10 @@ dependencies to look at, and fails with npm's reason when there is no report.
 6. The 95th percentile of 20 timed requests to `/api/health` is under the
    limit: one slow outlier is forgiven, two are not.
 
+`--built-within-days <n>` also asks one beach page for its build date
+(`<meta name="tide-table-built">`, which `npm run check` requires on every
+beach page) and fails when it is older than `n` days.
+
 `--wait-ms <ms>` keeps retrying the first check while a release reaches every
 Cloudflare location. A check that Cloudflare's bot protection answers with a
 challenge (`cf-mitigated: challenge`) is reported as `"blocked": true`: it
@@ -85,7 +89,10 @@ passed on: NOAA being down is never a reason to roll a release back.
 The build runs project and dependency code, so it runs before, and apart
 from, anything that holds the Cloudflare token:
 
-1. Refuses to run while a Cloudflare token or key is in its environment.
+1. Refuses to run while a Cloudflare token or key is in its environment. A
+   saved Wrangler sign-in on the machine is a file the build could still
+   read, so run `npx wrangler logout` before a workstation release, and give
+   the token to `promote` alone.
 2. Refuses a working tree with uncommitted changes or with files git does
    not fully see (marked assume-unchanged or skip-worktree), and a commit
    that is not main's: on a workstation it fetches GitHub's `main` and needs
@@ -176,7 +183,11 @@ too. It confirms the address first, as `promote` does, then checks the
 rollback. When the address cannot say which version answers, it refuses and
 prints the commands to roll back by hand once `npx wrangler whoami` shows the
 right account. A rollback is itself a deployment: running it twice returns to
-where you started. Cloudflare keeps the 100 most recent versions; with the
+where you started. Without a version it looks only at the 10 most recent
+deployments, which is all `wrangler deployments list` returns: about a week
+of nightly refreshes. To go further back, name the version: `npx wrangler
+versions list --config wrangler.jsonc` shows the 10 most recent versions and
+the dashboard more. Cloudflare keeps the 100 most recent versions; with the
 nightly release that is about three months.
 
 There is no data to roll back: the API keeps nothing but caches of public
@@ -219,8 +230,11 @@ How the app stays inside them:
   makes at most 7 subrequests, `alerts` 4, `tides` 1, plus a cache read and
   write.
 - Per-client limits slow a noisy client (60 tide, 30 marine, 30 alert
-  requests a minute, an IPv6 client counted by its /64), but every request
-  that reaches the Worker counts, refused or not. Only rules on the zone can
+  requests a minute, an IPv6 client counted by its /64); a request for an
+  unknown station is refused before it counts, and the per-instance cap
+  counts only requests that would ask NOAA, NDBC or NWS, not answers from the
+  cache. Every request that reaches the Worker still counts against the
+  daily allowance, refused or not. Only rules on the zone can
   keep requests from reaching it, and those are the operator's. A patient
   client can still spend the account's allowance, here as through any public
   Worker.
@@ -280,7 +294,10 @@ after 60 days without activity; Dependabot's weekly updates keep it active.
 
 **Every day (`audit.yml`).** At 11:41 UTC: `npm run audit -- --strict`, and,
 once releases are automatic, a check that production runs the head of `main`
-(`npm run health -- https://tideandtumble.app --expect-tag <commit>`). GitHub
+and that its beach pages were built within two days
+(`npm run health -- https://tideandtumble.app --expect-tag <commit>
+--built-within-days 2`): three nightly refreshes in a row that released
+nothing fail it. GitHub
 emails a failed scheduled run to the person who last changed its `cron` line.
 If the zone's bot protection challenges GitHub's runners, the check reports
 itself blocked and fails.

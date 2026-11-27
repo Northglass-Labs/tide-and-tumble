@@ -125,9 +125,9 @@ data comes from `/api/*` in a client component.
 its version in a comment.
 
 **Release.** State the rollback first (`npm run rollback`), then, from a
-clean checkout of `main` that matches GitHub's, `node
-scripts/prepare-release.mjs` with no Cloudflare credential in the
-environment, then `npm run promote` with the token, and read the JSON lines
+clean checkout of `main` that matches GitHub's and after `npx wrangler
+logout`, `node scripts/prepare-release.mjs` with no Cloudflare credential in
+the environment, then `npm run promote` with the token, and read the JSON lines
 they print (`docs/DELIVERY.md`). Once the owner has turned releases on, a
 push to `main` releases by itself and the nightly run refreshes what
 production runs. A bad commit is fixed by a revert on `main`, after a

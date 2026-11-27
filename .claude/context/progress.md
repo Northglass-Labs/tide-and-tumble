@@ -41,6 +41,15 @@ cutover are the operator's, after an adversarial review.
    merge gate, the FAQ, the Lottie chunk, `/_not-found` and single-flight
    refreshes fixed; weak tests pinned. Not done here: one API request per
    beach view (a follow-up, in the design note).
+9. Round-2 fixes (2026-11-27): done. Deploy is three jobs (gate; build with
+   no secret; release on a fresh runner with the build as an artifact); the
+   merge gate passes over runs that released nothing and merges only while
+   production runs main's head; the page says it is checking NWS warnings
+   (also without JavaScript) and gives up after ten seconds; old Surf Zone
+   Forecasts are ignored; unknown stations are refused before counting and
+   only upstream calls take the shared cap; the opsec scan reads tracked
+   files with high-signal patterns everywhere; the daily check fails when
+   the beach pages are more than two days old.
 
 ## Verification
 
