@@ -6,7 +6,9 @@
 // - cached navigation keys never retain URL query parameters;
 // - every cached response is successful and carries an explicit cache timestamp.
 
-const CACHE = "tnt-v2";
+// v3: the move to static files on Cloudflare. Activation deletes every older
+// tnt- cache, so nothing saved from the previous host is served again.
+const CACHE = "tnt-v3";
 const CACHE_PREFIX = "tnt-";
 const CACHED_AT = "X-Tide-Cached-At";
 const OFFLINE = "X-Tide-Offline";

@@ -47,20 +47,21 @@ export default function BeachPicker({
     onClose();
   };
 
-  // Resolve the nearest NOAA tide station (nationwide) to a coordinate.
+  // Resolve the nearest NOAA tide station (nationwide) to a coordinate, on the
+  // device: the station list loads on demand and the coordinates stay here.
   const resolveNearest = async (
     lat: number,
     lng: number,
     srcLabel?: string,
   ) => {
     try {
-      const r = await fetch(`/api/nearest?lat=${lat}&lng=${lng}`);
-      const d = await r.json();
-      if (!r.ok || !d.nearest) throw new Error("no station");
-      const s = activeFromNoaa(d.nearest);
+      const { nearestStations } = await import("@/lib/nearest");
+      const [nearest] = nearestStations(lat, lng, 1);
+      if (!nearest) throw new Error("no station");
+      const s = activeFromNoaa(nearest);
       setBusy(false);
       setStatus(
-        `Closest beach${srcLabel ? ` to ${srcLabel}` : ""}: ${s.label} · ${d.nearest.distanceMi} mi`,
+        `Closest beach${srcLabel ? ` to ${srcLabel}` : ""}: ${s.label} · ${nearest.distanceMi} mi`,
       );
       pick(s);
     } catch {

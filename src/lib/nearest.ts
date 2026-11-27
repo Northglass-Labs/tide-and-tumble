@@ -1,6 +1,8 @@
 // Nearest NOAA tide-prediction station to any US coordinate, from the full
-// national dataset (~3,500 stations bundled in noaa-stations.json). Server-side
-// only — the JSON never ships to the client.
+// national dataset (~3,500 stations bundled in noaa-stations.json). Runs in the
+// browser: the page imports this module on demand (about 70 KB gzipped, only
+// when someone asks for the nearest beach), so a precise location never
+// leaves the device.
 
 import rawStations from "./noaa-stations.json";
 import { distanceMiles } from "./stations";

@@ -140,9 +140,13 @@ describe("shipped service-worker privacy and freshness policy", () => {
 
   test("activation removes only obsolete Tide caches", async () => {
     const h = createHarness();
+    h.caches.keys.mockResolvedValue(["tnt-v1", "tnt-v2", "tnt-v3", "other-app-cache"]);
     await h.dispatchActivate();
 
     expect(h.caches.delete).toHaveBeenCalledWith("tnt-v1");
+    // Everything the previous host's builds saved (tnt-v2) is dropped at the move.
+    expect(h.caches.delete).toHaveBeenCalledWith("tnt-v2");
+    expect(h.caches.delete).not.toHaveBeenCalledWith("tnt-v3");
     expect(h.caches.delete).not.toHaveBeenCalledWith("other-app-cache");
   });
 });

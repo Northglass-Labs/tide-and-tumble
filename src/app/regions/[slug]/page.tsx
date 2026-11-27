@@ -9,8 +9,9 @@ import {
   type Region,
 } from "@/lib/slugs";
 
-// Region hubs change only when the beach list changes — revalidate daily.
-export const revalidate = 86400;
+// Region hubs change only when the beach list changes: static files, built
+// with the site, and no page outside the list.
+export const dynamicParams = false;
 
 export function generateStaticParams() {
   return REGIONS.map((r) => ({ slug: r.slug }));

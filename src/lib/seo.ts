@@ -1,6 +1,7 @@
-// Server-side builders for the SEO beach pages: the 7-day tide table model,
-// the location-specific intro paragraph, and data-driven FAQ copy.
-// Everything here runs at SSG/ISR time (no client code).
+// Builders for the SEO beach pages: the tide table model, the location-specific
+// intro paragraph, and data-driven FAQ copy. They run when the static pages are
+// built; `buildBeachWeek` also runs in the browser, which rebuilds the table for
+// today from the predictions the live chart loads (BeachTideTable).
 
 import {
   fetchExtrema,
@@ -42,13 +43,37 @@ export interface BeachWeek {
   weekMax: number;
 }
 
+/** Build-time NOAA calls get three tries: one failed call would leave a page without its table for a day. */
+const BUILD_ATTEMPTS = 3;
+const BUILD_RETRY_MS = 2_000;
+
 /**
- * Fetch NOAA extrema and shape them into a 7-day, server-renderable table model.
- * Throws on NOAA failure — caller decides the fallback rendering.
+ * Fetch NOAA extrema and shape them into a server-renderable table model.
+ * Throws on NOAA failure after three tries — caller decides the fallback rendering.
  */
 export async function fetchBeachWeek(beach: Beach, days = 7): Promise<BeachWeek> {
-  const extrema = await fetchExtrema(noaaId(beach), new Date(), 1, days + 1);
-  const nowMs = stationNow();
+  let failure: unknown;
+  for (let attempt = 1; attempt <= BUILD_ATTEMPTS; attempt += 1) {
+    try {
+      const extrema = await fetchExtrema(noaaId(beach), new Date(), 1, days + 1);
+      return buildBeachWeek(extrema, beach, stationNow(), days);
+    } catch (error) {
+      failure = error;
+      if (attempt < BUILD_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, BUILD_RETRY_MS * attempt));
+      }
+    }
+  }
+  throw failure;
+}
+
+/** Shape NOAA extrema into the table model for `days` days from the station's day containing `nowMs`. */
+export function buildBeachWeek(
+  extrema: Extremum[],
+  beach: Pick<Beach, "lat" | "lng">,
+  nowMs: number,
+  days = 7,
+): BeachWeek {
   const todayStart = startOfDay(nowMs);
 
   const out: BeachDay[] = [];

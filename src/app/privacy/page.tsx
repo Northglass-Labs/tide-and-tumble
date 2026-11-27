@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://tideandtumble.app/privacy" },
 };
 
-const UPDATED = "July 2026";
+const UPDATED = "November 2026";
 
 export default function PrivacyPage() {
   return (
@@ -60,14 +60,13 @@ export default function PrivacyPage() {
           <h2 className="font-display text-base font-bold">Location</h2>
           <p className="mt-1">
             If you tap &quot;Near me&quot;, your browser asks your permission to
-            share your location. If you allow it, your coordinates are sent once in
-            a protected request body through our hosting provider and used to find
-            the nearest tide station. The response is marked no-store and is not
-            retained in a browser cache; we do not add application logs or a
-            location database. Our hosting provider may still process standard
-            operational request logs as described below. You can decline and pick a
-            beach from the list instead — the app works fully without location
-            access.
+            share your location. If you allow it, the app finds the nearest tide
+            station on your device: it downloads the public list of NOAA stations
+            and compares your coordinates against it there, so your coordinates
+            never leave your device. The same goes for a ZIP code you enter: it is
+            turned into a location by Zippopotam.us (below), and the nearest station
+            is found on your device. You can decline and pick a beach from the list
+            instead — the app works fully without location access.
           </p>
         </section>
 
@@ -75,7 +74,8 @@ export default function PrivacyPage() {
           <h2 className="font-display text-base font-bold">Third-party data sources</h2>
           <p className="mt-1">
             Tide, weather, and map data come from free public services. Requests to
-            them may include the beach coordinates you are viewing:
+            them name the beach you are viewing (its tide station and its
+            coordinates), never your own location:
           </p>
           <ul className="mt-2 list-disc space-y-0.5 pl-5 text-ink-soft">
             <li>NOAA CO-OPS and NDBC — tide predictions and marine conditions</li>
@@ -84,19 +84,22 @@ export default function PrivacyPage() {
             <li>Zippopotam.us — turning a ZIP code into a location (only if you enter one)</li>
           </ul>
           <p className="mt-2">
-            These are US government / open data services with their own terms. We
-            proxy some of them through our own server routes purely to cache
-            responses; those routes do not log who you are.
+            These are US government / open data services with their own terms. The
+            NOAA and National Weather Service requests go through our own server
+            routes, so those services never see your address, and the answers are
+            cached for a few minutes; those routes keep no record of who asked.
+            Map tiles and ZIP lookups go from your browser to those services
+            directly.
           </p>
         </section>
 
         <section>
           <h2 className="font-display text-base font-bold">Hosting</h2>
           <p className="mt-1">
-            The app is hosted on Vercel, which may collect standard,
-            non-personally-identifying request logs (such as IP address and
-            user-agent) as part of operating the service, per Vercel&apos;s own
-            privacy policy.
+            The app is hosted on Cloudflare, which processes standard request data
+            (such as IP address and user-agent) to deliver and protect the service,
+            per Cloudflare&apos;s own privacy policy. We do not keep request logs of
+            our own.
           </p>
         </section>
 
