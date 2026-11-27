@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import noaaStations from "@/lib/noaa-stations.json";
-import { sunTimes } from "@/lib/sun";
+import { localMidnightOffsetMinutes, sunTimes } from "@/lib/sun";
 import { stationNow } from "@/lib/tides";
 import { stationTimeZone } from "@/lib/time-zones";
 
@@ -49,4 +49,12 @@ describe("each station's time zone", () => {
     const { sunrise } = sunTimes(46.2, -123.77, new Date(Date.UTC(2026, 10, 27, 20, 0)), "America/Los_Angeles");
     expect(sunrise).toMatch(/^7:[2-4]\d AM$/);
   });
+
+  test("the moon's day starts at local midnight, also on the days the clocks change", () => {
+    // Daylight time starts at 2 AM on 2026-03-08 and ends at 2 AM on 2026-11-01 in New York.
+    expect(localMidnightOffsetMinutes(Date.UTC(2026, 2, 8), "America/New_York")).toBe(-300);
+    expect(localMidnightOffsetMinutes(Date.UTC(2026, 10, 1), "America/New_York")).toBe(-240);
+    expect(localMidnightOffsetMinutes(Date.UTC(2026, 6, 4), "America/Los_Angeles")).toBe(-420);
+  });
 });
+

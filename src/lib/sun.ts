@@ -178,13 +178,24 @@ export interface MoonTimes {
  * Moonrise / moonset for the local calendar day starting at `wallDayStartMs`
  * (our wall-clock-as-UTC midnight). Returns local wall-clock strings.
  */
+/**
+ * The zone's offset from UTC (minutes) at the local midnight that starts a
+ * wall-clock day, given as a UTC epoch (`startOfDay`). Taken at midnight
+ * itself, not at noon, so the day starts at the right instant on the days the
+ * clocks change.
+ */
+export function localMidnightOffsetMinutes(wallDayStartMs: number, timeZone: string = STATION_TZ): number {
+  const guess = tzOffsetMinutes(new Date(wallDayStartMs), timeZone);
+  return tzOffsetMinutes(new Date(wallDayStartMs - guess * 60_000), timeZone);
+}
+
 export function moonTimes(
   lat: number,
   lng: number,
   wallDayStartMs: number,
   timeZone: string = STATION_TZ,
 ): MoonTimes {
-  const offsetMin = tzOffsetMinutes(new Date(wallDayStartMs + 12 * 3_600_000), timeZone);
+  const offsetMin = localMidnightOffsetMinutes(wallDayStartMs, timeZone);
   const realMidnight = wallDayStartMs - offsetMin * 60_000;
   const hc = 0.133 * RAD;
   const HOUR = 3_600_000;
