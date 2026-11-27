@@ -16,14 +16,21 @@ interface MarineBody {
   source: string | null;
 }
 
-/** NDBC answers every buoy with the fixture; CO-OPS has wind but no water temperature at the gauge. */
-function upstreamsAnswer() {
+/**
+ * One buoy answers with the fixture and every other buoy file is missing, so a test sees which buoy a reading
+ * came from; CO-OPS has wind but no water temperature at the gauge.
+ */
+function upstreamsAnswer(answering = "44056") {
   return stubUpstream([
-    [NDBC, () => text(buoy)],
+    [`${NDBC}${answering}.txt`, () => text(buoy)],
+    [NDBC, () => new Response("Not Found", { status: 404 })],
     [/[?&]product=wind(?:&|$)/, () => json(wind)],
     [/[?&]product=water_temperature(?:&|$)/, () => json(noWaterTemperature)],
   ]);
 }
+
+/** The five buoys nearest the station's beach, nearest first (src/lib/ndbc-stations.json). */
+const NEAREST_BUOYS = ["dukn7", "44056", "44100", "44086", "orin7"].map((id) => `/data/realtime2/${id}.txt`);
 
 const buoysAsked = (calls: { url: URL }[]) =>
   calls.filter((call) => call.url.toString().startsWith(NDBC)).map((call) => call.url.pathname);
@@ -43,10 +50,11 @@ describe("GET /api/marine", () => {
     expect(body.windMph).toBeCloseTo(20.6 * 1.15078, 6);
     expect(body.windDir).toBe("SW");
     expect(body.windGustMph).toBeCloseTo(28.96 * 1.15078, 6);
-    expect(body.source).toMatch(/^NDBC \w+ · NOAA 8651370$/);
+    // Surf and water temperature from the one buoy that answered; wind from the tide gauge's own sensor.
+    expect(body.source).toBe("NDBC 44056 · NOAA 8651370");
 
-    expect(buoysAsked(upstream.calls).length).toBeGreaterThan(0);
-    expect(buoysAsked(upstream.calls).length).toBeLessThanOrEqual(5);
+    // The five nearest buoys within range, nearest first, each asked once.
+    expect(buoysAsked(upstream.calls)).toEqual(NEAREST_BUOYS);
     const gauge = upstream.calls.find((call) => call.url.searchParams.get("product") === "wind");
     expect(gauge?.url.toString().startsWith(NOAA)).toBe(true);
     expect(gauge?.url.searchParams.get("station")).toBe("8651370");
@@ -63,6 +71,7 @@ describe("GET /api/marine", () => {
     const other = testApp();
     await other.request("/api/marine?station=8651370&lat=25.7617&lng=-80.1918");
     expect(buoysAsked(steered.calls)).toEqual(expected);
+    expect(expected).toEqual(NEAREST_BUOYS);
   });
 
   it("refuses a station outside the bundled list before asking anyone", async () => {
