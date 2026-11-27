@@ -61,6 +61,18 @@ function createHarness() {
     return response;
   }
 
+  /** Whether the service worker answers a request itself, or leaves it to the browser. */
+  function answers(url: string): boolean {
+    let answered = false;
+    listeners.get("fetch")?.({
+      request: new Request(url),
+      respondWith: () => {
+        answered = true;
+      },
+    });
+    return answered;
+  }
+
   async function dispatchActivate(): Promise<void> {
     let work: Promise<unknown> | undefined;
     listeners.get("activate")?.({
@@ -71,7 +83,7 @@ function createHarness() {
     await work;
   }
 
-  return { cache, caches, dispatchActivate, dispatchFetch, entries, fetchMock };
+  return { answers, cache, caches, dispatchActivate, dispatchFetch, entries, fetchMock };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -136,6 +148,18 @@ describe("shipped service-worker privacy and freshness policy", () => {
     const expired = await h.dispatchFetch(key);
     expect(expired.status).toBe(503);
     expect(h.cache.delete).toHaveBeenCalled();
+  });
+
+  test("leaves static requests with a query, such as Next's page payloads, to the browser", () => {
+    // Cloudflare redirects a payload name with "$" in it to its encoded form; the browser follows that itself.
+    const h = createHarness();
+    h.fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    expect(h.answers("https://tide.test/tides/nags-head/__next.tides.$d$slug.__PAGE__.txt?_rsc=abc")).toBe(false);
+    expect(h.answers("https://tide.test/tides/nags-head.txt?_rsc=abc")).toBe(false);
+    expect(h.fetchMock).not.toHaveBeenCalled();
+    // Without a query it is still kept for offline use, and the API is still handled.
+    expect(h.answers("https://tide.test/icon.svg")).toBe(true);
+    expect(h.answers("https://tide.test/api/marine?station=8651370")).toBe(true);
   });
 
   test("activation removes only obsolete Tide caches", async () => {

@@ -132,9 +132,7 @@ async function handleNavigation(request, url) {
   }
 }
 
-async function handleStatic(request, url) {
-  // Never turn arbitrary query strings into durable cache keys.
-  if (url.search) return fetch(request);
+async function handleStatic(request) {
   const cache = await caches.open(CACHE);
   const cached = await cache.match(request);
   if (cached) return cached;
@@ -170,5 +168,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(handleStatic(request, url));
+  // Never turn arbitrary query strings into durable cache keys, and leave such
+  // requests (Next's page payloads, ?_rsc=) to the browser: Cloudflare
+  // redirects a payload name with "$" in it to its encoded form, and the
+  // browser follows that itself.
+  if (url.search) return;
+
+  event.respondWith(handleStatic(request));
 });
