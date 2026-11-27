@@ -51,4 +51,29 @@ describe("public API input and rate budgets", () => {
       remaining: 1,
     });
   });
+
+  test("a client flooding past its own limit cannot use up the shared cap and starve another client", () => {
+    const limiter = new FixedWindowRateLimiter({ maxBuckets: 32 });
+    const policy = { clientLimit: 2, globalLimit: 5, windowMs: 1_000 };
+
+    // One client sends 50 requests in a window: two are accepted, the rest refused by its own limit.
+    const flood = Array.from({ length: 50 }, (_, i) => limiter.check("tides", "203.0.113.7", policy, i));
+    expect(flood.filter((decision) => decision.allowed)).toHaveLength(2);
+
+    // Only those two counted against the shared cap, so three other clients still get through.
+    for (const client of ["198.51.100.1", "198.51.100.2", "198.51.100.3"]) {
+      expect(limiter.check("tides", client, policy, 60)).toMatchObject({ allowed: true });
+    }
+    // The shared cap still holds once accepted requests reach it.
+    expect(limiter.check("tides", "198.51.100.4", policy, 61)).toMatchObject({ allowed: false });
+  });
+
+  test("a refused request spends nothing of the shared cap", () => {
+    const limiter = new FixedWindowRateLimiter({ maxBuckets: 32 });
+    const policy = { clientLimit: 1, globalLimit: 2, windowMs: 1_000 };
+
+    expect(limiter.check("marine", "203.0.113.7", policy, 0)).toMatchObject({ allowed: true });
+    expect(limiter.check("marine", "203.0.113.7", policy, 1)).toMatchObject({ allowed: false, retryAfterSeconds: 1 });
+    expect(limiter.check("marine", "198.51.100.1", policy, 2)).toMatchObject({ allowed: true, remaining: 0 });
+  });
 });

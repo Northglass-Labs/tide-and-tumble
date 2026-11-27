@@ -129,32 +129,36 @@ export class FixedWindowRateLimiter {
     };
   }
 
+  /**
+   * The client's own limit first: a refused request returns at once and
+   * counts nowhere else, so a client flooding past its limit cannot use up
+   * the shared cap and starve everyone else. Only requests the client's
+   * limit accepts count against the shared cap.
+   */
   check(
     scope: string,
     clientKey: string,
     policy: RatePolicy,
     now = Date.now(),
   ): RateDecision {
-    const global = this.consume(
-      `global:${scope}`,
-      policy.globalLimit,
-      policy.windowMs,
-      now,
-    );
     const client = this.consume(
       `client:${scope}:${clientKey}`,
       policy.clientLimit,
       policy.windowMs,
       now,
     );
+    if (!client.allowed) return client;
+    const global = this.consume(
+      `global:${scope}`,
+      policy.globalLimit,
+      policy.windowMs,
+      now,
+    );
     return {
-      allowed: global.allowed && client.allowed,
+      allowed: global.allowed,
       limit: client.limit,
       remaining: Math.min(global.remaining, client.remaining),
-      retryAfterSeconds: Math.max(
-        global.retryAfterSeconds,
-        client.retryAfterSeconds,
-      ),
+      retryAfterSeconds: global.retryAfterSeconds,
     };
   }
 }
