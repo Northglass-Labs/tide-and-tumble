@@ -125,8 +125,12 @@ artifact can carry only static files. On a workstation the two steps are
 two commands on one machine, and `prepare-release` refuses to run with a
 Cloudflare credential in its environment; a saved Wrangler sign-in is a
 file the build could still read, so release from a workstation only after
-`npx wrangler logout`. The cost: two commands, three jobs, and the
-dependencies installed more than once.
+`npx wrangler logout`. The release token is an account-owned token scoped to
+this one Worker with the Workers Editor role: it can upload, deploy and roll
+back this Worker and nothing else, so a stolen one could not create, delete
+or change any other Worker, or touch DNS or routes. Creating the Worker
+needs product-level Admin, used once for the first release. The cost: two
+commands, three jobs, and the dependencies installed more than once.
 
 ### D6. Dependency holds
 

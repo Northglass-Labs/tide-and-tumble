@@ -324,9 +324,13 @@ repository's Actions secrets, Dependabot security updates are turned on, and
 Deploy is run once on `main` (the merge job merges only once a Deploy run on
 `main` has released, and starts the release only when the merge commit's
 parent is the head production was checked against). How the credentials are made and kept is in the
-private operations record. The release credential edits Workers and nothing
-else: no DNS, routes or custom domains. Cloudflare cannot limit a token to one
-Worker, so it can change every Worker in the account, not only this one.
+private operations record. The release credential is an account-owned API
+token scoped to this one Worker with the Workers Editor role: it can upload,
+deploy and roll back this Worker, and it cannot create or delete a Worker,
+touch any other Worker, or change DNS, routes or custom domains. Creating the
+Worker needs product-level Workers Admin, so the first release, which creates
+it, is made once with a broader credential; every release after it uses the
+scoped token. A `wrangler login` session cannot be scoped this way.
 
 ### Where the release credential reaches
 
@@ -334,10 +338,10 @@ The build runs the code of every package in the lockfile, so it runs in
 `prepare-release`, which refuses to start with a Cloudflare credential in its
 environment, and installs with install scripts off. `promote` holds the
 credential and runs only Wrangler, on the `out/` that was checked. Release
-with a credential limited to deploying Workers, given to that one command,
-never with a session that can change DNS or routes. Changing a route, a
-custom domain or DNS needs a zone permission and is done by hand, never by
-`promote`.
+with the token scoped to this Worker (Editor), given to that one command,
+never with a `wrangler login` session, which cannot be scoped and can change
+DNS or routes. Changing a route, a custom domain or DNS needs a zone
+permission and is done by hand, never by `promote`.
 
 ## Version URLs and the workers.dev address
 
