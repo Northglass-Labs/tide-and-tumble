@@ -44,15 +44,21 @@ describe("upstream resource budgets", () => {
     await rejection;
   });
 
-  test("rejects provider redirects at the shared fetch boundary", async () => {
-    const fetchMock = vi.fn(async () => new Response("ok"));
+  test("never follows provider redirects at the shared fetch boundary", async () => {
+    // "manual", not "error": the Workers runtime refuses "error". A 3xx comes
+    // back as it is, not ok, and every caller treats it as a failure.
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(null, { status: 302, headers: { Location: "https://elsewhere.example/" } }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
-    await fetchWithTimeout("https://example.test/data", {}, 100);
+    const response = await fetchWithTimeout("https://example.test/data", {}, 100);
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://example.test/data",
-      expect.objectContaining({ redirect: "error" }),
+      expect.objectContaining({ redirect: "manual" }),
     );
+    expect(response.ok).toBe(false);
   });
 });

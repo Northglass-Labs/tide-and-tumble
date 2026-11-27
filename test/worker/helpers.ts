@@ -56,11 +56,13 @@ type Answer = (url: URL) => Response | Promise<Response>;
  * matches fails, so a test notices an upstream it did not expect.
  */
 export function stubUpstream(routes: [match: string | RegExp, answer: Answer][]) {
-  const calls: { url: URL; headers: Headers }[] = [];
+  const calls: { url: URL; headers: Headers; redirect: Request["redirect"] }[] = [];
   const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
-    const request = input instanceof Request ? input : null;
-    const url = new URL(request ? request.url : String(input));
-    calls.push({ url, headers: new Headers(init?.headers ?? request?.headers) });
+    // Built as the runtime builds it, so options the Workers runtime refuses
+    // (such as redirect: "error") fail here as they would in production.
+    const request = new Request(input, init);
+    const url = new URL(request.url);
+    calls.push({ url, headers: request.headers, redirect: request.redirect });
     for (const [match, answer] of routes) {
       const text = url.toString();
       if (typeof match === "string" ? text.startsWith(match) : match.test(text)) {

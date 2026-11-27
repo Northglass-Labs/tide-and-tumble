@@ -31,7 +31,12 @@ function combineSignals(
   };
 }
 
-/** Fetch with a real abort signal so slow upstreams cannot hold a route indefinitely. */
+/**
+ * Fetch with a real abort signal so slow upstreams cannot hold a route
+ * indefinitely. Redirects are never followed: `manual` hands back the 3xx
+ * itself, which is not `ok`, so every caller treats it as a failure. (The
+ * Workers runtime refuses `redirect: "error"`.)
+ */
 export async function fetchWithTimeout(
   input: string | URL | Request,
   init: RequestInit = {},
@@ -47,7 +52,7 @@ export async function fetchWithTimeout(
   try {
     return await fetch(input, {
       ...init,
-      redirect: "error",
+      redirect: "manual",
       signal: combined.signal,
     });
   } finally {

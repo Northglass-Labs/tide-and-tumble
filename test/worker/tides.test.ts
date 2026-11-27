@@ -140,6 +140,16 @@ describe("GET /api/tides", () => {
     expect(response.headers.get("Cache-Control")).toBe("private, no-store, max-age=0");
   });
 
+  it("never follows a redirect from NOAA, in a way the Workers runtime accepts", async () => {
+    const upstream = stubUpstream([[NOAA, () => new Response(null, { status: 302, headers: { Location: "https://elsewhere.example/" } })]]);
+    const t = testApp();
+    const response = await t.request("/api/tides?station=8651370");
+
+    expect(response.status).toBe(502);
+    expect(upstream.calls).toHaveLength(1);
+    expect(upstream.calls[0]!.redirect).toBe("manual");
+  });
+
   it("says when NOAA has no predictions for a station", async () => {
     stubUpstream([[NOAA, () => json({ error: { message: "No Predictions data was found." } })]]);
     const t = testApp();
