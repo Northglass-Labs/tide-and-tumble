@@ -157,12 +157,13 @@ describe("TideApp's beach safety notice", () => {
   });
 
   test("says when NWS has no rip-current forecast for today, rather than showing nothing", async () => {
-    for (const [ripForecast, note, ripRisk] of [
+    const cases: [string, string, string | null][] = [
       ["not-yet", "No NWS rip-current forecast for today yet.", null],
       ["out-of-season", "No NWS rip-current forecasts are being issued here this season.", null],
       ["none", "Today's NWS forecast gives no rip-current risk for this beach.", null],
       ["today", "Low rip current risk today (NWS)", "Low"],
-    ]) {
+    ];
+    for (const [ripForecast, note, ripRisk] of cases) {
       serveApi({ alerts: [], ripRisk, uvIndex: null, source: "NWS (MHX)", complete: true, ripForecast });
       render(<TideApp initialStation={station} seeded />);
       expect(await screen.findByText(note)).toBeTruthy();
