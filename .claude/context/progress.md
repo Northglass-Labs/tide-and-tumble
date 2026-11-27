@@ -32,11 +32,21 @@ cutover are the operator's, after an adversarial review.
    with a nightly release, the daily Audit, grouped Dependabot).
 7. Docs: done (`AGENTS.md`, `CLAUDE.md`, `docs/DELIVERY.md`, README).
    `DEPLOYMENT.md` is folded into `docs/DELIVERY.md`.
+8. Review fixes (2026-11-27): done. The 2026-08-10 boundary kept (no
+   `docs/adr`; decisions in the design note), operator detail out of the
+   public docs; alerts say when NWS did not answer in full; the account id is
+   a secret; the build runs in `prepare-release` without the token and
+   `promote` runs only Wrangler; the nightly run only refreshes what
+   production runs; the release check asks the data API; the limiter, the
+   merge gate, the FAQ, the Lottie chunk, `/_not-found` and single-flight
+   refreshes fixed; weak tests pinned. Not done here: one API request per
+   beach view (a follow-up, in the design note).
 
 ## Verification
 
-- `npm run verify` passes locally: types, lint, 243 tests (app, Workers
-  runtime, scripts), the export (107 routes, 586 files) and its check.
+- `npm run verify` passes locally after the review fixes (see the pull
+  request for the count), and in a clean detached copy of the commit
+  installed with `npm ci --ignore-scripts`: no install script is needed.
 - Headless Chrome against `npm run preview`, fresh profile: home, a beach
   page, a region hub and the privacy page load with no console message (no
   CSP refusal, hydration error or failed fetch); the beach page rendered the
@@ -48,16 +58,20 @@ cutover are the operator's, after an adversarial review.
 
 ## Next
 
-- Adversarial review of the pull request.
+- The coordinator's re-review of the fixes.
 - The operator's first release to the Worker's `workers.dev` address
-  (`npm run promote -- --origin <address>`), the cutover, the hold, then
+  (`node scripts/prepare-release.mjs`, then
+  `npm run promote -- --origin <address>`), the cutover, the hold, then
   turning on releases from GitHub (`docs/DELIVERY.md`, "Turning it on").
+- Follow-ups: one API request per beach view; `workers_dev: false` after the
+  cutover; the station time-zone and NDBC fixes below.
 
 ## Known issues (separate from this change)
 
 - Every station uses `America/New_York` for "now", so Gulf and Pacific beaches
   show the live tide state one to three hours off.
 - NDBC coastal stations with lettered ids are requested in lower case and
-  answer 404, so they never contribute conditions.
+  answer 404, so they never contribute conditions; their files also exceed
+  the 256 KB read cap, so the reader should stop at the first data row.
 - From before: the owner's real-iPhone spot check (calendar wheel, hero swipe,
   safe area) is still open.

@@ -18,8 +18,9 @@ hosting-rollback steps are kept in the private operations record.
 | `npm run build` | `next build`: the static export in `out/` | The site can be built from this commit |
 | `npm run check` | Holds `out/` to what may be uploaded | No dotfile, key or link; the files the checks need are there; every page the sitemap names was exported; within the free plan's file limits |
 | `npm run preview` | Builds, then serves the export and the Worker on `localhost:4183` in the Workers runtime | What will be deployed can be tried locally, with the real headers, routing and upstreams |
-| `npm run promote [-- --origin <address>]` | Releases the current commit (steps below) | Production is serving this commit and is healthy; otherwise it is back on the previous version |
-| `npm run health -- <url>` | Checks a running site | The API is up, the expected version answers, the page is this app's with its security headers, an unknown path is a 404, and the API is fast enough |
+| `node scripts/prepare-release.mjs` | Builds and checks a clean copy of main's commit with no Cloudflare credential in reach, and records it for `promote` (steps below) | `out/` is exactly the verified build of this commit |
+| `npm run promote [-- --origin <address>]` | Releases what `prepare-release` built (steps below) | Production is serving this commit and is healthy; otherwise it is back on the previous version |
+| `npm run health -- <url>` | Checks a running site | The API is up, the expected version answers, the page is this app's with its security headers, an unknown path is a 404, the data API answers a known station, and the API is fast enough |
 | `npm run rollback -- [versionId] [--origin <address>]` | Sends all traffic back to an earlier version | Production is serving that version and is healthy |
 
 `audit`, `health`, `promote` and `rollback` print one JSON line per check
@@ -63,7 +64,12 @@ dependencies to look at, and fails with npm's reason when there is no report.
 3. `GET /` answers 200, is this app's page, and carries its
    Content-Security-Policy and HSTS headers (from `public/_headers`).
 4. `GET /health-check-not-a-page` answers 404.
-5. The 95th percentile of 20 timed requests to `/api/health` is under the
+5. `GET /api/tides?station=8651370`, sent with `Sec-Fetch-Site: same-origin`
+   as the site's pages send it, answers a tide table, or 502
+   `upstream_unavailable` (NOAA did not answer the Worker, which is not the
+   release's fault); anything else fails. At the `workers.dev` address, where
+   the data routes never answer, it must be their 404.
+6. The 95th percentile of 20 timed requests to `/api/health` is under the
    limit: one slow outlier is forgiven, two are not.
 
 `--wait-ms <ms>` keeps retrying the first check while a release reaches every
@@ -71,31 +77,55 @@ Cloudflare location. A check that Cloudflare's bot protection answers with a
 challenge (`cf-mitigated: challenge`) is reported as `"blocked": true`: it
 fails, but says nothing about the site's health, and it is not retried.
 
-`/api/health` asks no upstream: NOAA being down is never a reason to roll a
-release back.
+`/api/health` asks no upstream, and the data check accepts NOAA's outage
+passed on: NOAA being down is never a reason to roll a release back.
+
+### `node scripts/prepare-release.mjs`
+
+The build runs project and dependency code, so it runs before, and apart
+from, anything that holds the Cloudflare token:
+
+1. Refuses to run while a Cloudflare token or key is in its environment.
+2. Refuses a working tree with uncommitted changes or with files git does
+   not fully see (marked assume-unchanged or skip-worktree), and a commit
+   that is not main's: on a workstation it fetches GitHub's `main` and needs
+   `HEAD` to be it; on GitHub Actions it needs the commit the run is for, on
+   `refs/heads/main`. Refuses a commit holding symbolic links.
+3. Removes `out/`, makes a clean copy of the commit (a detached worktree in a
+   temporary folder), and there runs `npm ci --ignore-scripts` and
+   `npm run verify`; no package's install script runs, and nothing in the
+   working tree but the commit (an ignored file, an old `out/`) can reach the
+   build.
+4. Refuses a build with a dotfile, a key-like file or a symbolic link in
+   `out/` (`public/.assetsignore` keeps them out of the upload too), copies
+   that `out/` here, removes the clean copy, and checks the copy is the same.
+5. Runs `npm ci --ignore-scripts` here for the Wrangler `promote` runs, and
+   records the commit and a digest of `out/` under `node_modules/.cache/`.
 
 ### `npm run promote [-- --origin <address>]`
 
-1. Refuses a working tree with uncommitted changes, so a release is exactly
-   one commit.
-2. Refuses a commit that is not main's. On a workstation it fetches `main`
-   and needs `HEAD` to be `origin/main`; on GitHub Actions it needs the commit
-   the run is for, on `refs/heads/main`.
-3. Installs exactly what `package-lock.json` lists (`npm ci`), builds the
-   export, and refuses a build with a dotfile, a key-like file or a symbolic
-   link in `out/` (`public/.assetsignore` keeps them out of the upload too).
-4. Reads the live version, then confirms the address it will check
+`promote` holds the token and runs no build and no npm: Wrangler is the only
+package code it runs.
+
+1. Refuses what `prepare-release` refuses in step 2, and a commit
+   `prepare-release` did not record, or an `out/` whose digest changed since.
+2. On a scheduled run (the nightly refresh), releases nothing unless
+   production runs this commit already, and nothing whose build lacks a
+   beach page's tide table; it says why ([The nightly
+   release](#releasing-from-github)).
+3. Reads the live version, then confirms the address it will check
    (["Where production is checked"](#where-production-is-checked)) before
    anything changes.
-5. Uploads a new Worker version, with the export, tagged with the
+4. Uploads a new Worker version, with the export, tagged with the
    12-character commit. If Wrangler names an address for it, Version URLs are
    on in Cloudflare although `wrangler.jsonc` turns them off: it stops, and
-   production is unchanged.
-6. Reads production again and, if it changed since step 4 (another release
+   production is unchanged. It stops too if `out/` changed during the upload.
+5. Reads production again and, if it changed since step 3 (another release
    is under way), stops; otherwise sends all traffic to the new version.
-7. Checks production (`health --expect-tag <commit>`), waiting up to 90
-   seconds for the release to arrive; if it fails, checks once more.
-8. If it fails again, rolls back to the version that was live before and
+6. Checks production (`health`), expecting the new version and the commit's
+   tag, waiting up to 90 seconds for the release to arrive; if it fails,
+   checks once more.
+7. If it fails again, rolls back to the version that was live before and
    exits 1, but only while production is still on this release's version.
    A blocked check never causes a rollback: it stops and prints the commands
    to check the new version and to go back.
@@ -137,8 +167,9 @@ this repository; the person releasing knows it.
 
 ## Rolling back
 
-**Code and pages.** `npm run rollback` sends all traffic back to the version
-that was live before the current one; `npm run rollback -- <versionId>` to a
+**Code and pages.** `npm run rollback` sends all traffic back to the newest
+version of an earlier commit than the live one, past the live commit's
+nightly refreshes (marked "Nightly refresh:"); `npm run rollback -- <versionId>` to a
 named one (`npx wrangler versions list --config wrangler.jsonc`). Each
 version carries the static export it was uploaded with, so the pages go back
 too. It confirms the address first, as `promote` does, then checks the
@@ -150,6 +181,15 @@ nightly release that is about three months.
 
 There is no data to roll back: the API keeps nothing but caches of public
 data, which expire within 75 minutes.
+
+**A bad commit is fixed by a revert on `main`.** A rollback puts an earlier
+version live, but `main` still holds the bad commit, and the next push to
+`main`, a Dependabot merge or Deploy run by hand, releases it again. The
+nightly run never does: it changes nothing while production runs another
+commit than `main`'s head, and says so. The daily check fails until
+production runs `main`'s head again. So after rolling back, revert the bad
+commit on `main` (`git revert`, through a pull request); its release puts
+production on `main`'s head again.
 
 **Hosting.** Going back to the previous host is the operator's; the steps are
 in the private operations record.
@@ -184,8 +224,12 @@ How the app stays inside them:
   keep requests from reaching it, and those are the operator's. A patient
   client can still spend the account's allowance, here as through any public
   Worker.
-- When the daily allowance is spent, `/api/*` fails until midnight UTC while
-  every page keeps loading; the app shows its "unavailable" states.
+- When the daily allowance is spent, Cloudflare answers `/api/*` with an
+  error until midnight UTC (429, or its 1027 page), and the app shows its
+  "unavailable" states. Cloudflare's documentation says static files are
+  free and unlimited, but does not say outright what a route does with page
+  requests once the account's allowance is spent; that is the route's fail
+  mode, which the operator sets.
 - Invocation logs are off, so a request is not logged; the Worker logs only
   fixed failure labels.
 - Workers Cache (`"cache"` in `wrangler.jsonc`) is refused: it would count every
@@ -197,7 +241,7 @@ Three workflows, as in the app template. Each asks for read access to the
 repository and no more, except the merge job. Actions are pinned to a commit
 with the version in a comment.
 
-**Every pull request and every push to `main` (`ci.yml`).** `npm ci`,
+**Every pull request and every push to `main` (`ci.yml`).** `npm ci --ignore-scripts`,
 `npm run verify`, `npm run audit`. Its second job, `merge-dependabot`, merges a
 passing patch or minor npm update that Dependabot opened and pushed, once
 releases are automatic, and starts the release with a dispatch (a merge made
@@ -206,22 +250,27 @@ minor update below 1.0, an update whose maintainers changed, or one whose
 description was cut short wait for review; the run's summary says why.
 
 **The release (`deploy.yml`).** On a push to `main`, a dispatch, and every
-night at 08:17 UTC. It runs `npm ci`, `verify` and `audit`, asks GitHub for
-`main`'s head (a run for an older commit releases nothing), then
-`npm run promote`. Releases queue one at a time and are never cancelled
-halfway. Without the secret `CLOUDFLARE_API_TOKEN` it prints a notice and does
-nothing. Only the `Release` step sees the token, but `promote` builds the
-site, so a dependency that got past the cooldown and the checks runs with the
-token in reach; the token's scope bounds the damage (below).
+night at 08:17 UTC. It runs `npm run audit`, asks GitHub for `main`'s head (a
+run for an older commit builds and releases nothing), then `node
+scripts/prepare-release.mjs` with no credential, then `node
+scripts/promote.mjs`, the only step that sees the token. Releases queue one
+at a time and are never cancelled halfway. Without the secret
+`CLOUDFLARE_API_TOKEN` it prints a notice and does nothing. Every workflow
+installs with `npm ci --ignore-scripts`: nothing here needs an install
+script.
 
 **The nightly release.** The beach pages carry a tide table built with them.
 Visitors' browsers rebuild it for today, but crawlers and readers without
-JavaScript see the built one, so `main`'s head is released again each night:
-the baked table is at most a day old (the FAQ states nothing as today's). It is an
-ordinary release through the same checks and rollback. If it fails or is
-turned off, nothing breaks; only the baked table ages. GitHub disables a
-public repository's scheduled workflows after 60 days without activity;
-Dependabot's weekly updates keep it active.
+JavaScript see the built one, so the nightly run rebuilds `main`'s head and
+releases it through the same checks and rollback: the baked table is at most
+a day old (the FAQ states nothing as today's). It only refreshes: when
+production runs another commit (a rollback, a failed release) it changes
+nothing and says why, so a rollback stays in place until `main` is fixed,
+and when NOAA missed a beach during the build it releases nothing, keeping
+the tables production has. Its versions and deployments are marked
+"Nightly refresh:". If it fails or is turned off, nothing breaks; only the
+baked table ages. GitHub disables a public repository's scheduled workflows
+after 60 days without activity; Dependabot's weekly updates keep it active.
 
 **Every day (`audit.yml`).** At 11:41 UTC: `npm run audit -- --strict`, and,
 once releases are automatic, a check that production runs the head of `main`
@@ -248,12 +297,18 @@ nothing else: no DNS, routes or custom domains.
 
 ### Where the release credential reaches
 
-`promote` installs and builds the site, which runs the code of every package
-in the lockfile, so whatever credential `promote` runs with is within that
-code's reach. Release with a credential limited to deploying Workers, given to
-that one command, never with a session that can change DNS or routes. Changing
-a route, a custom domain or DNS needs a zone permission and is done by hand,
-never by `promote`.
+The build runs the code of every package in the lockfile, so it runs in
+`prepare-release`, which refuses to start with a Cloudflare credential in its
+environment, and installs with install scripts off. `promote` holds the
+credential and runs only Wrangler, on the `out/` that was checked. Release
+with a credential limited to deploying Workers, given to that one command,
+never with a session that can change DNS or routes. Changing a route, a
+custom domain or DNS needs a zone permission and is done by hand, never by
+`promote`.
+
+A zone rule may refuse `/api/` requests that do not come from the site's own
+pages (`Sec-Fetch-Site: same-origin`); the health check sends that header,
+and `/api/health` is left open for monitors.
 
 ## Version URLs and the workers.dev address
 

@@ -98,7 +98,8 @@ is built this way.
 | `npm test` | Run all tests once |
 | `npm run verify` | Check everything: types, lint, tests, the export and its check. Run before every commit that changes code |
 | `npm run audit [-- --strict]` | Check the dependencies for known vulnerabilities (needs the network) |
-| `npm run promote [-- --origin <address>]` | Release the current commit and roll back if production is unhealthy |
+| `node scripts/prepare-release.mjs` | Build and check a clean copy of main's commit with no Cloudflare credential in reach, for `promote` |
+| `npm run promote [-- --origin <address>]` | Release what `prepare-release` built and roll back if production is unhealthy; it runs no build |
 | `npm run health -- <url>` | Check a running site |
 | `npm run rollback -- [versionId] [--origin <address>]` | Go back to the previous version |
 
@@ -120,10 +121,14 @@ data comes from `/api/*` in a client component.
 `test/scripts/workflows.test.ts` first. Pin each action to a full commit with
 its version in a comment.
 
-**Release.** State the rollback first (`npm run rollback`), then
-`npm run promote` from a clean checkout of `main` that matches GitHub's, and
-read the JSON lines it prints (`docs/DELIVERY.md`). Once the owner has turned
-releases on, a push to `main` and the nightly run release by themselves.
+**Release.** State the rollback first (`npm run rollback`), then, from a
+clean checkout of `main` that matches GitHub's, `node
+scripts/prepare-release.mjs` with no Cloudflare credential in the
+environment, then `npm run promote` with the token, and read the JSON lines
+they print (`docs/DELIVERY.md`). Once the owner has turned releases on, a
+push to `main` releases by itself and the nightly run refreshes what
+production runs. A bad commit is fixed by a revert on `main`, after a
+rollback.
 
 ## Where facts live
 

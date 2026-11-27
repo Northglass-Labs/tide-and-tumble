@@ -92,14 +92,25 @@ version. If Wrangler names a version address anyway, it stops before traffic
 moves. The cost: a bad build serves production until its check fails and the
 rollback lands, up to about three minutes.
 
-### D4. The nightly release
+### D4. The nightly release only refreshes
 
 The beach pages carry a tide table built with them, so `main`'s head is
-released again every night (08:17 UTC, after midnight in every US mainland
-time zone) through the same checks and rollback. Visitors are unaffected if it
-fails; only the baked copy ages.
+rebuilt every night (08:17 UTC, after midnight in every US mainland time
+zone) and released through the same checks and rollback, but only while
+production already runs it: a nightly run never advances production and
+never undoes a rollback, and it never ships a build in which NOAA missed a
+beach's table. A bad commit is fixed by a revert on `main`. Visitors are
+unaffected if it fails or skips; only the baked copy ages.
 
-### D5. Dependency holds
+### D5. The build never holds the release token
+
+The build runs every package's code, so it runs in `prepare-release`, in a
+clean copy of the commit, with install scripts off and no Cloudflare
+credential in its environment. `promote` holds the token and runs only
+Wrangler, on the `out/` that was checked, by digest. The cost: a workstation
+release is two commands, and the dependencies are installed twice.
+
+### D6. Dependency holds
 
 TypeScript is held below 6.1 (6.0 is taken) because typescript-eslint
 supports TypeScript below 6.1 and TypeScript 7 ships without the compiler API
@@ -269,7 +280,11 @@ What it cannot do on the free plan, stated plainly: a client that sends
 about one request a second for a day spends the account's whole allowance,
 here or through any other public Worker in the account. Rules on the zone can
 stop some requests before they reach the Worker; which ones are set is the
-operator's.
+operator's. Once the allowance is spent, Cloudflare answers `/api/*` with an
+error until midnight UTC and the app shows its "unavailable" states.
+Cloudflare's documentation says static files are free and unlimited, but it
+does not establish that pages served through a route keep loading then: the
+route's fail mode decides, and the operator sets it.
 
 ## What replaces ISR
 
@@ -290,12 +305,12 @@ A static file cannot refresh itself, so the content is split by how it ages:
 
 A nightly release rebuilds the baked copy, so what crawlers and readers
 without JavaScript see is at most a day old (`deploy.yml`, scheduled at 08:17
-UTC, after midnight in every US mainland time zone). It is an ordinary
-release of the head of `main` through the same checks and automatic rollback.
-If it fails or is turned off, visitors are unaffected (their table is rebuilt
-in the browser); only the baked copy ages. A build that cannot reach NOAA for
-a beach renders that beach's page with the existing "temporarily
-unavailable" note, and the browser fills the table in.
+UTC, after midnight in every US mainland time zone; [D4](#d4-the-nightly-release-only-refreshes)).
+If it fails, skips or is turned off, visitors are unaffected (their table is
+rebuilt in the browser); only the baked copy ages. A build that cannot reach
+NOAA for a beach renders that beach's page with the existing "temporarily
+unavailable" note (marked `data-tide-table="unavailable"`), and the browser
+fills the table in; a push's release ships it, a nightly refresh does not.
 
 The region hubs and the home page change only with the code and need nothing.
 
@@ -331,9 +346,10 @@ The six commands are the template's (`verify`, `build`, `preview`,
 
 - No database: no migrations step, and `/api/health` reports the version
   only.
-- The build is `next build` (pages into `out/`); Wrangler bundles the Worker
-  from `src/worker/index.ts` at upload. `promote` refuses a build that holds a
-  dotfile or a key-like file, as the template does.
+- The build is `next build` (pages into `out/`), run by `prepare-release`
+  with no credential in reach ([D5](#d5-the-build-never-holds-the-release-token));
+  Wrangler bundles the Worker from `src/worker/index.ts` at upload. A build
+  that holds a dotfile or a key-like file is refused, as the template does.
 - Version URLs are off ([D3](#d3-version-urls-off-a-release-is-checked-in-production)):
   `promote` uploads, sends all traffic to the new version, checks production,
   and rolls back if it fails twice.
@@ -377,6 +393,20 @@ Both holds are pinned in `.github/dependabot.yml` with the date and reason.
 
 ## Not in this change
 
+- **One API request per beach view.** A beach view makes three Worker
+  requests (tides, marine, alerts). One combined `/api/beach` answer could
+  keep each part's own cache entry and lifetime, so the Worker's caching
+  would not change; it needs the page to take the three parts' separate
+  failures from one answer, and the service worker's offline copy of the
+  tides moved to it. A follow-up.
+- **The `workers.dev` address off after the cutover** (`workers_dev: false`):
+  once production is reached through the route, the Worker's own address
+  only serves the release check of last resort. Turning it off removes a
+  second public address for the same Worker, and `--origin` with it.
+- **The station data bugs.** Each station should carry its IANA time zone
+  (next bullet), and the NDBC reader should ask for upper-case station ids,
+  read only to the first data row (the C-MAN files exceed the 256 KB cap)
+  and prefer buoys that report waves.
 - **The time-zone bug.** Every station computes "now", day boundaries and sun
   times in `America/New_York`, while NOAA returns each station's local time.
   On the Gulf and Pacific coasts the live tide state is one to three hours
