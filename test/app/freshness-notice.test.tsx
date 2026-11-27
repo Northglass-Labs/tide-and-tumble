@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { cleanup, render, screen } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, test } from "vitest";
 import DataFreshnessNotice from "@/components/DataFreshnessNotice";
 
@@ -46,5 +47,18 @@ describe("data freshness notice", () => {
     );
 
     expect(container.textContent).toBe("");
+  });
+
+  test("says the warnings are being checked while they load, which is what the static page holds", () => {
+    render(<DataFreshnessNotice offline={false} safetyStatus="loading" tideCachedAt={null} />);
+    expect(screen.getByRole("status").textContent).toContain("Checking NWS beach warnings…");
+  });
+
+  test("tells a reader without JavaScript where the beach warnings are", () => {
+    // The static HTML is the loading state; without JavaScript it never changes.
+    const html = renderToStaticMarkup(<DataFreshnessNotice offline={false} safetyStatus="loading" tideCachedAt={null} />);
+    const noscript = html.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1] ?? "";
+    expect(noscript).toContain("weather.gov");
+    expect(noscript).toContain("lifeguard");
   });
 });

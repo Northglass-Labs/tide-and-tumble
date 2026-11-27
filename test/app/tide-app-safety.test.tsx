@@ -112,4 +112,47 @@ describe("TideApp's beach safety notice", () => {
     expect(await screen.findByText("Beach safety data is unavailable.")).toBeTruthy();
     expect((await screen.findAllByText(/High Rip Current Risk/)).length).toBeGreaterThan(0);
   });
+
+  test("gives up on NWS after ten seconds and says the safety data is unavailable", async () => {
+    // The alerts request is given a ten-second deadline; here it has already passed.
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockImplementation(() => AbortSignal.abort());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/tides")) return Promise.resolve(Response.json(tides));
+        if (url.startsWith("/api/marine")) return Promise.resolve(Response.json(noMarine));
+        // NWS never answers: only the deadline ends this request.
+        return new Promise<Response>((_, reject) => {
+          const signal = init?.signal;
+          if (signal?.aborted) reject(signal.reason);
+          signal?.addEventListener("abort", () => reject(signal.reason));
+        });
+      }),
+    );
+    render(<TideApp initialStation={station} seeded />);
+
+    expect(await screen.findByText("Beach safety data is unavailable.")).toBeTruthy();
+    expect(timeout).toHaveBeenCalledWith(10_000);
+  });
+
+  test("shows that it is checking the warnings until NWS answers", async () => {
+    let answer: (response: Response) => void = () => undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/tides")) return Promise.resolve(Response.json(tides));
+        if (url.startsWith("/api/marine")) return Promise.resolve(Response.json(noMarine));
+        return new Promise<Response>((resolve) => {
+          answer = resolve;
+        });
+      }),
+    );
+    render(<TideApp initialStation={station} seeded />);
+
+    expect(await screen.findByText("Checking NWS beach warnings…")).toBeTruthy();
+    answer(Response.json({ alerts: [], ripRisk: null, uvIndex: null, source: "NWS (MHX)", complete: true }));
+    await waitFor(() => expect(screen.queryByText("Checking NWS beach warnings…")).toBeNull());
+  });
 });

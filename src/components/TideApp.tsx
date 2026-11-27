@@ -29,6 +29,9 @@ import { BEACHES, SITE_URL } from "@/lib/slugs";
 import { pushRecent } from "@/lib/recents";
 import { publishExtrema } from "@/lib/tide-feed";
 import { readSafety } from "@/lib/safety";
+
+/** How long the page waits for the beach-safety answer before saying it is unavailable. */
+const ALERTS_TIMEOUT_MS = 10_000;
 import type { BeachAlert } from "@/lib/alerts";
 import type { Marine } from "@/lib/marine";
 import { statusLine } from "@/lib/copy";
@@ -353,7 +356,11 @@ export default function TideApp({
     let cancelled = false;
     // A station change clears the previous beach's advisory at once
     // (selectStation) — it must never linger.
-    fetch(`/api/alerts?station=${encodeURIComponent(station.id)}`)
+    // A request NWS's answer never ends would leave "Checking…" up for good:
+    // after ten seconds it is given up, and the page says the data is unavailable.
+    fetch(`/api/alerts?station=${encodeURIComponent(station.id)}`, {
+      signal: AbortSignal.timeout(ALERTS_TIMEOUT_MS),
+    })
       .then(async (r) => {
         if (!r.ok) throw new Error("Beach safety request failed");
         return r.json();
