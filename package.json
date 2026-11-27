@@ -41,7 +41,7 @@
     "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "1.9.1",
+    "@cloudflare/vitest-plugin": "1.9.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
@@ -56,7 +56,7 @@
     "tailwindcss": "^4",
     "typescript": "~6.0.3",
     "vitest": "^5.1.2",
-    "wrangler": "4.167.0"
+    "wrangler": "4.168.0"
   },
   "overrides": {
     "postcss": "^8.4.32"
