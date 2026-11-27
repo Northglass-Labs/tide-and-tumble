@@ -7,12 +7,13 @@ import ndbcRaw from "./ndbc-stations.json";
 import { distanceMiles } from "./stations";
 import {
   fetchWithTimeout,
+  readFirstDataLine,
   readJsonBounded,
-  readTextBounded,
 } from "./upstream";
 
 const UPSTREAM_TIMEOUT_MS = 4_000;
-const NDBC_MAX_BYTES = 256 * 1024;
+/** The header and the newest row of an NDBC file fit well within this; the rest is never read. */
+const NDBC_HEAD_BYTES = 16 * 1024;
 const COOPS_MAX_BYTES = 256 * 1024;
 
 export interface Marine {
@@ -34,10 +35,34 @@ interface NdbcRaw {
 const NDBC = ndbcRaw as NdbcRaw[];
 const MAX_MI = 170; // don't attribute far-away buoy conditions to a beach
 
-function nearestNdbc(lat: number, lng: number, n: number) {
-  return NDBC.map((s) => ({ s, d: distanceMiles(lat, lng, s.a, s.o) }))
-    .sort((x, y) => x.d - y.d)
-    .slice(0, n);
+/** An NDBC station to ask, nearest first: its id, whether it is a buoy with wave sensors, its file. */
+export interface BuoyCandidate {
+  id: string;
+  wave: boolean;
+  d: number;
+  url: string;
+}
+
+/**
+ * The stations asked for a beach: the five nearest of any kind (water
+ * temperature, wind), and the three nearest buoys, which alone measure waves:
+ * almost every fixed (C-MAN) station has no wave sensor, and near a harbor
+ * the five nearest are often all fixed ones. Within MAX_MI, nearest first.
+ * NDBC names its files by upper-case id.
+ */
+export function buoyCandidates(lat: number, lng: number): BuoyCandidate[] {
+  const ranked = NDBC.map((s) => ({ s, d: distanceMiles(lat, lng, s.a, s.o) }))
+    .filter((c) => c.d <= MAX_MI)
+    .sort((x, y) => x.d - y.d);
+  const chosen = new Set([...ranked.slice(0, 5), ...ranked.filter((c) => c.s.t === "b").slice(0, 3)]);
+  return ranked
+    .filter((c) => chosen.has(c))
+    .map((c) => ({
+      id: c.s.i,
+      wave: c.s.t === "b",
+      d: c.d,
+      url: `https://www.ndbc.noaa.gov/data/realtime2/${c.s.i.toUpperCase()}.txt`,
+    }));
 }
 
 const COMPASS = [
@@ -61,20 +86,18 @@ interface Buoy {
 }
 
 async function fetchBuoy(
-  id: string,
+  url: string,
   signal?: AbortSignal,
 ): Promise<Buoy | null> {
   try {
-    const res = await fetchWithTimeout(
-      `https://www.ndbc.noaa.gov/data/realtime2/${id}.txt`,
-      { signal },
-      UPSTREAM_TIMEOUT_MS,
-    );
-    if (!res.ok) return null;
-    const text = await readTextBounded(res, NDBC_MAX_BYTES);
-    // First non-# line is newest. Columns: 5=WDIR 6=WSPD 7=GST 8=WVHT 9=DPD
-    // ... 14=WTMP (see NDBC realtime2 header).
-    const row = text.split("\n").find((l) => l.trim() && !l.startsWith("#"));
+    const res = await fetchWithTimeout(url, { signal }, UPSTREAM_TIMEOUT_MS);
+    if (!res.ok) {
+      await res.body?.cancel();
+      return null;
+    }
+    // First non-# line is newest, and the only one read. Columns: 5=WDIR
+    // 6=WSPD 7=GST 8=WVHT 9=DPD ... 14=WTMP (see NDBC realtime2 header).
+    const row = await readFirstDataLine(res, NDBC_HEAD_BYTES);
     if (!row) return null;
     const c = row.trim().split(/\s+/);
     const wvht = num(c[8]);
@@ -163,12 +186,12 @@ export async function fetchMarine(opts: {
 }): Promise<Marine> {
   if (!Number.isFinite(opts.lat) || !Number.isFinite(opts.lng)) return EMPTY;
 
-  const cands = nearestNdbc(opts.lat, opts.lng, 5).filter((c) => c.d <= MAX_MI);
+  const cands = buoyCandidates(opts.lat, opts.lng);
   const settled = await Promise.allSettled(
-    cands.map((c) => fetchBuoy(c.s.i, opts.signal)),
+    cands.map((c) => fetchBuoy(c.url, opts.signal)),
   );
   const readings = cands.map((c, i) => ({
-    id: c.s.i,
+    id: c.id,
     d: c.d,
     r: settled[i].status === "fulfilled" ? settled[i].value : null,
   }));

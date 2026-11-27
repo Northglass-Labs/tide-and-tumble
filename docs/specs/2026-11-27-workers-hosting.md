@@ -212,9 +212,11 @@ Node on this machine (the same V8):
 | Parsing a 33-day NOAA hi/lo answer (6 KB) | 0.014 ms |
 | Parsing an NWS point and alerts answer | 0.008 ms |
 
-Subrequests: `tides` makes 1, `alerts` at most 4, `marine` at most 7 (five
-buoys, then wind and water temperature at the tide gauge), plus one cache read
-and one cache write each. Waiting on the network is not CPU time.
+Subrequests: `tides` makes 1, `alerts` at most 4, `marine` at most 10 (the
+five nearest NDBC stations and the three nearest wave buoys, up to eight,
+each read only to its first data row by its upper-case id; then wind and
+water temperature at the tide gauge), plus one cache read and one cache
+write each. Waiting on the network is not CPU time.
 
 ## Caching
 
@@ -427,14 +429,6 @@ Both holds are pinned in `.github/dependabot.yml` with the date and reason.
   once production is reached through the route, the Worker's own address
   only serves the release check of last resort. Turning it off removes a
   second public address for the same Worker, and `--origin` with it.
-- **The station data bugs.** Each station should carry its IANA time zone
-  (next bullet), and the NDBC reader should ask for upper-case station ids,
-  read only to the first data row (the C-MAN files exceed the 256 KB cap)
-  and prefer buoys that report waves.
-- **The time-zone bug.** Every station computes "now", day boundaries and sun
-  times in `America/New_York`, while NOAA returns each station's local time.
-  On the Gulf and Pacific coasts the live tide state is one to three hours
-  off. It predates this move and is a separate fix.
 - **A script-hash Content-Security-Policy** instead of `'unsafe-inline'`
   scripts: possible with a post-build step that hashes each page's inline
   scripts; it needs a browser test suite to be safe, which the repository

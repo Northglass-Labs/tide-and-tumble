@@ -62,6 +62,44 @@ export async function fetchWithTimeout(
 }
 
 /** Read a response without ever buffering more than maxBytes. */
+/**
+ * The first line of a text body that is neither blank nor a "#" header,
+ * reading no further: the rest of the body is cancelled. NDBC's realtime
+ * files put the newest row first and run to a megabyte. Throws when no such
+ * line ends within `maxBytes`.
+ */
+export async function readFirstDataLine(response: BoundedBody, maxBytes: number): Promise<string | null> {
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let text = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (!done) {
+        total += value.byteLength;
+        text += decoder.decode(value, { stream: true });
+      }
+      const lines = text.split("\n");
+      // Every line but the last is complete; at the end of the body, the last one is too.
+      const complete = done ? lines : lines.slice(0, -1);
+      const row = complete.find((line) => line.trim() !== "" && !line.startsWith("#"));
+      if (row !== undefined) {
+        if (!done) await reader.cancel();
+        return row;
+      }
+      if (done) return null;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new UpstreamResponseTooLargeError(maxBytes);
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export async function readTextBounded(
   response: BoundedBody,
   maxBytes: number,

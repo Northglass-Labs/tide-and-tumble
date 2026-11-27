@@ -230,9 +230,9 @@ How the app stays inside them:
   station keep NOAA, NDBC and NWS calls to one per station per cache period per
   Cloudflare location.
 - The heaviest handler work measured is parsing the 300 KB station list once
-  per Worker instance (1.3 ms) and a 200 KB buoy file (0.06 ms). `marine`
-  makes at most 7 subrequests, `alerts` 4, `tides` 1, plus a cache read and
-  write.
+  per Worker instance (1.3 ms) and a buoy file's newest row, the only part
+  read. `marine` makes at most 10 subrequests (up to eight NDBC stations, two
+  at the tide gauge), `alerts` 4, `tides` 1, plus a cache read and write.
 - Per-client limits slow a noisy client (60 tide, 30 marine, 30 alert
   requests a minute, an IPv6 client counted by its /64); a request for an
   unknown station is refused before it counts, and the per-instance cap
@@ -400,13 +400,5 @@ so review holds the rest of the boundary.
 
 ## Known issues
 
-- **Time zones.** Every station computes "now", day boundaries and sun times
-  in `America/New_York`, while NOAA returns each station's local time, so on
-  the Gulf and Pacific coasts the live tide state is one to three hours off.
-  It predates the move to Workers.
-- **NDBC coastal stations.** 544 of the 869 bundled NDBC stations have
-  lettered ids (`dukn7`); NDBC serves their files only in upper case
-  (`DUKN7.txt`), so those stations never contribute conditions. It predates
-  the move.
 - **ESLint 9** is out of upstream support; ESLint 10 is held until
   `eslint-config-next`'s plugins support it.

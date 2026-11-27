@@ -30,7 +30,7 @@ function upstreamsAnswer(answering = "44056") {
 }
 
 /** The five buoys nearest the station's beach, nearest first (src/lib/ndbc-stations.json). */
-const NEAREST_BUOYS = ["dukn7", "44056", "44100", "44086", "orin7"].map((id) => `/data/realtime2/${id}.txt`);
+const NEAREST_BUOYS = ["DUKN7", "44056", "44100", "44086", "ORIN7"].map((id) => `/data/realtime2/${id}.txt`);
 
 const buoysAsked = (calls: { url: URL }[]) =>
   calls.filter((call) => call.url.toString().startsWith(NDBC)).map((call) => call.url.pathname);
@@ -122,4 +122,35 @@ describe("GET /api/marine", () => {
     await t.request("/api/marine?station=8651370");
     expect(upstream.calls.length).toBeGreaterThan(calls);
   });
+
+  it("reads a buoy's file only to its first data row, then stops: the files run to a megabyte", async () => {
+    let cancelled = false;
+    let sent = 0;
+    const big = () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          pull(controller) {
+            // The header and the newest row first, then about a megabyte of older rows.
+            const chunk = sent === 0 ? buoy : `${"2026 11 26 00 00 230  7.0  9.0   1.1    10   6.6 125 1017.0  13.4  15.3  10.1   MM   MM    MM\n".repeat(200)}`;
+            controller.enqueue(new TextEncoder().encode(chunk));
+            sent += 1;
+            if (sent > 60) controller.close();
+          },
+          cancel() {
+            cancelled = true;
+          },
+        }),
+      );
+    stubUpstream([
+      [`${NDBC}44056.txt`, big],
+      [NDBC, () => new Response("Not Found", { status: 404 })],
+      [/[?&]product=wind(?:&|$)/, () => json(wind)],
+      [/[?&]product=water_temperature(?:&|$)/, () => json(noWaterTemperature)],
+    ]);
+    const body = await (await testApp().request("/api/marine?station=8651370")).json<MarineBody>();
+    expect(body.surfFt).toBeCloseTo(2.8 * 3.28084, 6);
+    expect(cancelled).toBe(true);
+    expect(sent).toBeLessThan(5);
+  });
 });
+
