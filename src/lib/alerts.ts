@@ -91,7 +91,18 @@ async function nws<T = unknown>(
 }
 
 interface PointProps {
-  properties?: { gridId?: string; forecastZone?: string };
+  properties?: { gridId?: string; forecastZone?: string; timeZone?: string };
+}
+
+/** A moment's calendar date (YYYY-MM-DD) in an IANA time zone; New York's if the zone is not one. */
+function localDate(ms: number, timeZone: string | null): string {
+  const format = (zone: string) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
+  try {
+    return format(timeZone ?? "America/New_York");
+  } catch {
+    return format("America/New_York");
+  }
 }
 interface AlertResp {
   features?: unknown;
@@ -163,6 +174,7 @@ export async function fetchBeachSafetyChecked(
   lat: number,
   lng: number,
   signal?: AbortSignal,
+  now: number = Date.now(),
 ): Promise<{ safety: BeachSafety; complete: boolean }> {
   const outcome: Outcome = { failed: false };
   const pt = `${lat.toFixed(4)},${lng.toFixed(4)}`;
@@ -214,8 +226,15 @@ export async function fetchBeachSafetyChecked(
       outcome,
     );
     const graph = Array.isArray(list?.["@graph"]) ? list["@graph"] : [];
-    const latest = nwsProductUrl(record(graph[0])?.["@id"]);
-    if (latest) {
+    const newest = record(graph[0]);
+    const latest = nwsProductUrl(newest?.["@id"]);
+    // NWS keeps about a week of forecasts, and an office that stops issuing
+    // for the season leaves its last one listed: only a forecast issued on the
+    // beach's own calendar day (its point's time zone) speaks for today.
+    const issued = Date.parse(nonEmptyString(newest?.issuanceTime) ?? "");
+    const zone = nonEmptyString(pointProperties?.timeZone);
+    const today = Number.isFinite(issued) && localDate(issued, zone) >= localDate(now, zone);
+    if (latest && today) {
       const prod = await nws<{ productText?: unknown }>(latest, signal, outcome);
       const productText = nonEmptyString(prod?.productText);
       if (productText) {

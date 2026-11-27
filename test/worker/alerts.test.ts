@@ -14,8 +14,14 @@ interface SafetyBody {
 }
 
 const point = json({
-  properties: { gridId: "MHX", forecastZone: "https://api.weather.gov/zones/forecast/NCZ203" },
+  properties: {
+    gridId: "MHX",
+    forecastZone: "https://api.weather.gov/zones/forecast/NCZ203",
+    timeZone: "America/New_York",
+  },
 });
+/** The office's Surf Zone Forecasts, newest first: today's, issued at 03:47 local time (the test clock is 10:00). */
+const TODAY_SRF = { "@graph": [{ "@id": PRODUCT, issuanceTime: "2026-11-27T08:47:00+00:00" }] };
 const statement = {
   id: "https://api.weather.gov/alerts/example-rip-current",
   properties: {
@@ -37,7 +43,7 @@ function nwsAnswers({ alerts = [statement, gale], risk = "High" }: { alerts?: un
   return stubUpstream([
     [`${NWS}points/`, () => point.clone()],
     [`${NWS}alerts/active`, () => json({ features: alerts })],
-    [`${NWS}products/types/SRF/locations/MHX`, () => json({ "@graph": [{ "@id": PRODUCT }] })],
+    [`${NWS}products/types/SRF/locations/MHX`, () => json(TODAY_SRF)],
     [PRODUCT, () => srf(risk)],
   ]);
 }
@@ -97,7 +103,7 @@ describe("GET /api/alerts", () => {
     const upstream = stubUpstream([
       [`${NWS}points/`, () => point.clone()],
       [`${NWS}alerts/active`, () => json({ features: [] })],
-      [`${NWS}products/types/SRF/locations/MHX`, () => json({ "@graph": [{ "@id": PRODUCT }] })],
+      [`${NWS}products/types/SRF/locations/MHX`, () => json(TODAY_SRF)],
       [PRODUCT, () => srf(risk)],
     ]);
     const t = testApp();
@@ -140,5 +146,23 @@ describe("GET /api/alerts", () => {
     expect(upstream.calls.length).toBeGreaterThan(calls);
     expect(recovered.complete).toBe(true);
     expect(recovered.alerts.map((alert) => alert.event)).toEqual(["Rip Current Statement"]);
+  });
+
+  it("never shows an old Surf Zone Forecast's rip-current risk as today's", async () => {
+    // An office that stops issuing for the season leaves its last forecast listed for about a week.
+    for (const issuanceTime of ["2026-11-20T08:47:00+00:00", "2026-11-27T04:30:00+00:00", undefined]) {
+      // 04:30 UTC is 23:30 on the 26th at the beach: yesterday's forecast, though the same UTC date.
+      const upstream = stubUpstream([
+        [`${NWS}points/`, () => point.clone()],
+        [`${NWS}alerts/active`, () => json({ features: [] })],
+        [`${NWS}products/types/SRF/locations/MHX`, () => json({ "@graph": [{ "@id": PRODUCT, issuanceTime }] })],
+        [PRODUCT, () => srf("High")],
+      ]);
+      const t = testApp();
+      const body = await (await t.request("/api/alerts?station=8651370")).json<SafetyBody>();
+      expect(body).toMatchObject({ alerts: [], ripRisk: null, uvIndex: null, complete: true });
+      expect(upstream.calls.some((call) => call.url.toString() === PRODUCT)).toBe(false);
+      upstream.spy.mockRestore();
+    }
   });
 });
