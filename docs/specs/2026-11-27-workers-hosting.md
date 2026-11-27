@@ -173,9 +173,8 @@ weeks, which is consistent with a small site but is not a request count.
 **Estimate.** A beach view makes three Worker requests (tides, marine,
 alerts); changing beaches makes three more. At 1,000 beach views a day that is
 about 3,300 requests a day with the monitor, 3% of the account's allowance;
-ten times that is still a third of it. Unknown paths may reach the Worker too
-(below); scanners send hundreds of those a day to a site this size, not
-thousands.
+ten times that is still a third of it. Scanners' requests for unknown paths
+cost nothing unless they are under `/api/` ([below](#protecting-the-shared-quota)).
 
 ## Protecting the shared quota
 
@@ -189,11 +188,14 @@ Two different risks:
 
 What the build does:
 
-1. **Only `/api/*` runs the Worker first** (`run_worker_first: ["/api/*"]`).
-   Pages and files never invoke it. Cloudflare's documentation does not say
-   whether a path that matches no file and no pattern invokes the Worker when
-   one exists; `wrangler dev` shows that it does, so the Worker answers such a
-   request at once with the static 404 page (`env.ASSETS`), with no other work.
+1. **Only `/api/*` runs the Worker** (`run_worker_first: ["/api/*"]`). Pages
+   and files never invoke it, and neither does a path that matches no file:
+   Cloudflare's documentation does not say so outright, so it was checked in
+   `wrangler dev` 4.167 with a probe Worker that marks every answer it
+   touches. `/wp-login.php` got the 404 page with no mark; `/api/x` got the
+   mark. So scanners' guesses outside `/api/` cost nothing. Should that
+   change, the Worker hands any non-API request straight back to the static
+   files.
 2. **Data answers only on the production address.** On `workers.dev` and any
    other host, only `GET /api/health` answers; everything else under `/api`
    is 404. So the zone's security settings and cache always sit in front of
@@ -342,4 +344,8 @@ Both holds are pinned in `.github/dependabot.yml` with the date and reason.
   load is not budgeted yet either.
 - **The Workers Rate Limiting binding**, a sturdier per-client limit than the
   in-memory one, once its free-plan availability is confirmed.
+- **Two small redirect differences.** A trailing slash (`/tides/nags-head/`)
+  and the segment files Next fetches during client-side navigation, whose
+  names contain `$`, get Cloudflare's 307 to the canonical form; the previous
+  host used 308 for the first and served the second directly. Both work.
 - **Retiring the previous host**, after the hold.
