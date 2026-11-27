@@ -5,7 +5,7 @@ export const VERSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
 
 export const USAGE =
   "Usage: npm run health -- <baseUrl> [--expect-tag <sha>] [--samples 20] [--p95-ms 300]\n" +
-  "       also: [--expect-version <id>] [--wait-ms <ms>]";
+  "       also: [--expect-version <id>] [--wait-ms <ms>] [--built-within-days <n>]";
 
 /** What every page of this site carries, so a check knows the page is this app's. */
 export const PAGE_MARKER = '<meta name="application-name" content="Tide &amp; Tumble"/>';
@@ -21,6 +21,12 @@ export const NOT_A_PAGE = "/health-check-not-a-page";
  */
 export const TIDES_CHECK = "/api/tides?station=8651370";
 
+/**
+ * A beach page, whose build date (`<meta name="tide-table-built">`) shows
+ * whether the nightly refresh is releasing: every beach page carries it.
+ */
+export const BUILT_PAGE = "/tides/nags-head";
+
 /** The data API serves the site's own pages, so the check asks as a page on the site does. */
 const SAME_ORIGIN = Object.freeze({ "Sec-Fetch-Site": "same-origin" });
 
@@ -33,6 +39,8 @@ const SAME_ORIGIN = Object.freeze({ "Sec-Fetch-Site": "same-origin" });
  * @property {number} p95Ms         Their 95th percentile must be under this.
  * @property {number} waitMs        How long to keep retrying the first check; a new
  *                                  release takes a few seconds to reach every location.
+ * @property {number | null} [builtWithinDays] When set, the beach pages must have been built
+ *                                  within this many days (UTC dates).
  */
 
 /**
@@ -54,6 +62,7 @@ const SAME_ORIGIN = Object.freeze({ "Sec-Fetch-Site": "same-origin" });
  * @property {(url: string, init?: { headers?: Record<string, string> }) => Promise<Response>} fetch
  * @property {() => number} now     Milliseconds, from any starting point.
  * @property {(ms: number) => Promise<void>} sleep
+ * @property {() => number} [date] The wall clock, for the build-date check; Date.now by default.
  */
 
 /**
@@ -87,6 +96,7 @@ export function parseHealthArgs(argv) {
     samples: 20,
     p95Ms: 300,
     waitMs: 0,
+    builtWithinDays: null,
   };
 
   for (let index = 0; index < rest.length; index += 2) {
@@ -108,6 +118,9 @@ export function parseHealthArgs(argv) {
         break;
       case "--wait-ms":
         options.waitMs = wholeNumber(name, value, 0);
+        break;
+      case "--built-within-days":
+        options.builtWithinDays = wholeNumber(name, value, 0);
         break;
       default:
         throw new Error(`Unknown option ${name}.\n${USAGE}`);
@@ -240,6 +253,31 @@ async function checkPages(options, deps) {
 }
 
 /**
+ * Were the beach pages built recently enough (BUILT_PAGE)? A nightly refresh
+ * that keeps releasing nothing leaves them as old as its last release.
+ *
+ * @param {HealthOptions} options
+ * @param {HealthDeps} deps
+ * @returns {Promise<string[]>}
+ */
+async function checkBuilt(options, deps) {
+  if (options.builtWithinDays == null) return [];
+  let html;
+  try {
+    html = await (await deps.fetch(`${options.baseUrl}${BUILT_PAGE}`)).text();
+  } catch (error) {
+    return [`${BUILT_PAGE} could not be reached: ${error instanceof Error ? error.message : String(error)}`];
+  }
+  const built = html.match(/<meta name="tide-table-built" content="(\d{4}-\d{2}-\d{2})"/)?.[1];
+  if (!built) return [`${BUILT_PAGE} carries no build date (tide-table-built)`];
+  const today = new Date((deps.date ?? Date.now)()).toISOString().slice(0, 10);
+  const days = (Date.parse(today) - Date.parse(built)) / 86_400_000;
+  return days > options.builtWithinDays
+    ? [`${BUILT_PAGE} was built on ${built}, more than ${options.builtWithinDays} days ago: the nightly refresh has not released since`]
+    : [];
+}
+
+/**
  * Does the data API answer as it should at this address (TIDES_CHECK)?
  *
  * @param {HealthOptions} options
@@ -317,7 +355,8 @@ export async function checkHealth(options, deps) {
 
   const checked = await checkPages(options, deps);
   const data = checked.blocked ? { failures: [], blocked: false } : await checkData(options, deps);
-  const pages = { failures: [...checked.failures, ...data.failures], blocked: checked.blocked || data.blocked };
+  const built = checked.blocked || data.blocked ? [] : await checkBuilt(options, deps);
+  const pages = { failures: [...checked.failures, ...data.failures, ...built], blocked: checked.blocked || data.blocked };
   const failures = [...first.failures, ...pages.failures];
 
   /** @type {number | null} */
@@ -433,6 +472,7 @@ export function networkDeps(timeoutMs = FETCH_TIMEOUT_MS) {
       }),
     now: () => performance.now(),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    date: () => Date.now(),
   };
 }
 

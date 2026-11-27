@@ -7,6 +7,7 @@ import {
   networkDeps,
   NOT_A_PAGE,
   PAGE_MARKER,
+  BUILT_PAGE,
   parseHealthArgs,
   TIDES_CHECK,
 } from "../../scripts/lib/health-check.mjs";
@@ -65,7 +66,15 @@ function fakeSite({ health, page, missing, tides, durations = [20] }: FakeSite =
   };
 }
 
-const defaults = { baseUrl: BASE, expectTag: null, expectVersion: null, samples: 20, p95Ms: 300, waitMs: 0 };
+const defaults = {
+  baseUrl: BASE,
+  expectTag: null,
+  expectVersion: null,
+  samples: 20,
+  p95Ms: 300,
+  waitMs: 0,
+  builtWithinDays: null,
+};
 
 describe("parseHealthArgs()", () => {
   it("needs only the address and has the plan's defaults", () => {
@@ -82,6 +91,7 @@ describe("parseHealthArgs()", () => {
       samples: 5,
       p95Ms: 150,
       waitMs: 9000,
+      builtWithinDays: null,
     });
   });
 
@@ -454,3 +464,46 @@ describe("what the checks ask for", () => {
     expect(new Set(asked)).toEqual(new Set(["GET /", `GET ${NOT_A_PAGE}`, "GET /api/health", "GET /api/tides"]));
   });
 });
+
+describe("the beach pages' build date (the daily check)", () => {
+  const today = Date.UTC(2026, 10, 27, 11, 41);
+  const page = (built: string | null) => () =>
+    new Response(
+      `<!doctype html><head>${PAGE_MARKER}${built ? `<meta name="tide-table-built" content="${built}"/>` : ""}</head>`,
+      { status: 200, headers: SECURITY_HEADERS },
+    );
+  const check = async (built: string | null) => {
+    const site = fakeSite({ page: page(built) });
+    const result = await checkHealth(
+      { ...defaults, samples: 1, builtWithinDays: 2 },
+      { ...site.deps, date: () => today },
+    );
+    return { result, site };
+  };
+
+  it("reads --built-within-days", () => {
+    expect(parseHealthArgs([BASE, "--built-within-days", "2"]).builtWithinDays).toBe(2);
+  });
+
+  it("passes pages built within the days given: the nightly refresh is releasing", async () => {
+    for (const built of ["2026-11-27", "2026-11-25"]) {
+      const { result, site } = await check(built);
+      expect(result.failures).toEqual([]);
+      expect(site.requested).toContain(`${BASE}${BUILT_PAGE}`);
+    }
+  });
+
+  it("fails pages built longer ago, or with no build date: the nightly refresh has stopped releasing", async () => {
+    expect((await check("2026-11-24")).result.failures).toEqual([
+      `${BUILT_PAGE} was built on 2026-11-24, more than 2 days ago: the nightly refresh has not released since`,
+    ]);
+    expect((await check(null)).result.failures).toEqual([`${BUILT_PAGE} carries no build date (tide-table-built)`]);
+  });
+
+  it("asks for no beach page unless told to", async () => {
+    const site = fakeSite();
+    await checkHealth({ ...defaults, samples: 1 }, site.deps);
+    expect(site.requested).not.toContain(`${BASE}${BUILT_PAGE}`);
+  });
+});
+

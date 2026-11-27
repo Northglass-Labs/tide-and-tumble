@@ -77,4 +77,4 @@ jobs:
       # blocked and fails.
       - name: Production runs the head of main
         if: steps.releases.outputs.automatic == 'true'
-        run: npm run health -- https://tideandtumble.app --expect-tag "$(git rev-parse --short=12 HEAD)"
+        run: npm run health -- https://tideandtumble.app --expect-tag "$(git rev-parse --short=12 HEAD)" --built-within-days 2

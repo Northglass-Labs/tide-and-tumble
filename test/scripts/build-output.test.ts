@@ -110,9 +110,20 @@ describe("buildProblems()", () => {
     expect(buildProblems(good(), ORIGIN)).toEqual([]);
   });
 
+  it("refuses a beach page without its build date, which the daily check reads", () => {
+    const read = (text: string) => (path: string) => (path === "tides/nags-head.html" ? text : "");
+    expect(buildProblems({ ...good(), read: read("<head></head>") }, ORIGIN)).toEqual([
+      "out/tides/nags-head.html carries no build date (tide-table-built)",
+    ]);
+    expect(
+      buildProblems({ ...good(), read: read('<meta name="tide-table-built" content="2026-11-27"/>') }, ORIGIN),
+    ).toEqual([]);
+  });
+
   it("refuses the full Lottie player in the scripts: only the light build, SVG and no expressions, may ship", () => {
     const chunk = "_next/static/chunks/a.js";
-    const read = (text: string) => (path: string) => (path === chunk ? text : "");
+    const dated = '<meta name="tide-table-built" content="2026-11-27"/>';
+    const read = (text: string) => (path: string) => (path === chunk ? text : path.startsWith("tides/") ? dated : "");
     // The canvas renderer is in the full player and not in the light one: 700 KB more, and an expression
     // engine that needs eval, which the Content-Security-Policy refuses anyway.
     expect(buildProblems({ ...good(), read: read("class CVShapeElement{}") }, ORIGIN)).toEqual([

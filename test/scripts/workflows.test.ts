@@ -677,7 +677,10 @@ describe("GitHub workflows", () => {
     // subdomain, which this public repository and its public logs never name.
     const health = stepWith(job, "npm run health");
     const { origin } = readProject();
-    expect(stepValue(health, "run")).toBe(`npm run health -- ${origin} --expect-tag "$(git ${TAG_ARGS.join(" ")})"`);
+    // The beach pages must have been built within two days: three skipped nightly refreshes in a row fail it.
+    expect(stepValue(health, "run")).toBe(
+      `npm run health -- ${origin} --expect-tag "$(git ${TAG_ARGS.join(" ")})" --built-within-days 2`,
+    );
   });
 
   it("pass with a notice until releases are automatic, and check production once they are", () => {

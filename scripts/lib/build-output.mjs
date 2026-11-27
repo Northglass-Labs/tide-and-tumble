@@ -176,6 +176,11 @@ export function buildProblems({ files, links, size, sitemap, headers, read }, or
     if (size(path) > LIMITS.bytesPerFile) problems.push(`out/${path} is over 25 MiB, the free plan's limit per file`);
   }
   if (read) {
+    for (const path of files.filter((file) => /^tides\/[^/]+\.html$/.test(file))) {
+      if (!/<meta name="tide-table-built" content="\d{4}-\d{2}-\d{2}"/.test(read(path))) {
+        problems.push(`out/${path} carries no build date (tide-table-built)`);
+      }
+    }
     for (const path of files.filter((file) => /^_next\/static\/.+\.js$/.test(file))) {
       if (FULL_LOTTIE.test(read(path))) {
         problems.push(`out/${path} holds the full Lottie player; import the light build only (src/components/AnimatedEmoji.tsx)`);

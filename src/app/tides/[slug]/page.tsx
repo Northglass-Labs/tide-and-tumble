@@ -48,6 +48,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: "Tide & Tumble",
       type: "website",
     },
+    // The day this page was built (UTC). The daily check reads it to see that
+    // the nightly refresh is still releasing (npm run health --built-within-days).
+    other: { "tide-table-built": new Date().toISOString().slice(0, 10) },
   };
 }
 
