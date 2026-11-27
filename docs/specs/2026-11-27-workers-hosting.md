@@ -389,10 +389,23 @@ Both holds are pinned in `.github/dependabot.yml` with the date and reason.
   load is not budgeted yet either.
 - **The Workers Rate Limiting binding**, a sturdier per-client limit than the
   in-memory one, once its free-plan availability is confirmed.
-- **Two small redirect differences.** A trailing slash (`/tides/nags-head/`)
-  and the segment files Next fetches during client-side navigation, whose
-  names contain `$`, get Cloudflare's 307 to the canonical form; the previous
-  host used 308 for the first and served the second directly. Both work; the
-  service worker leaves requests with a query to the browser, because its own
-  fetch of a redirected payload failed in headless Chrome.
+- **Redirects and status codes that differ from the previous host**, checked
+  in `wrangler dev` 4.167:
+  - A trailing slash (`/tides/nags-head/`) gets Cloudflare's 307 to the
+    canonical address; the previous host sent 308. Both keep the path.
+  - Next's per-segment payloads (`__next.tides.$d$slug.__PAGE__.txt`), which
+    it prefetches for every beach link in view, get a 307 to the `%24` form
+    of their name, then the file: two requests for each, about 64 extra on
+    the home page. Static requests are free and count against no limit, and
+    no setting changes the redirect; turning prefetching off would trade it
+    for slower navigation, so it stays. (An earlier note blamed this redirect
+    for a failed service-worker fetch; that was a stale local `wrangler dev`
+    state, not Cloudflare. The service worker leaves requests with a query to
+    the browser so that a query never becomes a cache key.)
+  - The payloads themselves (`*.txt`) answer 200, as on the previous host.
+  - `/404`, the 404 page asked for by its own name, is a file and answers
+    200; every other unknown path gets that page with a 404. Only a Worker
+    could change that status, and pages never run the Worker, so `/404`
+    carries `X-Robots-Tag: noindex` instead. Next's own `_not-found` page is
+    not uploaded (`public/.assetsignore`), so `/_not-found` is a 404.
 - **Retiring the previous host**, after the hold.

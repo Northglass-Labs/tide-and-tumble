@@ -22,6 +22,11 @@
 /_next/static/*
   Cache-Control: public, max-age=14400, must-revalidate
 
+# The 404 page asked for by its own name is a file, so it answers 200; keep
+# that address out of search results.
+/404
+  X-Robots-Tag: noindex
+
 # The Worker's workers.dev address: never in search results.
 https://:worker.:subdomain.workers.dev/*
   X-Robots-Tag: noindex

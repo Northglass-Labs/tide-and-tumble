@@ -12,3 +12,8 @@ id_rsa
 id_dsa
 id_ecdsa
 id_ed25519
+# Next's own not-found page. Cloudflare answers every unknown path with
+# 404.html and a 404; uploaded, this one would answer /_not-found with a 200.
+_not-found.html
+_not-found.txt
+_not-found/

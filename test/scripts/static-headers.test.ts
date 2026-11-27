@@ -97,6 +97,12 @@ describe("public/_headers", () => {
     expect(everyFile?.has("cache-control")).toBe(false);
   });
 
+  it("keeps the 404 page's own address out of search results: static files answer it with 200", () => {
+    // Cloudflare serves out/404.html with a 404 for every path that matches no file, but asked for by its own
+    // name it is a file, and only a Worker could change that status (docs/specs, "Not in this change").
+    expect(rules().get("/404")?.get("x-robots-tag")).toBe("noindex");
+  });
+
   it("keeps the workers.dev address out of search results, without naming the account's subdomain", () => {
     expect(rules().get("https://:worker.:subdomain.workers.dev/*")?.get("x-robots-tag")).toBe("noindex");
   });

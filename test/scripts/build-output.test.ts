@@ -167,4 +167,10 @@ describe("public/.assetsignore", () => {
       expect(lines).toContain(pattern);
     }
   });
+
+  it("leaves out Next's own not-found page, so its address answers the real 404 page with a 404", () => {
+    // Cloudflare's 404 handling serves 404.html; _not-found.html would answer /_not-found with a 200.
+    const lines = readFileSync(new URL("../../public/.assetsignore", import.meta.url), "utf8").split("\n");
+    expect(lines).toEqual(expect.arrayContaining(["_not-found.html", "_not-found.txt", "_not-found/"]));
+  });
 });
