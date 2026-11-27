@@ -419,6 +419,18 @@ moving typescript-eslint to 8.74. Dependabot's grouped major update:
 
 Both holds are pinned in `.github/dependabot.yml` with the date and reason.
 
+## Decided after the cutover
+
+- **The `workers.dev` address stays on.** Production is reached through the
+  route now, and no regular release or check uses the Worker's own address.
+  It stays for one case: a release that broke production's `/api/health`.
+  Then the site cannot say which version answers, so `promote` (to release a
+  fix) and `rollback` refuse at the site's address; at `--origin
+  <workers.dev address>` they can still confirm the account and check what
+  they change. Without it, that rollback would be made by hand with
+  Wrangler, unchecked. The address serves the same pages with `noindex`, and
+  its data routes answer 404: only `GET /api/health` answers there.
+
 ## Not in this change
 
 - **One API request per beach view.** A beach view makes three Worker
@@ -427,10 +439,6 @@ Both holds are pinned in `.github/dependabot.yml` with the date and reason.
   would not change; it needs the page to take the three parts' separate
   failures from one answer, and the service worker's offline copy of the
   tides moved to it. A follow-up.
-- **The `workers.dev` address off after the cutover** (`workers_dev: false`):
-  once production is reached through the route, the Worker's own address
-  only serves the release check of last resort. Turning it off removes a
-  second public address for the same Worker, and `--origin` with it.
 - **A script-hash Content-Security-Policy** instead of `'unsafe-inline'`
   scripts: possible with a post-build step that hashes each page's inline
   scripts; it needs a browser test suite to be safe, which the repository

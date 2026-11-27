@@ -322,8 +322,9 @@ done once, after production is reached through the zone route (the release
 checks `https://tideandtumble.app`): the release credentials go into the
 repository's Actions secrets, Dependabot security updates are turned on, and
 Deploy is run once on `main` (the merge job merges only once a Deploy run on
-`main` has released, and starts the release only when the merge commit's
-parent is the head production was checked against). How the credentials are made and kept is in the
+`main` has released, starts the release only when the merge commit's
+parent is the head production was checked against, and passes that head to
+the release, which changes nothing unless production still runs it). How the credentials are made and kept is in the
 private operations record. The release credential is an account-owned API
 token scoped to this one Worker with the Workers Editor role: it can upload,
 deploy and roll back this Worker, and it cannot create or delete a Worker,
