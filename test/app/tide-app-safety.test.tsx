@@ -160,7 +160,7 @@ describe("TideApp's beach safety notice", () => {
     const cases: [string, string, string | null][] = [
       ["not-yet", "No NWS rip-current forecast for today yet.", null],
       ["out-of-season", "No NWS rip-current forecasts are being issued here this season.", null],
-      ["none", "Today's NWS forecast gives no rip-current risk for this beach.", null],
+      ["check", "Check today's NWS surf zone forecast for rip-current risk", null],
       ["today", "Low rip current risk today (NWS)", "Low"],
     ];
     for (const [ripForecast, note, ripRisk] of cases) {
@@ -169,6 +169,15 @@ describe("TideApp's beach safety notice", () => {
       expect(await screen.findByText(note)).toBeTruthy();
       cleanup();
     }
+  });
+
+  test("never says there is no rip-current risk: when none was read, it links to today's forecast", async () => {
+    const url = "https://forecast.weather.gov/product.php?site=NWS&issuedby=MLB&product=SRF";
+    serveApi({ alerts: [], ripRisk: null, uvIndex: null, source: "NWS (MLB)", complete: true, ripForecast: "check", forecastUrl: url });
+    render(<TideApp initialStation={station} seeded />);
+    const link = await screen.findByRole("link", { name: "Check today's NWS surf zone forecast for rip-current risk" });
+    expect(link.getAttribute("href")).toBe(url);
+    expect(document.body.textContent).not.toMatch(/no rip-current risk/i);
   });
 });
 

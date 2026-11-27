@@ -167,7 +167,7 @@ export default function TideApp({
   // this is the single alert strip for the page.
   const [alerts, setAlerts] = useState<BeachAlert[]>([]);
   const [uvIndex, setUvIndex] = useState<string | null>(null);
-  const [ripNote, setRipNote] = useState<string | null>(null);
+  const [ripNote, setRipNote] = useState<{ text: string; href: string | null } | null>(null);
   const [tideCachedAt, setTideCachedAt] = useState<number | null>(null);
   const [safetyStatus, setSafetyStatus] = useState<SafetyStatus>("loading");
   const online = useSyncExternalStore(
@@ -572,7 +572,15 @@ export default function TideApp({
 
         {/* No rip-current forecast for today is said, not left blank. */}
         {dayOffset === 0 && ripNote && (
-          <p className="mx-5 mb-2 px-3.5 font-body text-xs text-ink-soft">{ripNote}</p>
+          <p className="mx-5 mb-2 px-3.5 font-body text-xs text-ink-soft">
+            {ripNote.href ? (
+              <a href={ripNote.href} target="_blank" rel="noopener noreferrer" className="text-ocean underline">
+                {ripNote.text}
+              </a>
+            ) : (
+              ripNote.text
+            )}
+          </p>
         )}
 
         {/* Day switcher (30-day window) */}

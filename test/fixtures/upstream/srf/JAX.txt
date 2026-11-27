@@ -1,0 +1,140 @@
+
+000
+FZUS52 KJAX 271600
+SRFJAX
+
+Surf Zone Forecast for Northeast Florida and Southeast Georgia
+National Weather Service Jacksonville FL
+1100 AM EST Fri Nov 27 2026
+
+FLZ124-125-138-233-333-280700-
+Nassau-Duval-Flagler-St. Johns-
+Including the beaches of Yulee, Fernandina Beach, Jacksonville Beach, 
+Palm Coast, Palm Valley, Ponte Vedra Beach, Sawgrass, Vilano Beach, 
+Anastasia, Crescent Beach, St. Augustine, and St. Augustine South
+1100 AM EST Fri Nov 27 2026
+
+...A MODERATE RISK OF RIP CURRENTS IS IN EFFECT...
+
+.REST OF TODAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................3 to 4 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........65 to 70. 
+Weather.....................Mostly sunny. 
+High Temperature............In the lower 60s. 
+Winds.......................West winds around 15 mph.
+Tides...
+   Vilano Beach.............Low  04:49 PM EST.
+   St Augustine Beach.......Low  04:09 PM EST.
+   Fernandina Beach.........Low  04:50 PM EST.
+   Mayport Naval Station....Low  04:19 PM EST.
+   Jacksonville Beach.......Low  04:11 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................2 to 3 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the lower 60s. 
+Winds.......................West winds around 5 mph.
+Tides...
+   Vilano Beach.............High  11:19 AM EST.
+                            Low 05:47 PM EST.
+   St Augustine Beach.......High  10:42 AM EST.
+                            Low 05:09 PM EST.
+   Fernandina Beach.........High  11:44 AM EST.
+                            Low 05:46 PM EST.
+   Mayport Naval Station....High  11:13 AM EST.
+                            Low 05:19 PM EST.
+   Jacksonville Beach.......High  10:40 AM EST.
+                            Low 05:06 PM EST.
+
+.EXTENDED...
+.SUNDAY...Surf height 1 to 2 feet. Cloudy. Highs in the upper 60s.
+South winds around 5 mph. 
+.MONDAY...Surf height 2 to 3 feet. Mostly cloudy. A slight chance of
+showers. Highs in the mid 60s. North winds around 10 mph. 
+.TUESDAY...Surf height 2 to 3 feet. Mostly cloudy. A chance of
+showers. Highs in the upper 60s. Northeast winds around 10 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/jax
+
+$$
+
+GAZ154-166-280700-
+Glynn-Camden-
+Including the beaches of Brunswick, St. Simons, Country Club Estates, 
+Dock Junction, St. Marys, and Kingsland
+1100 AM EST Fri Nov 27 2026
+
+...A MODERATE RISK OF RIP CURRENTS IS IN EFFECT...
+
+.REST OF TODAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................2 to 3 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........60 to 65. 
+Weather.....................Mostly sunny. 
+High Temperature............In the upper 50s. 
+Winds.......................West winds around 15 mph.
+Tides...
+   St Simons Island.........Low  04:41 PM EST.
+   Brunswick GA.............Low  04:55 PM EST.
+   Dungeness Seacamp........High  11:02 AM EST.
+                            Low 05:03 PM EST.
+
+.SATURDAY...
+Rip Current Risk*...........Low. 
+Surf Height.................1 to 2 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Partly sunny. 
+High Temperature............Around 60. 
+Winds.......................West winds around 5 mph.
+Tides...
+   St Simons Island.........High  11:00 AM EST.
+                            Low 05:37 PM EST.
+   Brunswick GA.............High  11:26 AM EST.
+                            Low 05:49 PM EST.
+   Dungeness Seacamp........High  11:56 AM EST.
+                            Low 05:57 PM EST.
+
+.EXTENDED...
+.SUNDAY...Surf height 1 to 2 feet. Mostly cloudy. Highs in the mid
+60s. South winds around 5 mph. 
+.MONDAY...Surf height 1 to 2 feet. Partly sunny. Highs in the lower
+60s. North winds around 5 mph. 
+.TUESDAY...Surf height 1 to 2 feet. Partly sunny. A slight chance of
+showers. Highs in the mid 60s. Northeast winds around 5 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/jax
+
+
+$$
+

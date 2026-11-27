@@ -25,17 +25,58 @@ describe("a beach's section of its office's Surf Zone Forecast (real forecasts, 
     expect(section.rip).toMatch(/^(Low|Moderate|High)$/);
   });
 
-  test("is not found when the forecast has no section for the zone, and then says nothing", () => {
-    // Los Angeles' forecast has no section for Santa Monica's land zone.
+  test("is not found by a code alone when the office heads the section with another", () => {
     expect(parseSrf(srf("LOX"), "CAZ366")).toEqual({ found: false, rip: null, uv: null });
   });
 });
 
-describe("each curated beach's land forecast zone (src/lib/beach-zones.json)", () => {
-  test("is bundled for every curated beach, and is a land zone, never a marine one", () => {
+const zones = beachZones as Record<string, { zone: string; office: string; name: string }>;
+const issuedToday = (office: string) => {
+  try {
+    return srf(office).length > 0;
+  } catch {
+    return false;
+  }
+};
+
+describe("each curated beach's land forecast zone, its name and its office (src/lib/beach-zones.json)", () => {
+  test("is bundled for every curated beach: a land zone, never a marine one, with its office", () => {
     for (const beach of BEACHES) {
-      expect((beachZones as Record<string, string>)[beach.id], beach.label).toMatch(/^[A-Z]{2}Z\d{3}$/);
-      expect((beachZones as Record<string, string>)[beach.id]).not.toMatch(/^(AM|AN|GM|PZ|PK|PH|LM|LE|LH|LO|LS|SL|PM|PS)Z/);
+      const entry = zones[beach.id]!;
+      expect(entry.zone, beach.label).toMatch(/^[A-Z]{2}Z\d{3}$/);
+      expect(entry.zone).not.toMatch(/^(AM|AN|GM|PZ|PK|PH|LM|LE|LH|LO|LS|SL|PM|PS)Z/);
+      expect(entry.office, beach.label).toMatch(/^[A-Z]{3}$/);
+      expect(entry.name.length, beach.label).toBeGreaterThan(2);
     }
+  });
+
+  test.each([
+    ["8725520", "FLZ165", "TBW", "Coastal Lee"],
+    ["9414290", "CAZ509", "MTR", "San Francisco Peninsula Coast"],
+    ["8771341", "TXZ438", "HGX", "Galveston Island"],
+    ["9410580", "CAZ552", "SGX", "Orange County Coastal"],
+    ["9410660", "CAZ366", "LOX", "Los Angeles County Beaches"],
+  ])("%s is %s (%s, %s), as api.weather.gov's zones give it", (id, zone, office, name) => {
+    expect(zones[id]).toEqual({ zone, office, name });
+  });
+
+  test("every curated beach in an office that issued today's forecast finds its section (forecasts recorded 2026-11-27)", () => {
+    const missing = BEACHES.filter((beach) => issuedToday(zones[beach.id]!.office))
+      .filter((beach) => !parseSrf(srf(zones[beach.id]!.office), zones[beach.id]!.zone, zones[beach.id]!.name).found)
+      .map((beach) => `${beach.label} (${zones[beach.id]!.office} ${zones[beach.id]!.zone} ${zones[beach.id]!.name})`);
+    expect(missing).toEqual([]);
+  });
+});
+
+describe("Boston's form, the level on lines below the label, one per stretch of coast", () => {
+  test.each(["8447435", "8446121", "8449130"])("gives %s its highest level (Chatham, Provincetown, Nantucket: High)", (id) => {
+    const { zone, name } = zones[id]!;
+    expect(parseSrf(srf("BOX"), zone, name)).toMatchObject({ found: true, rip: "High" });
+  });
+});
+
+describe("a section found by its zone's name when the office uses another code", () => {
+  test("Los Angeles County Beaches (CAZ366) in Los Angeles' section headed CAZ362-364", () => {
+    expect(parseSrf(srf("LOX"), "CAZ366", "Los Angeles County Beaches").found).toBe(true);
   });
 });

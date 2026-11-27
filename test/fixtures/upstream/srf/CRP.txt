@@ -1,0 +1,166 @@
+
+000
+FZUS54 KCRP 270625
+SRFCRP
+
+Surf Zone Forecast for Texas
+National Weather Service Corpus Christi TX
+1224 AM CST Fri Nov 27 2026
+
+TXZ442-443-272200-
+Kleberg Islands-Nueces Islands-
+Including the beaches of Padre Island National Seashore, 
+Corpus Christi, and Mustang Island
+1224 AM CST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........Low. 
+Surf Height.................Around 1 foot. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........In the mid 60s. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the mid 60s. 
+Winds.......................West winds around 5 mph, becoming 
+                            southeast in the afternoon.
+Tides...
+   Bob Hall Pier............Low at 10:16 AM CST.
+   Port Aransas.............Low at 10:21 AM CST. 
+Sunrise.....................6:58 AM. 
+Sunset......................5:35 PM.
+
+.TONIGHT...
+Rip Current Risk*...........Low. 
+Surf Height.................Around 1 foot, building to around 2 
+                            feet after midnight. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+Low Temperature.............In the upper 50s. 
+Winds.......................South winds around 10 mph.
+Tides...
+   Bob Hall Pier............High at 08:54 PM CST.
+   Port Aransas.............High at 08:17 PM CST.
+
+.SATURDAY...
+Rip Current Risk*...........Low. 
+Surf Height.................Around 1 foot, building to 2 to 3 feet 
+                            in the afternoon. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly sunny. 
+High Temperature............In the lower 70s. 
+Winds.......................Southwest winds around 5 mph, 
+                            increasing to south around 15 mph in 
+                            the afternoon.
+Tides...
+   Bob Hall Pier............Low at 11:22 AM CST.
+   Port Aransas.............Low at 11:16 AM CST. 
+Sunrise.....................6:59 AM. 
+Sunset......................5:35 PM.
+
+.EXTENDED...
+.SATURDAY NIGHT...Surf height 3 to 6 feet. Mostly clear. Lows in the
+lower 60s. South winds around 20 mph. 
+.SUNDAY...Surf height 2 to 4 feet. Mostly sunny. Highs in the upper
+60s. Northwest winds around 20 mph. 
+.SUNDAY NIGHT...Surf height 2 to 5 feet. Partly cloudy. Lows in the
+mid 50s. North winds around 15 mph. 
+.MONDAY...Surf height 2 to 4 feet. Sunny. Highs in the upper 60s.
+Northeast winds around 10 mph. 
+.MONDAY NIGHT...Surf height around 2 feet. Clear. Lows in the lower
+60s. Southeast winds around 10 mph. 
+.TUESDAY...Surf height around 2 feet. Sunny. Highs in the lower 70s.
+South winds around 10 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/crp
+
+$$
+
+TXZ345-447-272200-
+Aransas Islands-Calhoun Islands-
+Including the beaches of San Jose Island
+1224 AM CST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........Low. 
+Surf Height.................Around 1 foot. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Water Temperature...........In the mid 60s. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the mid 60s. 
+Winds.......................Northwest winds around 5 mph, becoming 
+                            south in the afternoon. 
+Tides...
+   Port Aransas.............Low at 10:21 AM CST. 
+Sunrise.....................6:58 AM. 
+Sunset......................5:32 PM.
+
+.TONIGHT...
+Rip Current Risk*...........Low. 
+Surf Height.................Around 1 foot, building to around 2 
+                            feet after midnight. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+Low Temperature.............In the upper 50s. 
+Winds.......................South winds 5 to 10 mph. 
+Tides...
+   Port Aransas.............High at 08:17 PM CST.
+
+.SATURDAY...
+Rip Current Risk*...........Low. 
+Surf Height.................Around 1 foot, building to 2 to 3 feet 
+                            in the afternoon. 
+Thunderstorm Potential**....None. 
+Weather.....................Partly sunny until 12 PM, then sunny. 
+High Temperature............Around 70. 
+Winds.......................Southwest winds around 5 mph, 
+                            increasing to south around 15 mph in 
+                            the afternoon. 
+Tides...
+   Port Aransas.............Low at 11:16 AM CST. 
+Sunrise.....................6:59 AM. 
+Sunset......................5:32 PM.
+
+.EXTENDED...
+.SATURDAY NIGHT...Surf height 3 to 6 feet. Mostly clear. Lows in the
+lower 60s. South winds around 15 mph. 
+.SUNDAY...Surf height 2 to 5 feet. Mostly sunny. Highs in the mid
+60s. Northwest winds around 15 mph. 
+.SUNDAY NIGHT...Surf height 2 to 4 feet. Partly cloudy. Lows in the
+lower 50s. North winds around 15 mph. 
+.MONDAY...Surf height 2 to 3 feet. Sunny. Highs in the mid 60s.
+Northeast winds around 10 mph. 
+.MONDAY NIGHT...Surf height around 2 feet. Clear. Lows in the lower
+60s. Southeast winds around 10 mph. 
+.TUESDAY...Surf height around 2 feet. Sunny. Highs around 70. South
+winds around 5 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/crp
+
+
+$$
+

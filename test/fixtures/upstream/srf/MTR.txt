@@ -1,0 +1,154 @@
+
+000
+FZUS56 KMTR 271658
+SRFMTR
+NORTHERN AND CENTRAL CALIFORNIA SURF ZONE FORECAST
+NATIONAL WEATHER SERVICE SAN FRANCISCO BAY AREA
+858 AM PST Fri Nov 27 2026
+
+...Please check with your local authorities on potential beach closures...
+
+CAZ505-280600-
+SONOMA AND MARIN COUNTY COASTAL AREAS-
+858 AM PST Fri Nov 27 2026
+
+...BEACH HAZARDS STATEMENT THROUGH 6 AM SATURDAY...
+...COASTAL FLOOD ADVISORY THROUGH 4 PM SATURDAY...
+
+.TODAY...
+Surf Height...................West Facing Beaches - 13 to 17 feet.
+                              South Facing Beaches - 6 to 10 feet.
+Thunderstorm Potential........None expected.
+Water Temperature.............Missing.
+Weather.......................Mostly cloudy.
+High Temperature..............60-68.
+Wind..........................NW at 5 MPH.
+Tides.........................High 4.9 feet (MLLW) 02:14 AM PST.
+                              Low 3.2 feet (MLLW) 06:26 AM PST.
+                              High 6.6 feet (MLLW) 12:31 PM PST.
+                              Low -1.3 feet (MLLW) 07:35 PM PST.
+
+.SATURDAY...
+Surf Height...................West Facing Beaches - 8 to 12 feet.
+                              South Facing Beaches - 3 to 5 feet.
+Thunderstorm Potential........None expected.
+Weather.......................Mostly cloudy.
+High Temperature..............61-70.
+Wind..........................SE at 5 MPH.
+Tides.........................High 4.9 feet (MLLW) 03:09 AM PST.
+                              Low 3.1 feet (MLLW) 07:31 AM PST.
+                              High 6.2 feet (MLLW) 01:28 PM PST.
+                              Low -0.9 feet (MLLW) 08:30 PM PST.
+
+
+$$
+
+
+CAZ509-280600-
+SAN FRANCISCO AND SAN MATEO COUNTY COASTAL AREAS-
+858 AM PST Fri Nov 27 2026
+
+...BEACH HAZARDS STATEMENT THROUGH 6 AM SATURDAY...
+...COASTAL FLOOD ADVISORY THROUGH 4 PM SATURDAY...
+
+.TODAY...
+Surf Height...................Northwest Facing Beaches - 12 to 16 feet.
+                              South Facing Beaches - 6 to 9 feet.
+Thunderstorm Potential........None expected.
+Water Temperature.............Around 66 degrees.
+Weather.......................Mostly cloudy.
+High Temperature..............58-70.
+Wind..........................N at 8 MPH.
+Tides.........................High 4.9 feet (MLLW) 02:14 AM PST.
+                              Low 3.2 feet (MLLW) 06:26 AM PST.
+                              High 6.6 feet (MLLW) 12:31 PM PST.
+                              Low -1.3 feet (MLLW) 07:35 PM PST.
+
+.SATURDAY...
+Surf Height...................Northwest Facing Beaches - 8 to 12 feet.
+                              South Facing Beaches - 3 to 5 feet.
+Thunderstorm Potential........None expected.
+Weather.......................Mostly cloudy.
+High Temperature..............58-72.
+Wind..........................E at 9 MPH.
+Tides.........................High 4.9 feet (MLLW) 03:09 AM PST.
+                              Low 3.1 feet (MLLW) 07:31 AM PST.
+                              High 6.2 feet (MLLW) 01:28 PM PST.
+                              Low -0.9 feet (MLLW) 08:30 PM PST.
+
+
+$$
+
+
+CAZ529-280600-
+SANTA CRUZ COUNTY COASTAL AREAS-
+858 AM PST Fri Nov 27 2026
+
+...BEACH HAZARDS STATEMENT THROUGH 6 AM SATURDAY...
+...COASTAL FLOOD ADVISORY THROUGH 4 PM SATURDAY...
+
+.TODAY...
+Surf Height...................Northwest Facing Beaches - 10 to 14 feet.
+                              South Facing Beaches - 5 to 8 feet.
+Thunderstorm Potential........None expected.
+Water Temperature.............66 to 67 degrees.
+Weather.......................Mostly cloudy.
+High Temperature..............65-73.
+Wind..........................N at 8 MPH.
+Tides.........................High 3.9 feet (MLLW) 01:17 AM PST.
+                              Low 3.0 feet (MLLW) 05:11 AM PST.
+                              High 6.4 feet (MLLW) 11:17 AM PST.
+                              Low -1.3 feet (MLLW) 07:02 PM PST.
+
+.SATURDAY...
+Surf Height...................West Facing Beaches - 8 to 12 feet.
+                              South Facing Beaches - 3 to 5 feet.
+Thunderstorm Potential........None expected.
+Weather.......................Mostly cloudy.
+High Temperature..............66-75.
+Wind..........................SE at 6 MPH.
+Tides.........................High 4.0 feet (MLLW) 02:17 AM PST.
+                              Low 3.1 feet (MLLW) 06:19 AM PST.
+                              High 5.9 feet (MLLW) 12:14 PM PST.
+                              Low -0.9 feet (MLLW) 07:57 PM PST.
+
+
+$$
+
+
+CAZ530-280600-
+MONTEREY BAY AND BIG SUR COASTAL AREAS-
+858 AM PST Fri Nov 27 2026
+
+...BEACH HAZARDS STATEMENT THROUGH 6 AM SATURDAY...
+...COASTAL FLOOD ADVISORY THROUGH 5 PM SUNDAY...
+
+.TODAY...
+Surf Height...................Northwest Facing Beaches - 8 to 12 feet.
+                              South Facing Beaches - 4 to 7 feet.
+Thunderstorm Potential........None expected.
+Water Temperature.............Around 59 degrees.
+Weather.......................Mostly cloudy.
+High Temperature..............66-73.
+Wind..........................NE at 11 MPH becoming NE at 6 MPH.
+Tides.........................High 3.9 feet (MLLW) 01:17 AM PST.
+                              Low 3.0 feet (MLLW) 05:11 AM PST.
+                              High 6.4 feet (MLLW) 11:17 AM PST.
+                              Low -1.3 feet (MLLW) 07:02 PM PST.
+
+.SATURDAY...
+Surf Height...................West Facing Beaches - 6 to 10 feet.
+                              South Facing Beaches - 3 to 5 feet.
+Thunderstorm Potential........None expected.
+Weather.......................Mostly cloudy.
+High Temperature..............67-75.
+Wind..........................NE at 11 MPH becoming NE at 4 MPH.
+Tides.........................High 4.0 feet (MLLW) 02:17 AM PST.
+                              Low 3.1 feet (MLLW) 06:19 AM PST.
+                              High 5.9 feet (MLLW) 12:14 PM PST.
+                              Low -0.9 feet (MLLW) 07:57 PM PST.
+
+
+$$
+
+

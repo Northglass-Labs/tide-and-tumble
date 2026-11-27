@@ -83,12 +83,17 @@ HTML, the page says it is checking NWS beach warnings; without JavaScript a
 given up after ten seconds. A Surf Zone Forecast counts only when it was
 issued on the beach's own calendar day: NWS lists a week of them, and an
 office that stops issuing for the season would otherwise leave a week-old
-rip-current risk on the page as today's. Today's forecast speaks for the
-beach only through its own zone's section. Silence never stands for a
-forecast: a Low risk is shown ("Low rip current risk today (NWS)"), Moderate
-and High as advisories, and otherwise the page says which case it is: today's
-forecast gives no risk for this beach, none yet today (the newest is from the
-last two days), or none being issued this season.
+rip-current risk on the page as today's. A risk is stated only when one is
+read for the beach, from its own section (found by its bundled land zone's
+code or name, src/lib/beach-zones.json, in its bundled office's forecast):
+Low as a line, Moderate and High as advisories. When today's forecast exists
+but no risk is read, the page links to it ("Check today's NWS surf zone
+forecast for rip-current risk") and claims nothing either way: no parser
+covers every office's format, and a false "no risk" is the one failure a
+beach-safety page must not have. Otherwise it says none is out yet today, or
+none is being issued this season. A test checks every in-season beach finds
+its section in recorded forecasts, and test/app/srf-sections.live.test.ts
+checks today's (LIVE_SRF=1).
 
 ### D3. Version URLs off; a release is checked in production
 

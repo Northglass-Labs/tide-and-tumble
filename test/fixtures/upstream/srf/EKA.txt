@@ -1,0 +1,115 @@
+
+000
+FZUS56 KEKA 271655
+SRFEKA
+SURF ZONE FORECAST
+NATIONAL WEATHER SERVICE EUREKA
+855 AM PST Fri Nov 27 2026
+
+CAUTION: Most Northwest California beaches are always dangerous due to cold
+water and consistent wave action. The information in this product is directed
+towards those who surf and wear wetsuits.  As a rule...the general public
+should simply stay out of the water along the north coast of California.
+
+CAZ101-280600-
+Coastal Del Norte-
+855 AM PST Fri Nov 27 2026
+
+
+.TODAY...
+Surf Height...................West Facing Beaches - 13 to 17 feet.
+                              South Facing Beaches - 6 to 10 feet.
+Offshore Waves................W 12 feet at 19 seconds.
+                              SW 11 feet at 13 seconds.
+Thunderstorm Potential........None expected.
+Water Temperature.............Around 63 degrees.
+Tides.........................
+          Crescent City.......High 6.0 feet (MLLW) 01:54 AM PST.
+                              Low 3.3 feet (MLLW) 06:43 AM PST.
+                              High 8.1 feet (MLLW) 12:36 PM PST.
+                              Low -1.5 feet (MLLW) 07:54 PM PST.
+
+.SATURDAY...
+Surf Height...................West Facing Beaches - 6 to 9 feet.
+                              South Facing Beaches - 2 to 4 feet.
+Offshore Waves................W 8 feet at 14 seconds.
+                              SW 1 foot at 12 seconds.
+Thunderstorm Potential........None expected.
+Tides.........................
+          Crescent City.......High 6.0 feet (MLLW) 02:49 AM PST.
+                              Low 3.3 feet (MLLW) 07:44 AM PST.
+                              High 7.5 feet (MLLW) 01:32 PM PST.
+                              Low -1.1 feet (MLLW) 08:47 PM PST.
+
+
+$$
+
+
+CAZ103-280600-
+Northern Humboldt Coast-
+855 AM PST Fri Nov 27 2026
+
+...COASTAL FLOOD ADVISORY FROM 11 AM FRIDAY THROUGH 3 PM THIS AFTERNOON...
+
+.TODAY...
+Surf Height...................West Facing Beaches - 12 to 16 feet.
+                              South Facing Beaches - 6 to 9 feet.
+Offshore Waves................W 11 feet at 19 seconds.
+                              SW 11 feet at 13 seconds.
+Thunderstorm Potential........None expected.
+Water Temperature.............Around 63 degrees.
+Tides.........................
+          North Spit..........High 5.8 feet (MLLW) 02:12 AM PST.
+                              Low 3.4 feet (MLLW) 06:49 AM PST.
+                              High 8.1 feet (MLLW) 12:48 PM PST.
+                              Low -1.6 feet (MLLW) 08:02 PM PST.
+
+.SATURDAY...
+Surf Height...................West Facing Beaches - 6 to 9 feet.
+                              South Facing Beaches - 1 to 3 feet.
+Offshore Waves................W 8 feet at 14 seconds.
+Thunderstorm Potential........None expected.
+Tides.........................
+          North Spit..........High 5.8 feet (MLLW) 03:06 AM PST.
+                              Low 3.4 feet (MLLW) 07:49 AM PST.
+                              High 7.6 feet (MLLW) 01:44 PM PST.
+                              Low -1.1 feet (MLLW) 08:54 PM PST.
+
+
+$$
+
+
+CAZ109-280600-
+Mendocino Coast-
+855 AM PST Fri Nov 27 2026
+
+...COASTAL FLOOD ADVISORY FROM 11 AM FRIDAY THROUGH 3 PM THIS AFTERNOON...
+
+.TODAY...
+Surf Height...................West Facing Beaches - 13 to 17 feet.
+                              South Facing Beaches - 6 to 9 feet.
+Offshore Waves................W 12 feet at 20 seconds.
+                              SW 10 feet at 14 seconds.
+Thunderstorm Potential........None expected.
+Water Temperature.............62 to 64 degrees.
+Tides.........................
+          Arena Cove..........High 4.8 feet (MLLW) 01:36 AM PST.
+                              Low 3.2 feet (MLLW) 05:59 AM PST.
+                              High 7.0 feet (MLLW) 11:54 AM PST.
+                              Low -1.3 feet (MLLW) 07:27 PM PST.
+
+.SATURDAY...
+Surf Height...................West Facing Beaches - 6 to 9 feet.
+                              South Facing Beaches - 1 to 3 feet.
+Offshore Waves................W 8 feet at 15 seconds.
+Thunderstorm Potential........None expected.
+Tides.........................
+          Arena Cove..........High 4.8 feet (MLLW) 02:33 AM PST.
+                              Low 3.2 feet (MLLW) 07:02 AM PST.
+                              High 6.5 feet (MLLW) 12:51 PM PST.
+                              Low -0.9 feet (MLLW) 08:20 PM PST.
+
+
+$$
+
+

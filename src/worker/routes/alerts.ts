@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { fetchBeachSafetyChecked } from "../../lib/alerts";
+import { type BeachZone, fetchBeachSafetyChecked } from "../../lib/alerts";
 import {
   checkApiRateLimit,
   sharedCapacity,
@@ -53,7 +53,7 @@ export function alertsRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
             station.lng,
             AbortSignal.timeout(DEADLINE_MS),
             now,
-            (BEACH_ZONES as Record<string, string>)[station.id],
+            (BEACH_ZONES as Record<string, BeachZone>)[station.id],
           ),
         lifetime: (value) => ({ freshMs: value.complete ? 15 * MINUTE : MINUTE, staleMs: 0 }),
         waitUntil: (promise) => c.executionCtx.waitUntil(promise),

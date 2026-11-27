@@ -1,0 +1,79 @@
+
+000
+FZUS54 KBRO 270805
+SRFBRO
+
+Surf Zone Forecast
+National Weather Service Brownsville TX
+205 AM CST Fri Nov 27 2026
+
+TXZ451-454-455-280000-
+Kenedy Island-Willacy Island-Cameron Island-
+Including the beaches of South Padre Island and Boca Chica
+205 AM CST Fri Nov 27 2026
+
+.TODAY...
+Rip Current Risk*...........Low. 
+Surf Height.................Around 2 feet. 
+Thunderstorm Potential**....None. 
+UV Index**..................Moderate. 
+Surf Temperature............65 degrees. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the mid 60s. 
+Winds.......................West winds around 5 mph, becoming south 
+                            in the afternoon. 
+Tides...
+   South Padre Island.......Low at 10:22 AM CST.
+
+.TONIGHT...
+Rip Current Risk*...........Low. 
+Surf Height.................Around 2 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Cloudy. 
+Low Temperature.............Around 60. 
+Winds.......................South winds around 5 mph. 
+Tides...
+   South Padre Island.......High at 09:46 PM CST.
+
+.SATURDAY...
+Rip Current Risk*...........Moderate. 
+Surf Height.................Around 3 feet. 
+Thunderstorm Potential**....None. 
+Weather.....................Mostly cloudy. 
+High Temperature............In the lower 70s. 
+Winds.......................Southwest winds around 5 mph, 
+                            increasing to south around 15 mph in 
+                            the afternoon. 
+Tides...
+   South Padre Island.......Low at 11:22 AM CST.
+
+.EXTENDED...
+.SATURDAY NIGHT...Surf height 2 to 3 feet. Mostly clear. Lows in the
+mid 60s. South winds around 15 mph. 
+.SUNDAY...Surf height 2 to 4 feet. Sunny. Highs in the lower 70s.
+Northwest winds around 15 mph. 
+.SUNDAY NIGHT...Surf height 2 to 4 feet. Partly cloudy. Lows in the
+upper 50s. North winds around 15 mph. 
+.MONDAY...Surf height around 3 feet. Sunny. Highs in the upper 60s.
+North winds around 5 mph. 
+.MONDAY NIGHT...Surf height around 3 feet. Clear. Lows in the mid
+60s. Southeast winds around 10 mph. 
+.TUESDAY...Surf height around 3 feet. Sunny. Highs in the mid 70s.
+South winds around 15 mph.
+
+&&
+
+Rip Current Risk Category
+* Low Risk - The risk for rip currents is low, however,
+life-threatening rip currents often occur in the vicinity of groins,
+jetties, reefs, and piers.
+* Moderate Risk - Life-threatening rip currents are possible in the
+surf zone.
+* High Risk - Life-threatening rip currents are likely in the surf
+zone.
+
+** For thunderstorm, waterspout, and UV definitions see:
+https://www.weather.gov/beach/bro
+
+
+$$

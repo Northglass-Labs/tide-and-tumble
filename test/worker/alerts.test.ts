@@ -11,7 +11,8 @@ interface SafetyBody {
   uvIndex: string | null;
   source: string | null;
   complete: boolean;
-  ripForecast: "today" | "none" | "not-yet" | "out-of-season" | null;
+  ripForecast: "today" | "check" | "not-yet" | "out-of-season" | null;
+  forecastUrl: string | null;
 }
 
 const point = json({
@@ -71,7 +72,7 @@ describe("GET /api/alerts", () => {
 
     expect(response.headers.get("Cache-Control")).toBe("private, no-store, max-age=0");
     const body = await response.json<SafetyBody>();
-    expect(Object.keys(body).sort()).toEqual(["alerts", "complete", "ripForecast", "ripRisk", "source", "uvIndex"]);
+    expect(Object.keys(body).sort()).toEqual(["alerts", "complete", "forecastUrl", "ripForecast", "ripRisk", "source", "uvIndex"]);
     expect(body.ripForecast).toBe("today");
     expect(body.complete).toBe(true);
     expect(body.ripRisk).toBe("High");
@@ -198,14 +199,15 @@ describe("GET /api/alerts", () => {
       ripRisk: "Low",
       ripForecast: "today",
     });
-    // Today's forecast has the beach's own section, and it gives no rip-current risk.
+    // Today's forecast exists, but no risk is read for this beach: a link to it, and no claim either way.
     expect(await answer("NCZ203-280700-\n.TODAY...\nSurf Height.................2 to 3 feet.\n$$\n")).toMatchObject({
       ripRisk: null,
-      ripForecast: "none",
+      ripForecast: "check",
+      forecastUrl: "https://forecast.weather.gov/product.php?site=NWS&issuedby=MHX&product=SRF",
     });
   });
 
-  it("says nothing about rip currents when today's forecast has no section for the beach", async () => {
+  it("links to today's forecast, claiming nothing, when it has no section for the beach", async () => {
     stubUpstream([
       [`${NWS}points/`, () => point.clone()],
       [`${NWS}alerts/active`, () => json({ features: [] })],
@@ -213,7 +215,7 @@ describe("GET /api/alerts", () => {
       [PRODUCT, () => json({ productText: "NCZ999-280700-\n.TODAY...\nRip Current Risk*..........High.\n$$\n" })],
     ]);
     const body = await (await testApp().request("/api/alerts?station=8651370")).json<SafetyBody>();
-    expect(body).toMatchObject({ ripRisk: null, ripForecast: null, complete: true });
+    expect(body).toMatchObject({ ripRisk: null, ripForecast: "check", complete: true });
   });
 
   it("asks for alerts by the beach's land zone as well as by its point, which may be on the water", async () => {
