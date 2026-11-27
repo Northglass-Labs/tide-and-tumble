@@ -39,7 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-.claude/
+# Agent state stays local, except the shared progress record.
+.claude/*
+!.claude/context/
+.claude/context/*
+!.claude/context/progress.md
 
 # Working design specs (superpowers) — kept local; the durable decision lives in docs/adr/
 docs/superpowers/

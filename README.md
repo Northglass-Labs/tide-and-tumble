@@ -70,7 +70,7 @@ All motion respects `prefers-reduced-motion` (static fallbacks throughout).
 | Animated emoji | Google Noto (Apache-2.0) Lottie via `lottie-react` |
 | Map | react-leaflet + OpenStreetMap (keyless) |
 | Audio | Web Audio API (procedural) + a public-domain ocean loop |
-| Hosting | Vercel |
+| Hosting | Cloudflare Workers, free plan: the pages as static files, one Hono Worker for `/api/*` |
 
 > ⚠️ **This is not the Next.js you may know.** Next 16 has breaking changes from older
 > versions. See `AGENTS.md` — read the relevant guide in `node_modules/next/dist/docs/`
@@ -81,15 +81,18 @@ All motion respects `prefers-reduced-motion` (static fallbacks throughout).
 ## Develop
 
 ```bash
-npm install
-npm run dev      # http://localhost:3000
-npm run build    # production build (must pass before deploy)
-npm run start    # serve the production build locally
-npm run lint     # eslint
+npm ci
+npm run dev      # pages on http://localhost:3000 (the API is not served here)
+npm run preview  # the whole site, API included, on http://localhost:4183
+npm run verify   # types, lint, tests, the static export and its check
 ```
 
-Node 20+ recommended. No environment variables are required — every data source is
-free and keyless (see below).
+Node 26 (`.node-version`). No environment variables or secrets are needed —
+every data source is free and keyless (see below). The pages are a static
+export (`out/`); `src/worker/` is the API. Releasing, rolling back and the free
+plan's limits are in **[docs/DELIVERY.md](./docs/DELIVERY.md)**; why it is built
+this way is in [docs/specs/2026-11-27-workers-hosting.md](./docs/specs/2026-11-27-workers-hosting.md)
+and [docs/adr/](./docs/adr/).
 
 ---
 
@@ -99,12 +102,18 @@ free and keyless (see below).
   to its nearest NOAA station; the smooth curve and current level are reconstructed
   from published high/low events with cosine interpolation (the "rule of twelfths"), so
   harmonic and subordinate stations render identically. One request pulls a ~32-day
-  window so the day switcher is instant. Proxied server-side and cached 15 min.
+  window so the day switcher is instant. Proxied by the API Worker, by station id,
+  and cached per station for 15 minutes.
 - **Marine conditions:** NDBC buoys (`realtime2`) for wave height/period/water temp, and
   NOAA CO-OPS for wind/water temp where a station has live sensors — each beach mapped to
-  its nearest source with graceful per-field fallback.
-- **Nearest station:** a bundled dataset of ~3,500 NOAA stations + 869 NDBC buoys, with
-  haversine nearest-lookup (server-only).
+  its nearest source with graceful per-field fallback. Asked by station id; the
+  Worker looks up the coordinates.
+- **Beach safety:** the National Weather Service's alerts and the Surf Zone
+  Forecast's daily rip-current risk and UV index, through the API Worker. Never
+  baked into a page.
+- **Nearest station:** a bundled dataset of ~3,500 NOAA stations, with a haversine
+  nearest-lookup that runs in your browser (the list loads only when you ask), so
+  your location never leaves the device. 869 NDBC buoys are bundled in the Worker.
 - **Sun/moon:** NOAA solar algorithm + a SunCalc-style lunar port, computed on-device.
 - **ZIP → coordinates:** Zippopotam.us. **Map tiles:** OpenStreetMap.
 
@@ -118,24 +127,28 @@ Tide predictions courtesy of NOAA CO-OPS. **Not for navigation.**
 src/
   app/
     page.tsx            # home: the interactive app + a crawlable beach directory
-    tides/[slug]/       # SSG per-beach pages (/tides/nags-head): tide chart,
-      page.tsx          #   30-day forecast table, marine, FAQ, breadcrumb JSON-LD
-    regions/[slug]/     # SSG region hubs (/regions/outer-banks-nc)
+    tides/[slug]/       # static per-beach pages (/tides/nags-head): live chart,
+      page.tsx          #   30-day forecast table, FAQ, breadcrumb JSON-LD
+    regions/[slug]/     # static region hubs (/regions/outer-banks-nc)
       page.tsx
     sitemap.ts          # every beach + region URL
     robots.ts           # allow all → sitemap
     layout.tsx          # fonts + PWA metadata + metadataBase/title template
     manifest.ts         # web app manifest (Add to Home Screen)
     globals.css         # theme tokens + all keyframes (5 time-of-day palettes)
-    api/
-      tides/route.ts    # NOAA CO-OPS proxy (any station id), cached 15 min
-      nearest/route.ts  # ?lat=&lng= → nearest station + nearby list
-      marine/route.ts   # ?station=&lat=&lng= → water temp / wind / surf
+  worker/               # the API Worker (Hono), /api/* only
+    index.ts            # guard: data only at the site's address, GET/HEAD, headers
+    routes/             # tides, marine, alerts (all ?station=<id>), health
+    lib/cache.ts        # answers cached per station in the Cache API
   lib/
     stations.ts         # curated beaches + region grouping + nearest lookup
     slugs.ts            # permanent per-beach URL slugs + region registry (SEO)
-    seo.ts              # server-side builders: 7/30-day table, intro, FAQ copy
-    nearest.ts          # nationwide nearest via bundled NOAA dataset
+    seo.ts              # builders: 30-day table (also rebuilt in the browser), intro, FAQ
+    nearest.ts          # nationwide nearest via the bundled NOAA list (in the browser)
+    api-guard.ts        # station ids, per-client limits, station coordinates
+    upstream.ts         # timeouts, size limits, no redirects for every upstream call
+    alerts.ts           # NWS alerts + Surf Zone Forecast (rip risk, UV)
+    tide-feed.ts        # shares the chart's predictions with the page's table
     tides.ts            # NOAA fetch, cosine interpolation, tide-state model
     marine.ts           # nationwide NDBC buoy + CO-OPS marine conditions
     sun.ts              # sunrise/sunset + moonrise/set + moon phase
@@ -157,15 +170,18 @@ src/
     AmbientToggle.tsx   # procedural Web Audio + PD ocean layer
     WaterSparkles.tsx   # canvas water glints
     Sprite.tsx          # renders a downloaded sprite SVG inside the scene
+    BeachTideTable.tsx  # the beach page's table, rebuilt in the browser for today
 public/
+  _headers              # security and cache headers for every static file
   sprites/              # Fluent Emoji (MIT) + Kenney (CC0) + original flat art
   emoji/                # Noto animated emoji Lottie JSON (Apache-2.0)
   audio/                # public-domain ocean-waves loop
 ```
 
-See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the public release policy. Operator
-accounts, DNS configuration, credentials, and recovery procedures are intentionally
-kept outside this public repository.
+See **[docs/DELIVERY.md](./docs/DELIVERY.md)** for the commands, the release and
+rollback, and how contributions reach production. Operator accounts, DNS
+configuration, credentials, and recovery procedures are intentionally kept outside
+this public repository.
 
 ---
 

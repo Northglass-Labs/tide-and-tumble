@@ -1,0 +1,58 @@
+# Progress
+
+The shared, public handoff record for this repository. Operations detail
+(accounts, DNS, the cutover steps, monitoring) belongs in the private
+operations record, never here (ADR-007).
+
+## Active objective
+
+Move Tide & Tumble from a Next.js server deployment to Cloudflare Workers on
+the free plan, and bring the repository to the Northglass app standard
+(branch `feat/workers-hosting`, draft pull request). The release and the
+cutover are the operator's, after an adversarial review.
+
+## Plan and state (2026-11-27)
+
+1. Design note and decisions: done (`docs/specs/2026-11-27-workers-hosting.md`,
+   ADR-005, ADR-006, ADR-007).
+2. Dependencies: done. Node 26; lottie-react 3, motion 14, @types/node 26,
+   jsdom 31, vitest 5 taken; TypeScript held below 6.1 (6.0 taken) and
+   ESLint 10 held, both pinned in `dependabot.yml` with the reason; the
+   minimatch alert (GHSA-g3hv-75wg-m249) cleared by typescript-eslint 8.74;
+   `npm audit` reports nothing.
+3. API Worker: done (`src/worker/`): tides, marine, alerts by station id,
+   Cache API per station, data only at `APP_ORIGIN`, per-client limits.
+4. Static export: done. No live data baked into pages; the tide table is
+   rebuilt in the browser; the nearest station is computed on the device;
+   the privacy page says so.
+5. Release commands, headers, build check: done (from the app template, with
+   Version URLs off and production checked only once confirmed).
+6. `.github/`: done (CI with the audit and the Dependabot merge job, Deploy
+   with a nightly release, the daily Audit, grouped Dependabot).
+7. Docs: done (`AGENTS.md`, `CLAUDE.md`, `docs/DELIVERY.md`, README).
+   `DEPLOYMENT.md` is folded into `docs/DELIVERY.md`.
+
+## Verification
+
+- `npm run verify` passes locally: types, lint, 242 tests (app, Workers
+  runtime, scripts), the export (107 routes, 586 files) and its check.
+- `npm audit`, all dependencies and production only: no advisories.
+- `npm run preview` (`wrangler dev`): pages, headers, the 404 page and the API
+  against the real NOAA, NDBC and NWS answer as expected; a path matching no
+  file never runs the Worker.
+
+## Next
+
+- Adversarial review of the pull request.
+- The operator's first release to the Worker's `workers.dev` address
+  (`npm run promote -- --origin <address>`), the cutover, the hold, then
+  turning on releases from GitHub (`docs/DELIVERY.md`, "Turning it on").
+
+## Known issues (separate from this change)
+
+- Every station uses `America/New_York` for "now", so Gulf and Pacific beaches
+  show the live tide state one to three hours off.
+- NDBC coastal stations with lettered ids are requested in lower case and
+  answer 404, so they never contribute conditions.
+- From before: the owner's real-iPhone spot check (calendar wheel, hero swipe,
+  safe area) is still open.
