@@ -31,15 +31,15 @@ const UPSTREAM_FIXTURES = /^test\/fixtures\/upstream\//;
 
 /** The patterns that would carry private operations detail (ADR-007). */
 const PRIVATE_DETAIL: { name: string; pattern: RegExp; skip?: RegExp }[] = [
-  { name: "a Cloudflare account, zone or route id", pattern: /\b[0-9a-f]{32}\b/, skip: /^package-lock\.json$|^test\/fixtures\// },
-  { name: "a Vercel team, project or deployment id", pattern: /\b(?:team|prj|dpl)_[A-Za-z0-9]{16,}\b/ },
-  { name: "a workers.dev account subdomain", pattern: /\b[a-z0-9-]+\.(?!example\.)[a-z0-9-]+\.workers\.dev\b/i },
-  { name: "a nameserver", pattern: /\b[a-z0-9-]+\.ns\.[a-z]+\.com\b/i },
-  { name: "a bearer token header", pattern: /authorization:\s*bearer/i },
-  { name: "a credential store", pattern: /1password|\bop:\/\/|\.dev\.vars\b(?!\.example)/i, skip: /^\.gitignore$|^tests\/opsec\.test\.ts$/ },
-  { name: "the private operations repository", pattern: /\bhomelab\b/i, skip: /^tests\/opsec\.test\.ts$/ },
-  { name: "a provider scope or repository id", pattern: /team\s*\/\s*scope|\brepoid\b|personal account/i, skip: /^tests\/opsec\.test\.ts$/ },
-  { name: "a private path", pattern: /\/Users\/[A-Za-z]|~\/Projects\b/ },
+  { name: "Cloudflare account, zone or route ids", pattern: /\b[0-9a-f]{32}\b/, skip: /^package-lock\.json$|^test\/fixtures\// },
+  { name: "Vercel team, project or deployment ids", pattern: /\b(?:team|prj|dpl)_[A-Za-z0-9]{16,}\b/ },
+  { name: "workers.dev account subdomains", pattern: /\b[a-z0-9-]+\.(?!example\.)[a-z0-9-]+\.workers\.dev\b/i },
+  { name: "nameservers", pattern: /\b[a-z0-9-]+\.ns\.[a-z]+\.com\b/i },
+  { name: "bearer token headers", pattern: /authorization:\s*bearer/i },
+  { name: "credential stores", pattern: /1password|\bop:\/\/|\.dev\.vars\b(?!\.example)/i, skip: /^\.gitignore$|^test\/app\/opsec\.test\.ts$/ },
+  { name: "the private operations repository's name", pattern: /\bhomelab\b/i, skip: /^test\/app\/opsec\.test\.ts$/ },
+  { name: "provider scopes or repository ids", pattern: /team\s*\/\s*scope|\brepoid\b|personal account/i, skip: /^test\/app\/opsec\.test\.ts$/ },
+  { name: "private paths", pattern: /\/Users\/[A-Za-z]|~\/Projects\b/ },
 ];
 
 /** Addresses that may appear: the public contact and GitHub's no-reply addresses. */
