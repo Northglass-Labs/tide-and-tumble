@@ -10,6 +10,7 @@ interface SafetyBody {
   ripRisk: string | null;
   uvIndex: string | null;
   source: string | null;
+  complete: boolean;
 }
 
 const point = json({
@@ -56,14 +57,15 @@ describe("GET /api/alerts", () => {
     }
   });
 
-  it("answers the beach alerts, the rip-current risk and the UV index, and nothing else", async () => {
+  it("answers the beach alerts, the rip-current risk, the UV index and whether NWS answered in full", async () => {
     nwsAnswers();
     const t = testApp();
     const response = await t.request("/api/alerts?station=8651370");
 
     expect(response.headers.get("Cache-Control")).toBe("private, no-store, max-age=0");
     const body = await response.json<SafetyBody>();
-    expect(Object.keys(body).sort()).toEqual(["alerts", "ripRisk", "source", "uvIndex"]);
+    expect(Object.keys(body).sort()).toEqual(["alerts", "complete", "ripRisk", "source", "uvIndex"]);
+    expect(body.complete).toBe(true);
     expect(body.ripRisk).toBe("High");
     expect(body.uvIndex).toBe("Low");
     expect(body.source).toBe("NWS (MHX)");
@@ -90,22 +92,31 @@ describe("GET /api/alerts", () => {
     expect(upstream.calls).toEqual([]);
   });
 
-  it("answers from its cache for 15 minutes once NWS has answered in full", async () => {
-    const upstream = nwsAnswers();
+  it("answers from its cache for 15 minutes once NWS has answered in full, then asks NWS before answering", async () => {
+    let risk = "High";
+    const upstream = stubUpstream([
+      [`${NWS}points/`, () => point.clone()],
+      [`${NWS}alerts/active`, () => json({ features: [] })],
+      [`${NWS}products/types/SRF/locations/MHX`, () => json({ "@graph": [{ "@id": PRODUCT }] })],
+      [PRODUCT, () => srf(risk)],
+    ]);
     const t = testApp();
-    await t.request("/api/alerts?station=8651370");
+    expect((await (await t.request("/api/alerts?station=8651370")).json<SafetyBody>()).ripRisk).toBe("High");
     const calls = upstream.calls.length;
+
+    risk = "Low";
     t.clock.now += 14 * MINUTE;
-    await t.request("/api/alerts?station=8651370");
+    expect((await (await t.request("/api/alerts?station=8651370")).json<SafetyBody>()).ripRisk).toBe("High");
     expect(upstream.calls.length).toBe(calls);
 
-    // Never served stale: after 15 minutes it asks again before answering.
+    // Never served stale: after 15 minutes the answer is NWS's new one, not the kept one.
     t.clock.now += 2 * MINUTE;
-    await t.request("/api/alerts?station=8651370");
+    expect((await (await t.request("/api/alerts?station=8651370")).json<SafetyBody>()).ripRisk).toBe("Low");
+    await t.settle();
     expect(upstream.calls.length).toBe(calls * 2);
   });
 
-  it("never keeps an answer NWS did not give in full, so a missed warning is not repeated", async () => {
+  it("says when NWS did not answer in full, so the page can never take a failed lookup for no warnings", async () => {
     let alertsUp = false;
     const upstream = stubUpstream([
       [`${NWS}points/`, () => point.clone()],
@@ -114,12 +125,20 @@ describe("GET /api/alerts", () => {
     ]);
     const t = testApp();
     const partial = await (await t.request("/api/alerts?station=8651370")).json<SafetyBody>();
-    expect(partial.alerts).toEqual([]);
+    expect(partial).toMatchObject({ alerts: [], complete: false });
 
+    // An incomplete answer is kept for one minute only, and keeps saying it is incomplete.
     alertsUp = true;
     const calls = upstream.calls.length;
+    t.clock.now += 30_000;
+    const kept = await (await t.request("/api/alerts?station=8651370")).json<SafetyBody>();
+    expect(kept).toMatchObject({ alerts: [], complete: false });
+    expect(upstream.calls.length).toBe(calls);
+
+    t.clock.now += 31_000;
     const recovered = await (await t.request("/api/alerts?station=8651370")).json<SafetyBody>();
     expect(upstream.calls.length).toBeGreaterThan(calls);
+    expect(recovered.complete).toBe(true);
     expect(recovered.alerts.map((alert) => alert.event)).toEqual(["Rip Current Statement"]);
   });
 });

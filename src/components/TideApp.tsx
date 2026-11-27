@@ -28,6 +28,7 @@ import {
 import { BEACHES, SITE_URL } from "@/lib/slugs";
 import { pushRecent } from "@/lib/recents";
 import { publishExtrema } from "@/lib/tide-feed";
+import { readSafety } from "@/lib/safety";
 import type { BeachAlert } from "@/lib/alerts";
 import type { Marine } from "@/lib/marine";
 import { statusLine } from "@/lib/copy";
@@ -358,10 +359,13 @@ export default function TideApp({
         return r.json();
       })
       .then((d) => {
-        if (cancelled || !d) return;
-        setAlerts(Array.isArray(d.alerts) ? (d.alerts as BeachAlert[]) : []);
-        setUvIndex(typeof d.uvIndex === "string" ? d.uvIndex : null);
-        setSafetyStatus("fresh");
+        if (cancelled) return;
+        // "fresh" only when NWS answered in full: a failed lookup must never
+        // read as "no warnings". Whatever warnings did arrive are still shown.
+        const safety = readSafety(d);
+        setAlerts(safety.alerts);
+        setUvIndex(safety.uvIndex);
+        setSafetyStatus(safety.status);
       })
       .catch(() => {
         if (!cancelled) setSafetyStatus("unavailable");

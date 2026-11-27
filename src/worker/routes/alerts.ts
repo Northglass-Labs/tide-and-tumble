@@ -16,11 +16,16 @@ const DEADLINE_MS = 8_000;
 
 /**
  * GET /api/alerts?station=<id> - the National Weather Service's beach alerts,
- * the day's rip-current risk and the UV index for the station's point. Server
- * side because NWS asks for an identifying User-Agent, and because a browser
- * call would give NWS every visitor's address. Cached for 15 minutes, as Next's
- * data cache kept the NWS answers, but only an answer NWS gave in full: one
- * with a failed call may be missing a warning. Never served stale.
+ * the day's rip-current risk and the UV index for the station's point, and
+ * `complete`: whether NWS answered every call. Server side because NWS asks
+ * for an identifying User-Agent, and because a browser call would give NWS
+ * every visitor's address.
+ *
+ * An answer with a failed call may be missing a warning, so `complete: false`
+ * tells the page to say the safety data is unavailable rather than show "no
+ * warnings". A complete answer is kept 15 minutes, as Next's data cache kept
+ * the NWS answers; an incomplete one one minute, so a point NWS does not cover
+ * is not asked about on every request. Never served stale.
  */
 export function alertsRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
   return new Hono<AppEnv>().get("/", async (c) => {
@@ -39,9 +44,9 @@ export function alertsRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
       key: cacheKey(c.env.APP_ORIGIN, "alerts", station.id),
       now,
       produce: () => fetchBeachSafetyChecked(station.lat, station.lng, AbortSignal.timeout(DEADLINE_MS)),
-      lifetime: (value) => (value.complete ? { freshMs: 15 * MINUTE, staleMs: 0 } : null),
+      lifetime: (value) => ({ freshMs: value.complete ? 15 * MINUTE : MINUTE, staleMs: 0 }),
       waitUntil: (promise) => c.executionCtx.waitUntil(promise),
     });
-    return c.json(result.safety, 200, PRIVATE_NO_STORE_HEADERS);
+    return c.json({ ...result.safety, complete: result.complete }, 200, PRIVATE_NO_STORE_HEADERS);
   });
 }

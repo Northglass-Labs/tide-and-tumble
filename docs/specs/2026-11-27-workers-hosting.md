@@ -74,7 +74,10 @@ Worker; crawlers see a tide table up to a day old instead of an hour.
 Alerts, the rip-current risk, the UV index and buoy conditions are fetched by
 the page; the tide table is baked with dates and rebuilt in the browser
 ([What replaces ISR](#what-replaces-isr)). A static page must never show a
-stale warning or a stale all-clear.
+stale warning or a stale all-clear. The alerts answer says whether NWS
+answered every call (`complete`); when it did not, the page says the safety
+data is unavailable and shows whatever warnings did arrive, so a failed lookup
+never reads as "no warnings".
 
 ### D3. Version URLs off; a release is checked in production
 
@@ -194,7 +197,7 @@ The Worker does the same with the Cache API, per station:
 |---|---|---|
 | `/api/tides` | 15 minutes | served stale for up to an hour while one refresh runs in the background, and also when NOAA fails |
 | `/api/marine` | 10 minutes | refetched |
-| `/api/alerts` | 15 minutes | refetched; a stale rip-current risk is never served |
+| `/api/alerts` | 15 minutes when NWS answered every call; 1 minute when it did not | refetched; a stale rip-current risk is never served |
 
 The browser sees the same `Cache-Control` as before: `public,
 s-maxage=900, stale-while-revalidate=3600` for tides, `private, no-store`
