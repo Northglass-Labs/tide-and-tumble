@@ -779,8 +779,8 @@ describe("rollback", () => {
     expect((await failure(rollback(PROJECT, undefined, onlyOne.tools))).message).toContain("ran an earlier commit");
   });
 
-  it("changes nothing when the site is not served by the live version, and says how to roll back by hand", async () => {
-    const fake = fakeTools({ answering: null });
+  it("changes nothing when the site answers with another version, and says how to roll back by hand", async () => {
+    const fake = fakeTools({ answering: NEW });
 
     const error = await failure(rollback(PROJECT, undefined, fake.tools));
 
@@ -789,11 +789,18 @@ describe("rollback", () => {
     expect(fake.wranglerCommands().some((line) => line.startsWith("wrangler rollback"))).toBe(false);
   });
 
-  it("refuses at workers.dev when it cannot say which version answers, rather than roll back unconfirmed", async () => {
-    const fake = fakeTools({ devAnswering: null });
-    const error = await failure(rollback(PROJECT, undefined, fake.tools, { origin: WORKERS_DEV }));
-    expect(error.message).toContain("did not say which version answers");
-    expect(fake.wranglerCommands().some((line) => line.startsWith("wrangler rollback"))).toBe(false);
+  it("goes ahead with a warning when neither address can say which version answers: a broken release", async () => {
+    // A release that broke /api/health is the same version at both addresses, and is what a rollback is for.
+    // Wrangler has read the live version from the account it is signed in to already.
+    for (const [scenario, options] of [
+      [{ answering: null }, {}],
+      [{ devAnswering: null }, { origin: WORKERS_DEV }],
+    ] as const) {
+      const fake = fakeTools(scenario);
+      const summary = await rollback(PROJECT, undefined, fake.tools, options);
+      expect(summary).toMatchObject({ ok: true, versionId: OLDER });
+      expect(fake.said.some((line) => line.includes("could not say which version answers"))).toBe(true);
+    }
   });
 
   it("reports a blocked check of the rollback as unconfirmed, not unhealthy", async () => {

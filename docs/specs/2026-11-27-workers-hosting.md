@@ -423,13 +423,14 @@ Both holds are pinned in `.github/dependabot.yml` with the date and reason.
 
 - **The `workers.dev` address stays on.** Production is reached through the
   route now, and no regular release or check uses the Worker's own address.
-  It stays for one case: a release that broke production's `/api/health`.
-  Then the site cannot say which version answers, so `promote` (to release a
-  fix) and `rollback` refuse at the site's address; at `--origin
-  <workers.dev address>` they can still confirm the account and check what
-  they change. Without it, that rollback would be made by hand with
-  Wrangler, unchecked. The address serves the same pages with `noindex`, and
-  its data routes answer 404: only `GET /api/health` answers there.
+  It stays for one case: releasing a fix while production's `/api/health`
+  cannot answer. A broken release is the same version at both addresses, so
+  neither can name it; `promote` refuses at the site's address then, and at
+  `--origin <workers.dev address>` goes ahead with a warning, as Wrangler has
+  read the live version from its own account. `rollback` needs neither: when
+  the address cannot name a version, it rolls back the live version Wrangler
+  reads, with a warning. The address serves the same pages with `noindex`,
+  and its data routes answer 404: only `GET /api/health` answers there.
 
 ## Not in this change
 

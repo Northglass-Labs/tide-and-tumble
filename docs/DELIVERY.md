@@ -180,9 +180,11 @@ nightly refreshes (marked "Nightly refresh:"); `npm run rollback -- <versionId>`
 named one (`npx wrangler versions list --config wrangler.jsonc`). Each
 version carries the static export it was uploaded with, so the pages go back
 too. It confirms the address first, as `promote` does, then checks the
-rollback. When the address cannot say which version answers, it refuses and
+rollback. When the address answers with another version, it refuses and
 prints the commands to roll back by hand once `npx wrangler whoami` shows the
-right account. A rollback is itself a deployment: running it twice returns to
+right account. When it cannot say which version answers (a release that
+broke `/api/health`, which is what a rollback is for), it rolls back the live
+version Wrangler reads, with a warning. A rollback is itself a deployment: running it twice returns to
 where you started. Without a version it looks only at the 10 most recent
 deployments, which is all `wrangler deployments list` returns: about a week
 of nightly refreshes. To go further back, name the version: `npx wrangler
