@@ -9,6 +9,7 @@ import {
   type FixedWindowRateLimiter,
 } from "../../lib/api-guard";
 import type { AppDeps, AppEnv } from "../env";
+import BEACH_ZONES from "../../lib/beach-zones.json";
 import { CapacityReached, cacheKey, readThrough } from "../lib/cache";
 import { fail, INVALID_STATION } from "../lib/http";
 
@@ -47,7 +48,13 @@ export function alertsRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
         cache: await deps.cache(),
         key: cacheKey(c.env.APP_ORIGIN, "alerts", station.id),
         now,
-        produce: () => fetchBeachSafetyChecked(station.lat, station.lng, AbortSignal.timeout(DEADLINE_MS), now),
+        produce: () => fetchBeachSafetyChecked(
+            station.lat,
+            station.lng,
+            AbortSignal.timeout(DEADLINE_MS),
+            now,
+            (BEACH_ZONES as Record<string, string>)[station.id],
+          ),
         lifetime: (value) => ({ freshMs: value.complete ? 15 * MINUTE : MINUTE, staleMs: 0 }),
         waitUntil: (promise) => c.executionCtx.waitUntil(promise),
         refreshing: deps.refreshing,

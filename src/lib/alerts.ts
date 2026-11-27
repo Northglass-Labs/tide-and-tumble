@@ -119,25 +119,56 @@ interface ProductList {
   "@graph"?: unknown;
 }
 
-/** Extract this beach's rip-current risk + UV from the office SRF text product. */
-function parseSrf(text: string, zoneCode: string): { rip: RiskLevel | null; uv: string | null } {
-  if (!/^[A-Z]{3}\d{3}$/.test(zoneCode)) {
-    return { rip: null, uv: null };
+/**
+ * The zone codes a section's header (its UGC line) names. NWS writes the
+ * prefix once and carries it ("FLZ141-347-447-272100-" is FLZ141, FLZ347 and
+ * FLZ447), writes ranges with ">" ("CAZ087>089-"), and ends with the
+ * expiry time (six digits), which is not a zone.
+ */
+export function expandUgc(header: string): string[] {
+  const zones: string[] = [];
+  let prefix = "";
+  for (const token of header.trim().split("-")) {
+    const match = token.match(/^([A-Z]{2}[CZ])?(\d{3})(?:>(\d{3}))?$/);
+    if (!match) continue;
+    if (match[1]) prefix = match[1];
+    if (!prefix) continue;
+    const from = Number(match[2]);
+    const to = match[3] ? Number(match[3]) : from;
+    for (let code = from; code <= to && code - from < 200; code += 1) {
+      zones.push(`${prefix}${String(code).padStart(3, "0")}`);
+    }
   }
-  // Segments are separated by "$$"; each starts with its UGC zone code(s).
-  const segments = text.split("$$");
-  const zonePattern = new RegExp(`\\b${zoneCode}\\b`);
-  const seg = segments.find((segment) =>
-    zonePattern.test(segment.slice(0, 600).toUpperCase()),
-  );
-  if (!seg) return { rip: null, uv: null };
+  return zones;
+}
+
+/** A section's UGC header: from its first zone code to the six-digit expiry, which may span lines. */
+function sectionHeader(segment: string): string {
+  const start = segment.search(/[A-Z]{2}[CZ]\d{3}/);
+  if (start === -1) return "";
+  const rest = segment.slice(start);
+  const end = rest.search(/\d{6}-/);
+  return end === -1 ? "" : rest.slice(0, end + 7).replace(/\s+/g, "");
+}
+
+/**
+ * This beach's section of the office's Surf Zone Forecast, if the forecast
+ * has one, and the rip-current risk and UV index it gives for today.
+ */
+export function parseSrf(text: string, zoneCode: string): { found: boolean; rip: RiskLevel | null; uv: string | null } {
+  if (!/^[A-Z]{3}\d{3}$/.test(zoneCode)) {
+    return { found: false, rip: null, uv: null };
+  }
+  // Sections are separated by "$$"; each starts with the zone codes it covers.
+  const seg = text.split("$$").find((segment) => expandUgc(sectionHeader(segment.toUpperCase())).includes(zoneCode));
+  if (!seg) return { found: false, rip: null, uv: null };
   // First occurrence in the segment == today's period.
   const ripM = seg.match(/Rip Current Risk[*\s.]+(Low|Moderate|High)/i);
   const uvM = seg.match(/UV Index[*\s.]+([A-Za-z][A-Za-z ]*?)\s*\./i);
   const rip = ripM
     ? ((ripM[1][0].toUpperCase() + ripM[1].slice(1).toLowerCase()) as RiskLevel)
     : null;
-  return { rip, uv: uvM ? uvM[1].trim() : null };
+  return { found: true, rip, uv: uvM ? uvM[1].trim() : null };
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -183,23 +214,33 @@ export async function fetchBeachSafetyChecked(
   lng: number,
   signal?: AbortSignal,
   now: number = Date.now(),
+  landZone?: string,
 ): Promise<{ safety: BeachSafety; complete: boolean }> {
   const outcome: Outcome = { failed: false };
   const pt = `${lat.toFixed(4)},${lng.toFixed(4)}`;
 
   // Run the point lookup + formal alerts together.
-  const [point, alertData] = await Promise.all([
+  // A curated beach's land zone (src/lib/beach-zones.json): its point may be
+  // on the water, where NWS gives a marine zone that carries no beach alerts.
+  const zone = landZone && /^[A-Z]{2}Z\d{3}$/.test(landZone) ? landZone : null;
+  const [point, alertData, zoneAlertData] = await Promise.all([
     nws<PointProps>(`https://api.weather.gov/points/${pt}`, signal, outcome),
     nws<AlertResp>(
       `https://api.weather.gov/alerts/active?point=${pt}&status=actual`,
       signal,
       outcome,
     ),
+    zone
+      ? nws<AlertResp>(`https://api.weather.gov/alerts/active?zone=${zone}&status=actual`, signal, outcome)
+      : Promise.resolve(null),
   ]);
 
   const alerts: BeachAlert[] = [];
   const seen = new Set<string>();
-  const features = Array.isArray(alertData?.features) ? alertData.features : [];
+  const features = [
+    ...(Array.isArray(alertData?.features) ? alertData.features : []),
+    ...(Array.isArray(zoneAlertData?.features) ? zoneAlertData.features : []),
+  ];
   for (const rawFeature of features) {
     const feature = record(rawFeature);
     const properties = record(feature?.properties);
@@ -223,7 +264,7 @@ export async function fetchBeachSafetyChecked(
   const office = officeCandidate && /^[A-Z]{3}$/.test(officeCandidate)
     ? officeCandidate
     : null;
-  const zoneCode = forecastZoneCode(pointProperties?.forecastZone);
+  const zoneCode = zone ?? forecastZoneCode(pointProperties?.forecastZone);
   let ripRisk: RiskLevel | null = null;
   let uvIndex: string | null = null;
   let ripForecast: BeachSafety["ripForecast"] = null;
@@ -256,8 +297,9 @@ export async function fetchBeachSafetyChecked(
         const parsed = parseSrf(productText, zoneCode);
         ripRisk = parsed.rip;
         uvIndex = parsed.uv;
-        // Today's forecast speaks for this beach only through its own zone's section.
-        ripForecast = ripRisk ? "today" : "none";
+        // Today's forecast speaks for this beach only through its own zone's
+        // section; with no section for it, nothing is said rather than "none".
+        ripForecast = parsed.found ? (ripRisk ? "today" : "none") : null;
       }
     }
   }

@@ -194,15 +194,40 @@ describe("GET /api/alerts", () => {
       return (await testApp().request("/api/alerts?station=8651370")).json<SafetyBody>();
     };
     // A Low risk is a forecast too: it is said, not left blank.
-    expect(await answer("NCZ203-\n.TODAY...\nRip Current Risk*..........Low.\n$$\n")).toMatchObject({
+    expect(await answer("NCZ203-280700-\n.TODAY...\nRip Current Risk*..........Low.\n$$\n")).toMatchObject({
       ripRisk: "Low",
       ripForecast: "today",
     });
-    // Today's forecast, but no rip-current risk for this beach's zone.
-    expect(await answer("NCZ204-\n.TODAY...\nRip Current Risk*..........High.\n$$\n")).toMatchObject({
+    // Today's forecast has the beach's own section, and it gives no rip-current risk.
+    expect(await answer("NCZ203-280700-\n.TODAY...\nSurf Height.................2 to 3 feet.\n$$\n")).toMatchObject({
       ripRisk: null,
       ripForecast: "none",
     });
+  });
+
+  it("says nothing about rip currents when today's forecast has no section for the beach", async () => {
+    stubUpstream([
+      [`${NWS}points/`, () => point.clone()],
+      [`${NWS}alerts/active`, () => json({ features: [] })],
+      [`${NWS}products/types/SRF/locations/MHX`, () => json(TODAY_SRF)],
+      [PRODUCT, () => json({ productText: "NCZ999-280700-\n.TODAY...\nRip Current Risk*..........High.\n$$\n" })],
+    ]);
+    const body = await (await testApp().request("/api/alerts?station=8651370")).json<SafetyBody>();
+    expect(body).toMatchObject({ ripRisk: null, ripForecast: null, complete: true });
+  });
+
+  it("asks for alerts by the beach's land zone as well as by its point, which may be on the water", async () => {
+    const zoneAdvisory = { id: "https://api.weather.gov/alerts/example-beach-hazards", properties: { event: "Beach Hazards Statement", severity: "Moderate" } };
+    const upstream = stubUpstream([
+      [`${NWS}points/`, () => point.clone()],
+      [`${NWS}alerts/active?point=`, () => json({ features: [] })],
+      [`${NWS}alerts/active?zone=NCZ203`, () => json({ features: [zoneAdvisory] })],
+      [`${NWS}products/types/SRF/locations/MHX`, () => json(TODAY_SRF)],
+      [PRODUCT, () => srf("Low")],
+    ]);
+    const body = await (await testApp().request("/api/alerts?station=8651370")).json<SafetyBody>();
+    expect(body.alerts.map((alert) => alert.event)).toContain("Beach Hazards Statement");
+    expect(upstream.calls.some((call) => call.url.toString().includes("alerts/active?zone=NCZ203"))).toBe(true);
   });
 });
 
