@@ -286,7 +286,7 @@ A static file cannot refresh itself, so the content is split by how it ages:
 | Water temperature, wind, surf | Hours | Fetched by the page (the live chips in the app). The separate "Current conditions" paragraph is no longer baked with numbers |
 | The 30-day tide table and "today's" high and low | Deterministic; only "today" moves | Baked at build time with explicit dates, then rebuilt in the browser from the 32-day predictions the page already loads for the live chart, so a visitor always sees today's table. No extra request |
 | "Today" in the page header | Daily | Set by the browser |
-| Titles, intro, FAQ, links | When the code changes | Baked |
+| Titles, intro, FAQ, links | When the code changes | Baked. The FAQ states no time or moon phase as today's: its "today" question points at the table |
 
 A nightly release rebuilds the baked copy, so what crawlers and readers
 without JavaScript see is at most a day old (`deploy.yml`, scheduled at 08:17

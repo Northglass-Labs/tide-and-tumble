@@ -217,7 +217,7 @@ token in reach; the token's scope bounds the damage (below).
 **The nightly release.** The beach pages carry a tide table built with them.
 Visitors' browsers rebuild it for today, but crawlers and readers without
 JavaScript see the built one, so `main`'s head is released again each night:
-the baked table and "today's" FAQ answers are at most a day old. It is an
+the baked table is at most a day old (the FAQ states nothing as today's). It is an
 ordinary release through the same checks and rollback. If it fails or is
 turned off, nothing breaks; only the baked table ages. GitHub disables a
 public repository's scheduled workflows after 60 days without activity;
