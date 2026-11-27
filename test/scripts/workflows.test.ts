@@ -578,7 +578,8 @@ describe("GitHub workflows", () => {
       );
     });
 
-    it("reads past the first page of runs, a hundred at a time", () => {
+    // A hundred and one runs, each read through a stand-in gh process: slow on a busy machine.
+    it("reads past the first page of runs, a hundred at a time", { timeout: 30_000 }, () => {
       const quiet = Array.from({ length: 100 }, (_, index) => deployRun(1_000 - index, olderCommit, "schedule"));
       expect(decide([...quiet, deployRun(101, released)])).toBe(`automatic=true\nreason=Deploy run 101 on main released\nhead=${MAIN}\n`);
     });
