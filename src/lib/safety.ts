@@ -8,6 +8,8 @@ import type { BeachAlert } from "./alerts";
 export interface SafetyReading {
   alerts: BeachAlert[];
   uvIndex: string | null;
+  /** What to say when NWS has no rip-current forecast for today, or null. */
+  ripNote: string | null;
   /** "fresh" only for a complete answer; anything else is "unavailable". */
   status: "fresh" | "unavailable";
 }
@@ -23,6 +25,14 @@ export function readSafety(body: unknown): SafetyReading {
   return {
     alerts: Array.isArray(answer.alerts) ? answer.alerts.filter(isAlert) : [],
     uvIndex: typeof answer.uvIndex === "string" ? answer.uvIndex : null,
+    ripNote:
+      answer.complete !== true
+        ? null
+        : answer.ripForecast === "not-yet"
+          ? "No NWS rip-current forecast for today yet."
+          : answer.ripForecast === "out-of-season"
+            ? "No NWS rip-current forecasts are being issued here this season."
+            : null,
     status: answer.complete === true ? "fresh" : "unavailable",
   };
 }

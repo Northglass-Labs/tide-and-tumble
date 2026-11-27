@@ -41,9 +41,15 @@ export interface BeachSafety {
   uvIndex: string | null;
   /** e.g. "NWS Wakefield (AKQ)" — attribution for whatever we found. */
   source: string | null;
+  /**
+   * Whether the office's Surf Zone Forecast speaks for today: "today"; "not-yet"
+   * (the newest is from the last two days, so today's is still to come);
+   * "out-of-season" (none listed, or none for longer); null when unknown.
+   */
+  ripForecast: "today" | "not-yet" | "out-of-season" | null;
 }
 
-const EMPTY: BeachSafety = { alerts: [], ripRisk: null, uvIndex: null, source: null };
+const EMPTY: BeachSafety = { alerts: [], ripRisk: null, uvIndex: null, source: null, ripForecast: null };
 
 const BEACH_EVENTS = [
   "rip current",
@@ -218,6 +224,7 @@ export async function fetchBeachSafetyChecked(
   const zoneCode = forecastZoneCode(pointProperties?.forecastZone);
   let ripRisk: RiskLevel | null = null;
   let uvIndex: string | null = null;
+  let ripForecast: BeachSafety["ripForecast"] = null;
 
   if (office && zoneCode) {
     const list = await nws<ProductList>(
@@ -234,6 +241,12 @@ export async function fetchBeachSafetyChecked(
     const issued = Date.parse(nonEmptyString(newest?.issuanceTime) ?? "");
     const zone = nonEmptyString(pointProperties?.timeZone);
     const today = Number.isFinite(issued) && localDate(issued, zone) >= localDate(now, zone);
+    if (list && !newest) {
+      ripForecast = "out-of-season";
+    } else if (Number.isFinite(issued)) {
+      const daysOld = (Date.parse(localDate(now, zone)) - Date.parse(localDate(issued, zone))) / 86_400_000;
+      ripForecast = today ? "today" : daysOld <= 2 ? "not-yet" : "out-of-season";
+    }
     if (latest && today) {
       const prod = await nws<{ productText?: unknown }>(latest, signal, outcome);
       const productText = nonEmptyString(prod?.productText);
@@ -259,7 +272,7 @@ export async function fetchBeachSafetyChecked(
   }
 
   const source = office ? `NWS (${office})` : alerts.length ? "NWS" : null;
-  return { safety: { alerts, ripRisk, uvIndex, source }, complete: !outcome.failed };
+  return { safety: { alerts, ripRisk, uvIndex, source, ripForecast }, complete: !outcome.failed };
 }
 
 export async function fetchBeachSafety(

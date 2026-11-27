@@ -61,4 +61,11 @@ describe("data freshness notice", () => {
     expect(noscript).toContain("weather.gov");
     expect(noscript).toContain("lifeguard");
   });
+
+  test("hides the checking line when JavaScript is off, since nothing will ever replace it", () => {
+    const html = renderToStaticMarkup(<DataFreshnessNotice offline={false} safetyStatus="loading" tideCachedAt={null} />);
+    expect(html).toMatch(/<p[^>]*data-needs-script=""[^>]*>Checking NWS beach warnings…<\/p>/);
+    expect(html).toMatch(/<noscript><style>\[data-needs-script\]\{display:none\}<\/style>/);
+  });
 });
+

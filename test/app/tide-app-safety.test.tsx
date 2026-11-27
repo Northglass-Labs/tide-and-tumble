@@ -155,4 +155,17 @@ describe("TideApp's beach safety notice", () => {
     answer(Response.json({ alerts: [], ripRisk: null, uvIndex: null, source: "NWS (MHX)", complete: true }));
     await waitFor(() => expect(screen.queryByText("Checking NWS beach warnings…")).toBeNull());
   });
+
+  test("says when NWS has no rip-current forecast for today, rather than showing nothing", async () => {
+    for (const [ripForecast, note] of [
+      ["not-yet", "No NWS rip-current forecast for today yet."],
+      ["out-of-season", "No NWS rip-current forecasts are being issued here this season."],
+    ]) {
+      serveApi({ alerts: [], ripRisk: null, uvIndex: null, source: "NWS (MHX)", complete: true, ripForecast });
+      render(<TideApp initialStation={station} seeded />);
+      expect(await screen.findByText(note)).toBeTruthy();
+      cleanup();
+    }
+  });
 });
+

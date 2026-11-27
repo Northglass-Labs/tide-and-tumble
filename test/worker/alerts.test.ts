@@ -11,6 +11,7 @@ interface SafetyBody {
   uvIndex: string | null;
   source: string | null;
   complete: boolean;
+  ripForecast: "today" | "not-yet" | "out-of-season" | null;
 }
 
 const point = json({
@@ -70,7 +71,8 @@ describe("GET /api/alerts", () => {
 
     expect(response.headers.get("Cache-Control")).toBe("private, no-store, max-age=0");
     const body = await response.json<SafetyBody>();
-    expect(Object.keys(body).sort()).toEqual(["alerts", "complete", "ripRisk", "source", "uvIndex"]);
+    expect(Object.keys(body).sort()).toEqual(["alerts", "complete", "ripForecast", "ripRisk", "source", "uvIndex"]);
+    expect(body.ripForecast).toBe("today");
     expect(body.complete).toBe(true);
     expect(body.ripRisk).toBe("High");
     expect(body.uvIndex).toBe("Low");
@@ -150,7 +152,11 @@ describe("GET /api/alerts", () => {
 
   it("never shows an old Surf Zone Forecast's rip-current risk as today's", async () => {
     // An office that stops issuing for the season leaves its last forecast listed for about a week.
-    for (const issuanceTime of ["2026-11-20T08:47:00+00:00", "2026-11-27T04:30:00+00:00", undefined]) {
+    for (const [issuanceTime, ripForecast] of [
+      ["2026-11-20T08:47:00+00:00", "out-of-season"],
+      ["2026-11-27T04:30:00+00:00", "not-yet"],
+      [undefined, null],
+    ] as const) {
       // 04:30 UTC is 23:30 on the 26th at the beach: yesterday's forecast, though the same UTC date.
       const upstream = stubUpstream([
         [`${NWS}points/`, () => point.clone()],
@@ -160,9 +166,21 @@ describe("GET /api/alerts", () => {
       ]);
       const t = testApp();
       const body = await (await t.request("/api/alerts?station=8651370")).json<SafetyBody>();
-      expect(body).toMatchObject({ alerts: [], ripRisk: null, uvIndex: null, complete: true });
+      // Said, not left blank: a forecast not issued yet today, or none issued lately (out of season).
+      expect(body).toMatchObject({ alerts: [], ripRisk: null, uvIndex: null, complete: true, ripForecast });
       expect(upstream.calls.some((call) => call.url.toString() === PRODUCT)).toBe(false);
       upstream.spy.mockRestore();
     }
   });
+
+  it("says no rip-current forecast is being issued when the office lists none", async () => {
+    stubUpstream([
+      [`${NWS}points/`, () => point.clone()],
+      [`${NWS}alerts/active`, () => json({ features: [] })],
+      [`${NWS}products/types/SRF/locations/MHX`, () => json({ "@graph": [] })],
+    ]);
+    const body = await (await testApp().request("/api/alerts?station=8651370")).json<SafetyBody>();
+    expect(body).toMatchObject({ ripRisk: null, ripForecast: "out-of-season", complete: true });
+  });
 });
+
