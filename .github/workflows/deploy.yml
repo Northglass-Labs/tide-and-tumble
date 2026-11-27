@@ -147,17 +147,41 @@ jobs:
       - name: Install Wrangler
         run: npm ci --ignore-scripts
 
+      # Into an empty folder of its own: the build runner chose what is in the
+      # artifact, so it never lands on this workspace as it is.
       - name: Fetch the build
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release
-          path: .
+          path: ${{ runner.temp }}/build
+
+      # Only regular files under out/ and the one record are taken into this
+      # workspace; a link, a package, a script or any other path refuses the
+      # whole artifact (scripts/lib/take-build.mjs). No token here.
+      - name: Take the build
+        run: node scripts/take-build.mjs "$RUNNER_TEMP/build"
+
+      # The gate's check, repeated just before the release: "Re-run failed
+      # jobs" reuses the gate's answer and the build, and main may have moved.
+      - name: Check the head of main again
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$main" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Deploy skipped::This run is for $GITHUB_SHA, but main is at $main now, so this run released nothing. The run for main's head releases it; if none is queued, run Deploy on main (a push with [skip ci] starts none)."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
 
       # The only step that sees the token, and it runs no npm. On a scheduled
       # run promote only refreshes (GITHUB_EVENT_NAME). It writes released=
       # true or false to the step's outputs.
       - name: Release
         id: release
+        if: steps.head.outputs.current == 'true'
         run: node scripts/promote.mjs
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

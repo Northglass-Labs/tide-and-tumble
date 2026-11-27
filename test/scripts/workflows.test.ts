@@ -196,17 +196,23 @@ describe("GitHub workflows", () => {
       "Set up Node",
       "Install Wrangler",
       "Fetch the build",
+      "Take the build",
+      "Check the head of main again",
       "Release",
       "Released",
     ]);
     expect(steps[1]).not.toContain("cache:");
     expect(stepValue(steps[2]!, "run")).toBe("npm ci --ignore-scripts");
+    // The build runner chose the artifact's contents: it goes to an empty folder of its own, never over this
+    // workspace, and only out/'s regular files and the record are taken from it (scripts/lib/take-build.mjs).
     expect(steps[3]).toMatch(/uses: actions\/download-artifact@[0-9a-f]{40} # v/);
-    expect(stepValue(steps[4]!, "run")).toBe("node scripts/promote.mjs");
-    expect(stepValue(steps[4]!, "env")).toContain("CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}");
+    expect(stepValue(steps[3]!, "with")).toContain("path: ${{ runner.temp }}/build");
+    expect(stepValue(steps[4]!, "run")).toBe('node scripts/take-build.mjs "$RUNNER_TEMP/build"');
+    expect(stepValue(steps[6]!, "run")).toBe("node scripts/promote.mjs");
+    expect(stepValue(steps[6]!, "env")).toContain("CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}");
     // Read by the merge job: success only when a version was released.
-    expect(stepValue(steps[5]!, "if")).toBe("steps.release.outputs.released == 'true'");
-    for (const step of steps.slice(0, 4)) {
+    expect(stepValue(steps[7]!, "if")).toBe("steps.release.outputs.released == 'true'");
+    for (const step of steps.slice(0, 6)) {
       expect(step).not.toContain("secrets.");
     }
   });
@@ -255,6 +261,26 @@ describe("GitHub workflows", () => {
     const deploy = workflow("deploy.yml");
     expect(deploy).toMatch(/\non:\n(?: {2}.*\n|\s*#.*\n|\s*\n)* {2}workflow_dispatch:/);
     expect(jobSection(deploy, "gate")).toMatch(/\n {4}if: github\.ref == 'refs\/heads\/main'\n/);
+  });
+
+  it("check main's head again just before the release: a re-run of the failed release job reuses the old gate", () => {
+    // "Re-run failed jobs" keeps the gate's answer and the build, and main may have moved since.
+    const deploy = workflow("deploy.yml");
+    const gateHead = stepsOf(jobSection(deploy, "gate")).find((step) => stepValue(step, "name") === "Check the head of main")!;
+    const steps = stepsOf(jobSection(deploy, "release"));
+    const again = steps.findIndex((step) => stepValue(step, "name") === "Check the head of main again");
+    expect(stepValue(steps[again + 1]!, "name")).toBe("Release");
+    expect(stepValue(steps[again]!, "run")).toBe(stepValue(gateHead, "run"));
+    expect(stepValue(steps[again + 1]!, "if")).toBe("steps.head.outputs.current == 'true'");
+
+    const main = "0123456789abcdef0123456789abcdef01234567";
+    const call = "api repos/example/app/commits/main --jq .sha";
+    const stale = runStep(steps[again]!, {
+      GITHUB_REPOSITORY: "example/app",
+      PATH: fakeGh(call, main),
+      GITHUB_SHA: "fedcba9876543210fedcba9876543210fedcba98",
+    });
+    expect(stale.output).toBe("current=false\n");
   });
 
   it("release only main's head, so a re-run of an old run cannot put its old commit over a newer one", () => {
@@ -389,7 +415,16 @@ describe("GitHub workflows", () => {
     const names = (job: string) => stepsOf(jobSection(workflow("deploy.yml"), job)).map((step) => stepValue(step, "name"));
     expect(names("gate")).toEqual(["Check for a Cloudflare token", "Check the head of main"]);
     expect(names("build")).toEqual(["Check out", "Set up Node", "Audit", "Prepare the release", "Keep the build"]);
-    expect(names("release")).toEqual(["Check out", "Set up Node", "Install Wrangler", "Fetch the build", "Release", "Released"]);
+    expect(names("release")).toEqual([
+      "Check out",
+      "Set up Node",
+      "Install Wrangler",
+      "Fetch the build",
+      "Take the build",
+      "Check the head of main again",
+      "Release",
+      "Released",
+    ]);
   });
 
   describe("the merge job's check that releases are automatic", () => {
@@ -434,6 +469,13 @@ describe("GitHub workflows", () => {
      * Runs the check with a stand-in gh that answers these Deploy runs, a hundred to a page as the API pages them
      * (null: that call fails).
      */
+    const rerunForOlder = {
+      ...gated,
+      "Prepare the release": "success",
+      "Check the head of main again": "success",
+      Release: "skipped",
+    };
+
     function decide(
       runs: ReturnType<typeof deployRun>[] | null,
       failingJobs: number[] = [],
@@ -464,8 +506,16 @@ describe("GitHub workflows", () => {
       expect(stepValue(merge, "if")).toContain("steps.releases.outputs.automatic == 'true'");
     });
 
-    it("says automatic when the newest run that released or tried to released", () => {
-      expect(decide([deployRun(101, released)])).toBe("automatic=true\nreason=Deploy run 101 on main released\n");
+    it("says automatic when the newest run that released or tried to released, naming main's head it checked", () => {
+      expect(decide([deployRun(101, released)])).toBe(
+        `automatic=true\nreason=Deploy run 101 on main released\nhead=${MAIN}\n`,
+      );
+    });
+
+    it("passes over a re-run whose release job found main had moved on", () => {
+      expect(decide([deployRun(102, rerunForOlder), deployRun(101, released)])).toBe(
+        `automatic=true\nreason=Deploy run 101 on main released\nhead=${MAIN}\n`,
+      );
     });
 
     it("says not automatic when that run released nothing, as without a token, or failed", () => {
@@ -477,7 +527,7 @@ describe("GitHub workflows", () => {
 
     it("tells a release apart from a run that released nothing on purpose, and looks past the latter", () => {
       expect(decide([deployRun(102, releasedNothing, "schedule"), deployRun(101, released)])).toBe(
-        "automatic=true\nreason=Deploy run 101 on main released\n",
+        `automatic=true\nreason=Deploy run 101 on main released\nhead=${MAIN}\n`,
       );
       expect(decide([deployRun(102, releasedNothing, "schedule")])).toBe(
         "automatic=false\nreason=no Deploy run on main has released or tried to\n",
@@ -497,7 +547,7 @@ describe("GitHub workflows", () => {
 
     it("passes over runs that say nothing: one for an older commit, and one cancelled before it started", () => {
       expect(decide([deployRun(103, olderCommit, "workflow_dispatch"), deployRun(102, null), deployRun(101, released)])).toBe(
-        "automatic=true\nreason=Deploy run 101 on main released\n",
+        `automatic=true\nreason=Deploy run 101 on main released\nhead=${MAIN}\n`,
       );
       expect(decide([deployRun(102, null), deployRun(101, olderCommit)])).toBe(
         "automatic=false\nreason=no Deploy run on main has released or tried to\n",
@@ -518,7 +568,7 @@ describe("GitHub workflows", () => {
     it("counts runs started by a push, by hand or by the nightly schedule, and no others", () => {
       expect(decide([deployRun(104, released, "repository_dispatch")])).toContain("automatic=false\n");
       expect(decide([deployRun(105, failed, "schedule"), deployRun(101, released)])).toContain("automatic=false\n");
-      expect(decide([deployRun(105, released, "schedule")])).toBe("automatic=true\nreason=Deploy run 105 on main released\n");
+      expect(decide([deployRun(105, released, "schedule")])).toBe(`automatic=true\nreason=Deploy run 105 on main released\nhead=${MAIN}\n`);
     });
 
     it("says not automatic when the newest run's build failed, rather than taking it for an older commit's", () => {
@@ -530,7 +580,7 @@ describe("GitHub workflows", () => {
 
     it("reads past the first page of runs, a hundred at a time", () => {
       const quiet = Array.from({ length: 100 }, (_, index) => deployRun(1_000 - index, olderCommit, "schedule"));
-      expect(decide([...quiet, deployRun(101, released)])).toBe("automatic=true\nreason=Deploy run 101 on main released\n");
+      expect(decide([...quiet, deployRun(101, released)])).toBe(`automatic=true\nreason=Deploy run 101 on main released\nhead=${MAIN}\n`);
     });
 
     it("says not automatic when the Actions API cannot be read", () => {
@@ -555,12 +605,32 @@ describe("GitHub workflows", () => {
     });
   });
 
-  it("start the release in a step of its own, only after a merge", () => {
+  it("start the release in a step of its own, only after a merge onto the head that was checked", () => {
     const job = jobSection(workflow("ci.yml"), "merge-dependabot");
     expect(stepValue(stepWith(job, "gh pr merge"), "run")).not.toContain("gh workflow run");
     const release = stepWith(job, "gh workflow run");
-    expect(stepValue(release, "run")).toBe("gh workflow run deploy.yml --ref main");
     expect(stepValue(release, "if")).toBe("steps.merge.outcome == 'success'");
+    expect(stepValue(release, "env")).toContain("CHECKED: ${{ steps.releases.outputs.head }}");
+
+    // Production was checked against main's head; if main moved before the merge, the merge commit's parent is
+    // another commit, and its release would go out unchecked.
+    const merged = "1111111111111111111111111111111111111111";
+    const checked = "0123456789abcdef0123456789abcdef01234567";
+    const start = (parent: string) =>
+      runStep(release, {
+        PATH: fakeGhRoutes({
+          "pr view https://github.com/example/app/pull/7 --json mergeCommit --jq .mergeCommit.oid": merged,
+          [`api repos/example/app/commits/${merged} --jq .parents[0].sha`]: parent,
+          "workflow run deploy.yml --ref main": "",
+        }),
+        GH_REPO: "example/app",
+        PR_URL: "https://github.com/example/app/pull/7",
+        CHECKED: checked,
+      });
+    expect(start(checked).status).toBe(0);
+    const moved = start("2222222222222222222222222222222222222222");
+    expect(moved.status).not.toBe(0);
+    expect(moved.stdout).toContain("::notice title=Release not started::");
   });
 
   it("say plainly in the run's summary what happened to the update", () => {

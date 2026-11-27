@@ -269,7 +269,11 @@ the token is set and that the run is for `main`'s head (a run for an older
 commit builds and releases nothing). `build`, with no secret, runs
 `npm run audit` and `node scripts/prepare-release.mjs` and keeps `out/` and
 its record as an artifact. `release` checks out the same commit, installs
-with `npm ci --ignore-scripts` and no npm cache, fetches the build, and runs
+with `npm ci --ignore-scripts` and no npm cache, downloads the build into an
+empty folder of its own and takes from it only regular files under `out/`
+and the one record (`node scripts/take-build.mjs`: a link, a package, a
+script or any other path refuses the whole artifact), checks `main`'s head
+again (a re-run of a failed release job reuses the gate's answer), and runs
 `node scripts/promote.mjs`, the only step that sees the token; promote
 re-checks that the record names this commit and that `out/` still has its
 digest, and bundles the Worker from this checkout, so the artifact can only
@@ -314,7 +318,8 @@ done once, after production is reached through the zone route (the release
 checks `https://tideandtumble.app`): the release credentials go into the
 repository's Actions secrets, Dependabot security updates are turned on, and
 Deploy is run once on `main` (the merge job merges only once a Deploy run on
-`main` has released). How the credentials are made and kept is in the
+`main` has released, and starts the release only when the merge commit's
+parent is the head production was checked against). How the credentials are made and kept is in the
 private operations record. The release credential edits Workers and nothing
 else: no DNS, routes or custom domains. Cloudflare cannot limit a token to one
 Worker, so it can change every Worker in the account, not only this one.

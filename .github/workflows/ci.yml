@@ -104,7 +104,8 @@ jobs:
                 ! release="$(step "Release" <<< "$jobs")" ||
                 ! released="$(step "Released" <<< "$jobs")" ||
                 ! prepare="$(step "Prepare the release" <<< "$jobs")" ||
-                ! head="$(step "Check the head of main" <<< "$jobs")"; then
+                ! head="$(step "Check the head of main" <<< "$jobs")" ||
+                ! again="$(step "Check the head of main again" <<< "$jobs")"; then
                 reason="the Actions API could not be read"
                 break
               fi
@@ -122,6 +123,11 @@ jobs:
                 fi
                 reason="the newest Deploy run on main, $id, released nothing: it ended ($conclusion) without a Release step"
                 break
+              fi
+              # A re-run of the release job that found main had moved on: it released nothing on purpose.
+              if [ "$release" = "skipped" ] && [ "$again" = "success" ]; then
+                decided=false
+                continue
               fi
               if [ "$release" = "success" ] && [ "$released" != "success" ]; then
                 # promote released nothing on purpose; it says nothing about whether releases work.
@@ -156,6 +162,10 @@ jobs:
           fi
           echo "automatic=$automatic" >> "$GITHUB_OUTPUT"
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          if [ "$automatic" = true ]; then
+            # The head production was checked against: the merge commit's parent must be this one.
+            echo "head=$main" >> "$GITHUB_OUTPUT"
+          fi
 
       # For a group, the largest change in the group.
       - name: Read the update type
@@ -208,14 +218,26 @@ jobs:
         run: gh pr merge "$PR_URL" --squash --match-head-commit "$HEAD_SHA"
 
       # A merge made with this job's token starts no push workflow, so the
-      # release is started by name (a dispatch is GitHub's exception).
+      # release is started by name (a dispatch is GitHub's exception). Only
+      # when the merge commit's parent is the head production was checked
+      # against: if main moved between the check and the merge, the release
+      # would go out unchecked, so it is not started and the step fails.
       - name: Start the release
         id: release
         if: steps.merge.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh workflow run deploy.yml --ref main
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          CHECKED: ${{ steps.releases.outputs.head }}
+        run: |
+          merged="$(gh pr view "$PR_URL" --json mergeCommit --jq .mergeCommit.oid)"
+          parent="$(gh api "repos/$GH_REPO/commits/$merged" --jq '.parents[0].sha')"
+          if [ -z "$CHECKED" ] || [ "$parent" != "$CHECKED" ]; then
+            echo "::notice title=Release not started::main moved from ${CHECKED:-an unchecked head} to $parent before the merge, so production was not checked against the merge commit's parent and the release was not started. Check production, then run Deploy on main."
+            exit 1
+          fi
+          gh workflow run deploy.yml --ref main
 
       # Nobody is emailed about this run (Dependabot started it), so the
       # summary says what happened, and audit.yml checks every day that
