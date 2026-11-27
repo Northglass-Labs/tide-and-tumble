@@ -58,6 +58,13 @@ cutover are the operator's, after an adversarial review.
     text, and the git comparison is skipped in an export; the page says when
     NWS has no rip-current forecast for today; the shared cap's 429 carries
     Retry-After; the checking line is hidden without JavaScript.
+11. Before merge (2026-11-27): done. The root vercel.json sets
+    git.deploymentEnabled to false, so no push or merge deploys to the
+    previous host (checked: no Vercel status or deployment on the heads that
+    carry it); its last production deployment stays as the hosting
+    rollback. The docs describe the release token as scoped to this one
+    Worker with the Editor role; the first release, which creates the
+    Worker, needs product-level Admin once.
 
 ## Verification
 
