@@ -6,41 +6,73 @@ import { describe, expect, test } from "vitest";
 const root = process.cwd();
 const read = (path: string) => readFileSync(join(root, path), "utf8");
 
-/** Never published: dependencies, build and tool output, git's own files, local agent state. */
-const UNPUBLISHED = /^(?:\.git|node_modules|\.next|out|\.wrangler|\.release|\.vitest|coverage)(?:\/|$)/;
+/** git's own files: never published, and never named in .gitignore. */
+const GIT_DIR = /^\.git(?:\/|$)/;
+
+/** One .gitignore rule as a test on a path relative to the root. */
+interface IgnoreRule {
+  pattern: RegExp;
+  negate: boolean;
+  /** The rule's path, without a leading or trailing slash. */
+  path: string;
+}
+
+/** The repository's .gitignore, enough of its syntax for this repository's rules. */
+function ignoreRules(): IgnoreRule[] {
+  if (!existsSync(join(root, ".gitignore"))) return [];
+  return read(".gitignore")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "" && !line.startsWith("#"))
+    .map((line) => {
+      const negate = line.startsWith("!");
+      let rule = negate ? line.slice(1) : line;
+      const directory = rule.endsWith("/");
+      if (directory) rule = rule.slice(0, -1);
+      const anchored = rule.includes("/");
+      if (rule.startsWith("/")) rule = rule.slice(1);
+      const body = rule
+        .split("**")
+        .map((part) => part.split("*").map((text) => text.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join("[^/]*"))
+        .join(".*");
+      return { pattern: new RegExp(`${anchored ? "^" : "(?:^|/)"}${body}(?:/|$)`), negate, path: rule };
+    });
+}
 
 /**
- * Every file in the tree, as an export of the repository (`git archive`) has
- * no git index to ask. Build and tool output is left out; `.claude/` holds
- * only the shared progress record.
+ * Every file in the tree that git would not ignore, as an export of the
+ * repository (`git archive`) has no index to ask.
  */
-function walkTree(dir = root, prefix = ""): string[] {
+function walkTree(rules = ignoreRules(), dir = root, prefix = ""): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
-    if (UNPUBLISHED.test(path)) return [];
-    if (path.startsWith(".claude/") && path !== ".claude/context" && path !== ".claude/context/progress.md") return [];
-    if (entry.isDirectory()) return walkTree(join(dir, entry.name), path);
-    return entry.isFile() ? [path] : [];
+    let ignored = GIT_DIR.test(path);
+    for (const rule of rules) {
+      if (rule.pattern.test(path)) ignored = !rule.negate;
+    }
+    // An ignored folder is skipped whole, unless a later rule brings back something inside it.
+    const reopened = entry.isDirectory() && rules.some((rule) => rule.negate && rule.path.startsWith(`${path}/`));
+    if (ignored && !reopened) {
+      return [];
+    }
+    if (entry.isDirectory()) return walkTree(rules, join(dir, entry.name), path);
+    return entry.isFile() && !ignored ? [path] : [];
   });
 }
 
-/**
- * Every file git would publish: tracked files and new ones it does not
- * ignore. Without a git work tree (an exported copy), every file in the tree.
- */
-function publishedFiles(): string[] {
+/** Tracked files, by git's index. Null without a git work tree (an exported copy). */
+function trackedFiles(): string[] | null {
   try {
-    return execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
-      cwd: root,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    })
+    return execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
       .split("\0")
       .filter((path) => path !== "" && existsSync(join(root, path)));
   } catch {
-    return walkTree();
+    return null;
   }
 }
+
+/** What is published: the tracked files, or without git, every file git would not ignore. */
+const publishedFiles = (): string[] => trackedFiles() ?? walkTree();
 
 /** Binary files and the bundled station data are not scanned. */
 const textOnly = (path: string) =>
@@ -54,7 +86,13 @@ const PUBLIC_DOCS = /^(?:README\.md|AGENTS\.md|CLAUDE\.md|docs\/DELIVERY\.md|doc
 /** Public government data captured for tests: it carries NOAA and NWS contact addresses. */
 const UPSTREAM_FIXTURES = /^test\/fixtures\/upstream\//;
 
-/** The patterns that would carry private operations detail, in any published file. */
+/**
+ * High-signal patterns: what operations detail looks like when it leaks, in
+ * any published file, workflow comments included. They catch identifiers,
+ * commands, rule syntax and thresholds, not prose: a sentence describing the
+ * private record in other words passes, so the boundary is held by review as
+ * well (AGENTS.md).
+ */
 const PRIVATE_DETAIL: { name: string; pattern: RegExp; skip?: RegExp }[] = [
   // The tests' canary account id, 0123456789abcdef0123456789abcdef, is allowed: no account has it.
   { name: "Cloudflare account, zone or route ids", pattern: /\b(?!0123456789abcdef0123456789abcdef\b)[0-9a-f]{32}\b/, skip: /^package-lock\.json$|^test\/fixtures\// },
@@ -62,22 +100,28 @@ const PRIVATE_DETAIL: { name: string; pattern: RegExp; skip?: RegExp }[] = [
   { name: "workers.dev account subdomains", pattern: /\b[a-z0-9-]+\.(?!example\.)[a-z0-9-]+\.workers\.dev\b/i },
   { name: "nameservers", pattern: /\b[a-z0-9-]+\.ns\.[a-z]+\.com\b/i },
   { name: "bearer token headers", pattern: /authorization:\s*bearer/i },
-  { name: "credential stores", pattern: /1password|\bop:\/\/|\.dev\.vars\b(?!\.example)/i, skip: /^\.gitignore$|^test\/app\/opsec\.test\.ts$/ },
-  { name: "the private operations repository's name", pattern: /\bhomelab\b/i, skip: /^test\/app\/opsec\.test\.ts$/ },
-  { name: "provider scopes or repository ids", pattern: /team\s*\/\s*scope|\brepoid\b|personal account/i, skip: /^test\/app\/opsec\.test\.ts$/ },
+  { name: "credential stores", pattern: /1password|\bop:\/\/|\.dev\.vars\b(?!\.example)/i, skip: /^\.gitignore$/ },
+  { name: "the private operations repository's name", pattern: /\bhomelab\b/i },
+  { name: "provider scopes or repository ids", pattern: /team\s*\/\s*scope|\brepoid\b|personal account/i },
   { name: "private paths", pattern: /\/Users\/[A-Za-z]|~\/Projects\b/ },
+  { name: "commands that store a credential", pattern: /\bgh\s+(?:secret|variable)\s+set\b/i },
+  {
+    name: "zone and account settings",
+    pattern:
+      /bot fight mode|always use https|universal ssl|edge certificate|certificate pack|ssl\/tls|full \(strict\)|dns analytics|\bzone[ _]id\b|\bproxied\b|dns-only|grey[- ]cloud|orange[- ]cloud|hobby plan|uptime (?:monitor|kuma)|fail[- ](?:open|closed)/i,
+  },
+  { name: "rule expressions", pattern: /\bhttp\.request\.(?:uri|headers|method|full_uri)\b|\bcf\.(?:client|threat_score|bot_management)\b|\bip\.src\b/ },
+  {
+    name: "request thresholds",
+    pattern: /\b\d+\s+requests?\s+(?:in|per|every|over)\s+\d+\s+seconds?\b|requests_per_period|mitigation_timeout|counted over \d+ seconds/i,
+  },
 ];
 
-/**
- * Operator procedure: how production is wired and run. It belongs in the
- * private operations record, so the public documents never describe it.
- */
+/** Operator procedure, kept out of the public documents: how production is wired and run. */
 const OPERATOR_PROCEDURE: { name: string; pattern: RegExp }[] = [
   { name: "Cloudflare API paths", pattern: /\/(?:zones|accounts)\/[^\s]*\/|workers\/routes|dns_records|rulesets\/phases/i },
-  { name: "DNS record administration", pattern: /\b(?:proxied|dns-only|grey[- ]cloud|orange[- ]cloud|A record|CNAME record)\b/i },
-  { name: "zone security settings", pattern: /bot fight mode|always use https|min(?:imum)? tls|ssl mode|full \(strict\)|requests_per_period/i },
-  { name: "edge certificate state", pattern: /universal ssl|edge certificate|certificate pack/i },
-  { name: "how a credential is created or stored", pattern: /gh secret set|create token|api tokens? page|token's? permissions?: |wrangler login/i },
+  { name: "DNS record administration", pattern: /\b(?:A record|CNAME record|AAAA record)\b/i },
+  { name: "how a credential is created or stored", pattern: /create token|api tokens? page|token's? permissions?: /i },
   { name: "the previous host's names", pattern: /\bvercel\b/i },
 ];
 
@@ -107,6 +151,7 @@ function linesMatching(files: { path: string; text: string }[], pattern: RegExp)
 describe("public-release OPSEC boundary", () => {
   const files = publishedFiles()
     .filter(textOnly)
+    .filter((path) => path !== "test/app/opsec.test.ts")
     .map((path) => ({ path, text: read(path) }));
   const docs = files.filter((file) => PUBLIC_DOCS.test(file.path));
 
@@ -120,14 +165,41 @@ describe("public-release OPSEC boundary", () => {
     );
   });
 
-  test("scans an exported copy with no git work tree the same way", () => {
-    // `git archive` output has no index: the walk must find the same public files, and none of the output.
+  test("scans an exported copy with no git work tree the same way, skipping what git ignores", () => {
+    // `git archive` output has no index: the walk must find every tracked file, and nothing git ignores, such as
+    // the worker-configuration.d.ts that `npm run typecheck` writes.
     const walked = walkTree();
-    for (const expected of ["README.md", "AGENTS.md", "docs/DELIVERY.md", "src/worker/index.ts", ".claude/context/progress.md"]) {
-      expect(walked).toContain(expected);
-    }
-    expect(walked.some((path) => UNPUBLISHED.test(path))).toBe(false);
+    const tracked = trackedFiles();
+    expect(tracked).not.toBeNull();
+    expect(walked).toEqual(expect.arrayContaining(tracked!));
+    const extra = walked.filter((path) => !tracked!.includes(path));
+    const ignoredExtra =
+      extra.length === 0
+        ? ""
+        : execFileSync("git", ["check-ignore", "--no-index", "--stdin"], { cwd: root, encoding: "utf8", input: extra.join("\n") }).trim();
+    expect(ignoredExtra).toBe("");
+    expect(walked).not.toContain("worker-configuration.d.ts");
     expect(walked.filter((path) => path.startsWith(".claude/"))).toEqual([".claude/context/progress.md"]);
+  });
+
+  test("catches the leak lines the review found, in a file of their own", () => {
+    // The kinds of line the 2026-11-27 review removed from the public documents.
+    const leaks = [
+      "gh secret set CLOUDFLARE_API_TOKEN -R example/app",
+      "Bot Fight Mode is off for the zone, so GitHub's runners are not challenged.",
+      "Recommended: that rule on /api/, at 30 requests in 10 seconds.",
+      "The zone's edge certificate already covers the apex and www and is active.",
+      "Set the SSL/TLS encryption mode to Full (strict).",
+      '(starts_with(http.request.uri.path, "/api/") and not any(http.request.headers["sec-fetch-site"][*] eq "same-origin"))',
+      "The project is on the Hobby plan.",
+      "The uptime monitor asks /api/tides every five minutes.",
+      "Switch the apex record from DNS-only to proxied.",
+      "Account 1f2e3d4c5b6a79881f2e3d4c5b6a7988 owns the zone.",
+      "Check https://tide-and-tumble.someone.workers.dev first.",
+      "Set the route to fail closed.",
+    ];
+    const caught = leaks.filter((line) => PRIVATE_DETAIL.some(({ pattern }) => pattern.test(line)));
+    expect(caught).toEqual(leaks);
   });
 
   test.each(PRIVATE_DETAIL)("publishes no $name", ({ pattern, skip }) => {

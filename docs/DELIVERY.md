@@ -64,8 +64,8 @@ dependencies to look at, and fails with npm's reason when there is no report.
 3. `GET /` answers 200, is this app's page, and carries its
    Content-Security-Policy and HSTS headers (from `public/_headers`).
 4. `GET /health-check-not-a-page` answers 404.
-5. `GET /api/tides?station=8651370`, sent with `Sec-Fetch-Site: same-origin`
-   as the site's pages send it, answers a tide table, or 502
+5. `GET /api/tides?station=8651370`, asked as the site's own pages ask it,
+   answers a tide table, or 502
    `upstream_unavailable` (NOAA did not answer the Worker, which is not the
    release's fault); anything else fails. At the `workers.dev` address, where
    the data routes never answer, it must be their 404.
@@ -313,10 +313,6 @@ never with a session that can change DNS or routes. Changing a route, a
 custom domain or DNS needs a zone permission and is done by hand, never by
 `promote`.
 
-A zone rule may refuse `/api/` requests that do not come from the site's own
-pages (`Sec-Fetch-Site: same-origin`); the health check sends that header,
-and `/api/health` is left open for monitors.
-
 ## Version URLs and the workers.dev address
 
 Version URLs are off (`"preview_urls": false`, written out; the design note, D3): no
@@ -365,7 +361,12 @@ the design note's Decisions section. Never commit or publish:
 - incident notes, the cutover and hosting-rollback steps, recovery procedures
   and operator workarounds.
 
-`test/app/opsec.test.ts` scans every published file for them.
+`test/app/opsec.test.ts` scans every tracked file (or, in an exported copy,
+every file git would not ignore) for what these look like when they leak:
+32-character ids, the `workers.dev` subdomain, commands that store a
+credential, zone settings, rule syntax and request thresholds. It cannot read
+prose: a sentence that describes the private record in other words passes,
+so review holds the rest of the boundary.
 
 ## Known issues
 

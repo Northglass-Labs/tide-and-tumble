@@ -21,11 +21,7 @@ export const NOT_A_PAGE = "/health-check-not-a-page";
  */
 export const TIDES_CHECK = "/api/tides?station=8651370";
 
-/**
- * The header a browser sends with the site's own requests. The data API is
- * only for the site's pages, and a zone rule may refuse /api/ requests
- * without it (docs/DELIVERY.md), so the check asks as the pages do.
- */
+/** The data API serves the site's own pages, so the check asks as a page on the site does. */
 const SAME_ORIGIN = Object.freeze({ "Sec-Fetch-Site": "same-origin" });
 
 /**

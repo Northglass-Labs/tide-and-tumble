@@ -174,7 +174,7 @@ describe("checkHealth()", () => {
   });
 
   it("says a check Cloudflare's bot protection challenged was blocked, not unhealthy, and stops at once", async () => {
-    // Bot Fight Mode answers a client it takes for a bot with a challenge page instead of the site.
+    // Bot protection answers a client it takes for a bot with a challenge page instead of the site.
     const challenge = () =>
       new Response("<!doctype html><title>Just a moment...</title>", {
         status: 403,

@@ -48,7 +48,10 @@ is built this way.
   administration, incident notes or recovery procedures. Those live in the
   private operations record. There is no `docs/adr` or `docs/runbooks` here;
   decisions go in the design note's Decisions section.
-  `test/app/opsec.test.ts` scans for all of it.
+  `test/app/opsec.test.ts` scans every tracked file for what such detail
+  looks like when it leaks (ids, the subdomain, credential commands, zone
+  settings, rule syntax, thresholds); it cannot read prose, so review holds
+  the rest of the boundary.
 - **Never bypass a git hook.** If a commit or push is refused, fix the cause
   or stop and report.
 - **Wrangler reads only `wrangler.jsonc`.** Give any Wrangler command
