@@ -25,7 +25,9 @@ describe("GET /api/tides", () => {
     expect(url.searchParams.get("begin_date")).toBe("20261126");
     expect(url.searchParams.get("end_date")).toBe("20261228");
     expect(url.searchParams.get("interval")).toBe("hilo");
-    expect(url.searchParams.get("time_zone")).toBe("lst_ldt");
+    // In UTC, converted with the station's own zone: NOAA's local frame disagrees with the real zone at
+    // about 130 stations, and "now" is read in the station's zone.
+    expect(url.searchParams.get("time_zone")).toBe("gmt");
     expect(url.searchParams.get("datum")).toBe("MLLW");
     expect(url.searchParams.get("application")).toBe("obx-tides");
   });
@@ -47,7 +49,8 @@ describe("GET /api/tides", () => {
       exposure: "ocean",
     });
     expect(body.extrema.length).toBe(predictions.predictions.length);
-    expect(body.extrema[0]).toEqual({ time: Date.UTC(2026, 10, 26, 1, 39), height: -0.357, type: "L" });
+    // NOAA answers in UTC (time_zone=gmt): 01:39 UTC is 20:39 the evening before at Duck, in Eastern time.
+    expect(body.extrema[0]).toEqual({ time: Date.UTC(2026, 10, 25, 20, 39), height: -0.357, type: "L" });
     const times = body.extrema.map((extremum) => extremum.time);
     expect([...times].sort((a, b) => a - b)).toEqual(times);
   });
@@ -283,4 +286,15 @@ describe("GET /api/tides", () => {
     const limited = await t.request("/api/tides?station=8651370", undefined, "2001:db8:1:2:ffff::1");
     expect(limited.status).toBe(429);
   });
+
+  it.each([
+    ["8726601", "Indian Rocks Beach, Eastern", 10],
+    ["8729142", "Panama City, Central", 9],
+    ["9462144", "the western Aleutians, Hawaii-Aleutian time", 5],
+  ])("gives %s's tides (%s) in its own zone's wall clock", async (station, _name, hour) => {
+    stubUpstream([[NOAA, () => json({ predictions: [{ t: "2026-11-27 15:00", v: "1.2", type: "H" }, { t: "2026-11-27 21:10", v: "0.1", type: "L" }] })]]);
+    const body = await (await testApp().request(`/api/tides?station=${station}`)).json<{ extrema: { time: number }[] }>();
+    expect(body.extrema[0]!.time).toBe(Date.UTC(2026, 10, 27, hour, 0));
+  });
 });
+

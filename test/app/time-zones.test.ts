@@ -21,6 +21,12 @@ describe("each station's time zone", () => {
     ["1630000", "Apra Harbor, Guam", "Pacific/Guam"],
     ["9461380", "Adak Island, AK", "America/Adak"],
     ["9455920", "Anchorage, AK", "America/Anchorage"],
+    ["8726601", "Indian Rocks Beach, FL", "America/New_York"],
+    ["8729142", "Panama City, FL (west of 85.4°W)", "America/Chicago"],
+    ["9462144", "Aleutians west of 169.5°W", "America/Adak"],
+    ["1820000", "Kwajalein", "Pacific/Kwajalein"],
+    ["1890000", "Wake Island", "Pacific/Wake"],
+    ["1910000", "Suva, Fiji", "Pacific/Fiji"],
   ])("%s (%s) is %s", (id, _name, zone) => {
     expect(stationTimeZone(station(id))).toBe(zone);
   });

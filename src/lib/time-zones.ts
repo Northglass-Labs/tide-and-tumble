@@ -1,6 +1,7 @@
-// Each station's IANA time zone. NOAA gives predictions in the station's local
-// time (lst_ldt), so "now", day boundaries and sun times must be read in the
-// same zone. By state where NOAA gives one; Florida west of about 85.4°W
+// Each station's IANA time zone. Tide predictions are asked for in UTC and read
+// in this zone, as are "now", day boundaries and sun and moon times. (NOAA's
+// own local frame, lst_ldt, disagrees with the real zone at about 130
+// stations, so it is not used.) By state where NOAA gives one; Florida west of about 85.4°W
 // (the panhandle) is on Central time. Stations with no state are placed by
 // their coordinates, and outside the US by a fixed offset from longitude.
 
@@ -40,6 +41,9 @@ function byCoordinates(lat: number, lng: number): string {
   if (lat > 18 && lat < 23 && lng >= -161 && lng < -154) return "Pacific/Honolulu";
   if (lat > 17.5 && lat < 18.6 && lng >= -68 && lng < -64.5) return "America/Puerto_Rico";
   if (lat > 13 && lat < 21 && lng >= 144 && lng < 146.5) return "Pacific/Guam";
+  if (lat > 18 && lat < 20.5 && lng >= 166 && lng < 167.5) return "Pacific/Wake";
+  if (lat > 4 && lat < 15 && lng >= 160 && lng < 173) return "Pacific/Kwajalein";
+  if (lat > -21.5 && lat < -12 && (lng >= 176 || lng < -178)) return "Pacific/Fiji";
   if (lat > -15 && lat < -13 && lng >= -171 && lng < -168) return "Pacific/Pago_Pago";
   if (lat > 24 && lat < 45 && lng >= -97.6 && lng < FLORIDA_CENTRAL_WEST_OF) return "America/Chicago";
   if (lat > 24 && lat < 47.5 && lng >= FLORIDA_CENTRAL_WEST_OF && lng < -66.5) return "America/New_York";

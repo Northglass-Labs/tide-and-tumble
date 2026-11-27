@@ -55,7 +55,7 @@ export async function fetchBeachWeek(beach: Beach, days = 7): Promise<BeachWeek>
   let failure: unknown;
   for (let attempt = 1; attempt <= BUILD_ATTEMPTS; attempt += 1) {
     try {
-      const extrema = await fetchExtrema(noaaId(beach), new Date(), 1, days + 1);
+      const extrema = await fetchExtrema(noaaId(beach), new Date(), 1, days + 1, undefined, stationTimeZone(beach));
       return buildBeachWeek(extrema, beach, stationNow(new Date(), stationTimeZone(beach)), days);
     } catch (error) {
       failure = error;

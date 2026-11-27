@@ -142,7 +142,7 @@ export function fmtClock(t: number): string {
 }
 
 /**
- * NOAA returns local wall-clock strings like "2026-07-05 11:50" (time_zone=lst_ldt).
+ * NOAA returns wall-clock strings like "2026-07-05 11:50" (asked for in UTC, time_zone=gmt).
  * We parse them as if UTC to get a stable, monotonic epoch for interpolation math.
  * Because everything (now, extrema, curve) is parsed the same way and rendered by
  * pulling hours/minutes back out in the same frame, the wall-clock times stay
@@ -187,6 +187,7 @@ export async function fetchExtrema(
   backDays = 1,
   fwdDays = 2,
   signal?: AbortSignal,
+  timeZone: string = STATION_TZ,
 ): Promise<Extremum[]> {
   const begin = new Date(anchor);
   begin.setUTCDate(begin.getUTCDate() - backDays);
@@ -199,7 +200,10 @@ export async function fetchExtrema(
     station: stationId,
     product: "predictions",
     datum: "MLLW",
-    time_zone: "lst_ldt",
+    // In UTC, then read in the station's own zone (src/lib/time-zones.ts):
+    // NOAA's local frame disagrees with the real zone at about 130 stations,
+    // and "now" is read in the station's zone.
+    time_zone: "gmt",
     interval: "hilo",
     units: "english",
     format: "json",
@@ -227,7 +231,7 @@ export async function fetchExtrema(
   return data.predictions
     .filter((p) => p.type === "H" || p.type === "L")
     .map((p) => ({
-      time: parseNoaaTime(p.t),
+      time: stationNow(new Date(parseNoaaTime(p.t)), timeZone),
       height: parseFloat(p.v),
       type: p.type as "H" | "L",
     }))

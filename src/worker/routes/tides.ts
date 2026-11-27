@@ -66,6 +66,7 @@ export function tidesRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
             1,
             31,
             AbortSignal.timeout(NOAA_DEADLINE_MS),
+            stationTimeZone(station),
           ),
         }),
         lifetime: () => ({ freshMs: 15 * MINUTE, staleMs: 60 * MINUTE }),
