@@ -129,6 +129,19 @@ export class FixedWindowRateLimiter {
     };
   }
 
+  /** The client's own limit only: every valid request counts. */
+  checkClient(scope: string, clientKey: string, policy: RatePolicy, now = Date.now()): RateDecision {
+    return this.consume(`client:${scope}:${clientKey}`, policy.clientLimit, policy.windowMs, now);
+  }
+
+  /**
+   * A share of the instance's cap, taken only by a request that is about to
+   * ask the upstream: answers from the cache cost the upstream nothing.
+   */
+  takeShared(scope: string, policy: RatePolicy, now = Date.now()): RateDecision {
+    return this.consume(`global:${scope}`, policy.globalLimit, policy.windowMs, now);
+  }
+
   /**
    * The client's own limit first: a refused request returns at once and
    * counts nowhere else, so a client flooding past its limit cannot use up
@@ -230,13 +243,23 @@ export function clientKey(request: Request): string {
   return `${groups.slice(0, 4).map((group) => group.padStart(4, "0")).join(":")}::/64`;
 }
 
+/**
+ * The client's own limit for one request. The instance's shared cap is
+ * taken separately, only when the request would ask the upstream
+ * (`sharedCapacity`).
+ */
 export function checkApiRateLimit(
   limiter: FixedWindowRateLimiter,
   request: Request,
   scope: ApiScope,
   now?: number,
 ): RateDecision {
-  return limiter.check(scope, clientKey(request), POLICIES[scope], now);
+  return limiter.checkClient(scope, clientKey(request), POLICIES[scope], now);
+}
+
+/** Takes a share of the instance's cap for `scope`: false when it is used up. */
+export function sharedCapacity(limiter: FixedWindowRateLimiter, scope: ApiScope, now?: number): () => boolean {
+  return () => limiter.takeShared(scope, POLICIES[scope], now).allowed;
 }
 
 export function rateLimitHeaders(

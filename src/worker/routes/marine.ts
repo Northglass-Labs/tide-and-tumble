@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import {
   checkApiRateLimit,
+  sharedCapacity,
   PRIVATE_NO_STORE_HEADERS,
   rateLimitHeaders,
   resolveStation,
@@ -8,7 +9,7 @@ import {
 } from "../../lib/api-guard";
 import { fetchMarine, type Marine } from "../../lib/marine";
 import type { AppDeps, AppEnv } from "../env";
-import { cacheKey, readThrough } from "../lib/cache";
+import { CapacityReached, cacheKey, readThrough } from "../lib/cache";
 import { fail, INVALID_STATION, logFailure } from "../lib/http";
 
 const MINUTE = 60_000;
@@ -37,13 +38,14 @@ const isEmpty = (marine: Marine) => Object.values(marine).every((value) => value
 export function marineRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
   return new Hono<AppEnv>().get("/", async (c) => {
     const now = deps.now();
-    const budget = checkApiRateLimit(limiter, c.req.raw, "marine", now);
-    if (!budget.allowed) {
-      return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.", rateLimitHeaders(budget));
-    }
+    // An unknown station is refused before anything counts it.
     const station = resolveStation(c.req.query("station"));
     if (!station) {
       return fail(c, 400, "invalid_station", INVALID_STATION);
+    }
+    const budget = checkApiRateLimit(limiter, c.req.raw, "marine", now);
+    if (!budget.allowed) {
+      return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.", rateLimitHeaders(budget));
     }
 
     let marine = EMPTY;
@@ -62,8 +64,10 @@ export function marineRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
         lifetime: (value) => ({ freshMs: isEmpty(value) ? MINUTE : 10 * MINUTE, staleMs: 0 }),
         waitUntil: (promise) => c.executionCtx.waitUntil(promise),
         refreshing: deps.refreshing,
+        admit: sharedCapacity(limiter, "marine", now),
       });
     } catch (error) {
+      if (error instanceof CapacityReached) return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.");
       // Every reading is optional: the page shows what it has.
       logFailure("marine_failed", error);
     }

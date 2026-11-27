@@ -2,13 +2,14 @@ import { Hono } from "hono";
 import { fetchBeachSafetyChecked } from "../../lib/alerts";
 import {
   checkApiRateLimit,
+  sharedCapacity,
   PRIVATE_NO_STORE_HEADERS,
   rateLimitHeaders,
   resolveStation,
   type FixedWindowRateLimiter,
 } from "../../lib/api-guard";
 import type { AppDeps, AppEnv } from "../env";
-import { cacheKey, readThrough } from "../lib/cache";
+import { CapacityReached, cacheKey, readThrough } from "../lib/cache";
 import { fail, INVALID_STATION } from "../lib/http";
 
 const MINUTE = 60_000;
@@ -30,24 +31,32 @@ const DEADLINE_MS = 8_000;
 export function alertsRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
   return new Hono<AppEnv>().get("/", async (c) => {
     const now = deps.now();
-    const budget = checkApiRateLimit(limiter, c.req.raw, "alerts", now);
-    if (!budget.allowed) {
-      return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.", rateLimitHeaders(budget));
-    }
+    // An unknown station is refused before anything counts it.
     const station = resolveStation(c.req.query("station"));
     if (!station) {
       return fail(c, 400, "invalid_station", INVALID_STATION);
     }
+    const budget = checkApiRateLimit(limiter, c.req.raw, "alerts", now);
+    if (!budget.allowed) {
+      return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.", rateLimitHeaders(budget));
+    }
 
-    const result = await readThrough({
-      cache: await deps.cache(),
-      key: cacheKey(c.env.APP_ORIGIN, "alerts", station.id),
-      now,
-      produce: () => fetchBeachSafetyChecked(station.lat, station.lng, AbortSignal.timeout(DEADLINE_MS), now),
-      lifetime: (value) => ({ freshMs: value.complete ? 15 * MINUTE : MINUTE, staleMs: 0 }),
-      waitUntil: (promise) => c.executionCtx.waitUntil(promise),
-      refreshing: deps.refreshing,
-    });
+    let result;
+    try {
+      result = await readThrough({
+        cache: await deps.cache(),
+        key: cacheKey(c.env.APP_ORIGIN, "alerts", station.id),
+        now,
+        produce: () => fetchBeachSafetyChecked(station.lat, station.lng, AbortSignal.timeout(DEADLINE_MS), now),
+        lifetime: (value) => ({ freshMs: value.complete ? 15 * MINUTE : MINUTE, staleMs: 0 }),
+        waitUntil: (promise) => c.executionCtx.waitUntil(promise),
+        refreshing: deps.refreshing,
+        admit: sharedCapacity(limiter, "alerts", now),
+      });
+    } catch (error) {
+      if (error instanceof CapacityReached) return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.");
+      throw error;
+    }
     return c.json({ ...result.safety, complete: result.complete }, 200, PRIVATE_NO_STORE_HEADERS);
   });
 }

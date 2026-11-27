@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import {
   checkApiRateLimit,
+  sharedCapacity,
   rateLimitHeaders,
   resolveStation,
   type FixedWindowRateLimiter,
@@ -8,7 +9,7 @@ import {
 } from "../../lib/api-guard";
 import { fetchExtrema, NoPredictionsError, stationNow } from "../../lib/tides";
 import type { AppDeps, AppEnv } from "../env";
-import { cacheKey, readThrough } from "../lib/cache";
+import { CapacityReached, cacheKey, readThrough } from "../lib/cache";
 import { fail, INVALID_STATION, logFailure } from "../lib/http";
 
 const MINUTE = 60_000;
@@ -41,13 +42,14 @@ function describe(station: ResolvedStation) {
 export function tidesRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
   return new Hono<AppEnv>().get("/", async (c) => {
     const now = deps.now();
-    const budget = checkApiRateLimit(limiter, c.req.raw, "tides", now);
-    if (!budget.allowed) {
-      return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.", rateLimitHeaders(budget));
-    }
+    // An unknown station is refused before anything counts it.
     const station = resolveStation(c.req.query("station"));
     if (!station) {
       return fail(c, 400, "invalid_station", INVALID_STATION);
+    }
+    const budget = checkApiRateLimit(limiter, c.req.raw, "tides", now);
+    if (!budget.allowed) {
+      return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.", rateLimitHeaders(budget));
     }
 
     try {
@@ -68,9 +70,12 @@ export function tidesRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
         lifetime: () => ({ freshMs: 15 * MINUTE, staleMs: 60 * MINUTE }),
         waitUntil: (promise) => c.executionCtx.waitUntil(promise),
         refreshing: deps.refreshing,
+        admit: sharedCapacity(limiter, "tides", now),
       });
       return c.json(body, 200, { "Cache-Control": "public, s-maxage=900, stale-while-revalidate=3600" });
     } catch (error) {
+      // The instance's shared cap is used up and this station is not cached: NOAA is not asked.
+      if (error instanceof CapacityReached) return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.");
       if (error instanceof NoPredictionsError) {
         return fail(c, 502, "no_predictions", "NOAA has no tide predictions for this station right now.");
       }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import predictions from "../fixtures/upstream/noaa-hilo-8651370.json";
+import noaaStations from "../../src/lib/noaa-stations.json";
 import { CLIENT, NOAA, json, stubUpstream, testApp } from "./helpers";
 
 const MINUTE = 60_000;
@@ -232,6 +233,45 @@ describe("GET /api/tides", () => {
     for (const client of ["203.0.113.9", "203.0.113.10", "203.0.113.11"]) {
       expect((await t.request("/api/tides?station=8651370", undefined, client)).status).toBe(200);
     }
+  });
+
+  it("refuses an unknown station before counting it, so it spends none of the client's limit", async () => {
+    noaaAnswers();
+    const t = testApp();
+    for (let index = 0; index < 80; index += 1) {
+      expect((await t.request("/api/tides?station=99999999")).status).toBe(400);
+    }
+    expect((await t.request("/api/tides?station=8651370")).status).toBe(200);
+  });
+
+  it("counts only requests that would ask NOAA against the shared cap: answers from the cache are free", async () => {
+    const upstream = noaaAnswers();
+    const t = testApp();
+    // Six clients take 360 answers for one station, more than the instance's cap of 300; NOAA is asked once.
+    for (let client = 1; client <= 6; client += 1) {
+      for (let index = 0; index < 60; index += 1) {
+        expect((await t.request("/api/tides?station=8651370", undefined, `203.0.113.${client}`)).status).toBe(200);
+      }
+    }
+    expect(upstream.calls).toHaveLength(1);
+    // A station no one has asked for yet still reaches NOAA.
+    expect((await t.request("/api/tides?station=8658163", undefined, "198.51.100.200")).status).toBe(200);
+    expect(upstream.calls).toHaveLength(2);
+  });
+
+  it("answers 429 without asking NOAA once the instance's cap of upstream calls is used up", async () => {
+    const upstream = noaaAnswers();
+    const t = testApp();
+    const stations = noaaStations.slice(0, 301).map((station) => station.i);
+    const statuses: number[] = [];
+    for (const [index, station] of stations.entries()) {
+      // Six clients, under their own limit of 60 each.
+      const client = `203.0.113.${1 + Math.floor(index / 55)}`;
+      statuses.push((await t.request(`/api/tides?station=${station}`, undefined, client)).status);
+    }
+    expect(statuses.slice(0, 300).every((status) => status === 200)).toBe(true);
+    expect(statuses[300]).toBe(429);
+    expect(upstream.calls).toHaveLength(300);
   });
 
   it("counts an IPv6 client by its /64, since it can pick any address in it", async () => {
