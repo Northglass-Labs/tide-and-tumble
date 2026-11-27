@@ -41,9 +41,15 @@ export interface BeachSafety {
   uvIndex: string | null;
   /** e.g. "NWS Wakefield (AKQ)" — attribution for whatever we found. */
   source: string | null;
+  /**
+   * Whether the office's Surf Zone Forecast speaks for today: "today"; "not-yet"
+   * (the newest is from the last two days, so today's is still to come);
+   * "out-of-season" (none listed, or none for longer); null when unknown.
+   */
+  ripForecast: "today" | "not-yet" | "out-of-season" | null;
 }
 
-const EMPTY: BeachSafety = { alerts: [], ripRisk: null, uvIndex: null, source: null };
+const EMPTY: BeachSafety = { alerts: [], ripRisk: null, uvIndex: null, source: null, ripForecast: null };
 
 const BEACH_EVENTS = [
   "rip current",
@@ -59,30 +65,50 @@ const isBeachRelevant = (event: string) => {
   return BEACH_EVENTS.some((keyword) => normalized.includes(keyword));
 };
 
+/** Whether every NWS call a lookup made was answered. */
+interface Outcome {
+  failed: boolean;
+}
+
 async function nws<T = unknown>(
   url: string,
-  signal?: AbortSignal,
+  signal: AbortSignal | undefined,
+  outcome: Outcome,
 ): Promise<T | null> {
   try {
     const response = await fetchWithTimeout(
       url,
       {
         headers: { "User-Agent": UA, Accept: "application/geo+json" },
-        next: { revalidate: 900 },
         signal,
       },
       NWS_FETCH_TIMEOUT_MS,
     );
-    return response.ok
-      ? await readJsonBounded<T>(response, NWS_JSON_MAX_BYTES)
-      : null;
+    if (!response.ok) {
+      await response.body?.cancel();
+      outcome.failed = true;
+      return null;
+    }
+    return await readJsonBounded<T>(response, NWS_JSON_MAX_BYTES);
   } catch {
+    outcome.failed = true;
     return null;
   }
 }
 
 interface PointProps {
-  properties?: { gridId?: string; forecastZone?: string };
+  properties?: { gridId?: string; forecastZone?: string; timeZone?: string };
+}
+
+/** A moment's calendar date (YYYY-MM-DD) in an IANA time zone; New York's if the zone is not one. */
+function localDate(ms: number, timeZone: string | null): string {
+  const format = (zone: string) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
+  try {
+    return format(timeZone ?? "America/New_York");
+  } catch {
+    return format("America/New_York");
+  }
 }
 interface AlertResp {
   features?: unknown;
@@ -145,19 +171,27 @@ function nwsProductUrl(value: unknown): string | null {
   }
 }
 
-export async function fetchBeachSafety(
+/**
+ * The beach's safety data, and whether NWS answered every call it took. An
+ * incomplete answer (a timeout, an error status) can be missing a warning, so
+ * the API Worker never keeps one in its cache.
+ */
+export async function fetchBeachSafetyChecked(
   lat: number,
   lng: number,
   signal?: AbortSignal,
-): Promise<BeachSafety> {
+  now: number = Date.now(),
+): Promise<{ safety: BeachSafety; complete: boolean }> {
+  const outcome: Outcome = { failed: false };
   const pt = `${lat.toFixed(4)},${lng.toFixed(4)}`;
 
   // Run the point lookup + formal alerts together.
   const [point, alertData] = await Promise.all([
-    nws<PointProps>(`https://api.weather.gov/points/${pt}`, signal),
+    nws<PointProps>(`https://api.weather.gov/points/${pt}`, signal, outcome),
     nws<AlertResp>(
       `https://api.weather.gov/alerts/active?point=${pt}&status=actual`,
       signal,
+      outcome,
     ),
   ]);
 
@@ -190,16 +224,31 @@ export async function fetchBeachSafety(
   const zoneCode = forecastZoneCode(pointProperties?.forecastZone);
   let ripRisk: RiskLevel | null = null;
   let uvIndex: string | null = null;
+  let ripForecast: BeachSafety["ripForecast"] = null;
 
   if (office && zoneCode) {
     const list = await nws<ProductList>(
       `https://api.weather.gov/products/types/SRF/locations/${office}`,
       signal,
+      outcome,
     );
     const graph = Array.isArray(list?.["@graph"]) ? list["@graph"] : [];
-    const latest = nwsProductUrl(record(graph[0])?.["@id"]);
-    if (latest) {
-      const prod = await nws<{ productText?: unknown }>(latest, signal);
+    const newest = record(graph[0]);
+    const latest = nwsProductUrl(newest?.["@id"]);
+    // NWS keeps about a week of forecasts, and an office that stops issuing
+    // for the season leaves its last one listed: only a forecast issued on the
+    // beach's own calendar day (its point's time zone) speaks for today.
+    const issued = Date.parse(nonEmptyString(newest?.issuanceTime) ?? "");
+    const zone = nonEmptyString(pointProperties?.timeZone);
+    const today = Number.isFinite(issued) && localDate(issued, zone) >= localDate(now, zone);
+    if (list && !newest) {
+      ripForecast = "out-of-season";
+    } else if (Number.isFinite(issued)) {
+      const daysOld = (Date.parse(localDate(now, zone)) - Date.parse(localDate(issued, zone))) / 86_400_000;
+      ripForecast = today ? "today" : daysOld <= 2 ? "not-yet" : "out-of-season";
+    }
+    if (latest && today) {
+      const prod = await nws<{ productText?: unknown }>(latest, signal, outcome);
       const productText = nonEmptyString(prod?.productText);
       if (productText) {
         const parsed = parseSrf(productText, zoneCode);
@@ -223,7 +272,15 @@ export async function fetchBeachSafety(
   }
 
   const source = office ? `NWS (${office})` : alerts.length ? "NWS" : null;
-  return { alerts, ripRisk, uvIndex, source };
+  return { safety: { alerts, ripRisk, uvIndex, source, ripForecast }, complete: !outcome.failed };
+}
+
+export async function fetchBeachSafety(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<BeachSafety> {
+  return (await fetchBeachSafetyChecked(lat, lng, signal)).safety;
 }
 
 /** Back-compat helper: just the alert list (used by the client fetch shape). */

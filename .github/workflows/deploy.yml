@@ -1,0 +1,196 @@
+name: Deploy
+
+# A push to main is a release: check for known vulnerabilities, build and
+# check the commit with no Cloudflare credential in reach
+# (node scripts/prepare-release.mjs: install scripts off, a clean copy of the
+# commit, npm run verify), then release that build with promote, which holds
+# the token, runs no build and no package code but Wrangler's, checks
+# production afterwards and rolls back by itself if it is unhealthy.
+#
+# The nightly run only refreshes: the beach pages carry a tide table built
+# with them, so main's head is rebuilt each night while production runs it,
+# keeping what crawlers see at most a day old. When production runs another
+# commit (a rollback, a failed release), it changes nothing and says why, and
+# it never releases a build that lacks a beach page's table (docs/DELIVERY.md,
+# "The nightly release"). promote checks production at
+# https://tideandtumble.app, which it first confirms is served by this Worker.
+#
+# It needs a Cloudflare API token in the repository secret
+# CLOUDFLARE_API_TOKEN and the account id in the repository secret
+# CLOUDFLARE_ACCOUNT_ID, a secret so that GitHub masks it in these public
+# logs (docs/DELIVERY.md, "Releasing from GitHub"). Without the token the job
+# does nothing and says so; releases are then made from a workstation.
+
+on:
+  push:
+    branches: [main]
+  # The merge job in ci.yml starts a release this way: a merge made with a
+  # workflow's own token starts no push workflow.
+  workflow_dispatch:
+  # 08:17 UTC: after midnight in every US mainland time zone, so "today" in
+  # the rebuilt tables is today everywhere; off the hour, when GitHub's
+  # scheduler is least busy.
+  schedule:
+    - cron: "17 8 * * *"
+
+permissions:
+  contents: read
+
+# One release at a time, and never cancel one halfway. GitHub keeps one
+# waiting run per group and cancels the one already waiting, so the group is
+# per branch: a dispatch on another branch, which releases nothing, cannot
+# displace a release waiting for main.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Whether this run releases: the token is set, and the run is for main's
+  # head. This runner runs no package code; the token is only tested for
+  # being set.
+  gate:
+    # Started by hand on another branch, it releases nothing.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.token.outputs.present == 'true' && steps.head.outputs.current == 'true' }}
+    steps:
+      - name: Check for a Cloudflare token
+        id: token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::notice title=Deploy skipped::The CLOUDFLARE_API_TOKEN secret is not set, so nothing was verified or released. Release from a workstation with npm run promote."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A re-run of an old run runs for the commit it first ran for
+      # (GITHUB_SHA), and would put that commit over a newer production.
+      # Release only main's head; a later run releases it.
+      - name: Check the head of main
+        id: head
+        if: steps.token.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$main" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Deploy skipped::This run is for $GITHUB_SHA, but main is at $main now, so this run released nothing. The run for main's head releases it; if none is queued, run Deploy on main (a push with [skip ci] starts none)."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # The build runs every package's code, so it runs here, on a runner of its
+  # own with no secret: a clean copy of the commit, npm ci --ignore-scripts,
+  # npm run verify, then out/ recorded with a digest and kept for the release.
+  build:
+    needs: gate
+    if: needs.gate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      # npm audit reads package-lock.json; nothing needs installing for it.
+      - name: Audit
+        run: npm run audit
+
+      - name: Prepare the release
+        run: node scripts/prepare-release.mjs
+
+      - name: Keep the build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: |
+            out/
+            node_modules/.cache/tide-and-tumble-release.json
+          # out/.assetsignore: Wrangler reads it there and uploads nothing it names.
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  # The release, on a fresh runner that ran no package code but Wrangler's:
+  # the same commit checked out, Wrangler installed with install scripts off
+  # and no npm cache, the build fetched. promote re-checks that the record
+  # names this commit and that out/ still has its digest, bundles the Worker
+  # from this checkout, and uploads.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Install Wrangler
+        run: npm ci --ignore-scripts
+
+      # Into an empty folder of its own: the build runner chose what is in the
+      # artifact, so it never lands on this workspace as it is.
+      - name: Fetch the build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: ${{ runner.temp }}/build
+
+      # Only regular files under out/ and the one record are taken into this
+      # workspace; a link, a package, a script or any other path refuses the
+      # whole artifact (scripts/lib/take-build.mjs). No token here.
+      - name: Take the build
+        run: node scripts/take-build.mjs "$RUNNER_TEMP/build"
+
+      # The gate's check, repeated just before the release: "Re-run failed
+      # jobs" reuses the gate's answer and the build, and main may have moved.
+      - name: Check the head of main again
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$main" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Deploy skipped::This run is for $GITHUB_SHA, but main is at $main now, so this run released nothing. The run for main's head releases it; if none is queued, run Deploy on main (a push with [skip ci] starts none)."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The only step that sees the token, and it runs no npm. On a scheduled
+      # run promote only refreshes (GITHUB_EVENT_NAME). It writes released=
+      # true or false to the step's outputs.
+      - name: Release
+        id: release
+        if: steps.head.outputs.current == 'true'
+        run: node scripts/promote.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # ci.yml's merge job reads these steps by name: Released succeeds only
+      # when a version was released, and is skipped when promote released
+      # nothing on purpose (a nightly refresh while production runs another
+      # commit, or a build NOAA missed a table in).
+      - name: Released
+        if: steps.release.outputs.released == 'true'
+        run: echo "Released $GITHUB_SHA"

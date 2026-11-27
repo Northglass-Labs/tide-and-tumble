@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import BeachTideTable from "@/components/BeachTideTable";
 import TideApp from "@/components/TideApp";
+import TodayLabel from "@/components/TodayLabel";
 import {
   BEACHES,
   beachBySlug,
@@ -10,21 +12,15 @@ import {
   SITE_URL,
   type Beach,
 } from "@/lib/slugs";
-import {
-  fetchBeachWeek,
-  beachIntro,
-  beachFaq,
-  fmtFt,
-  type BeachWeek,
-  type BeachDay,
-} from "@/lib/seo";
-import { fetchMarine, type Marine } from "@/lib/marine";
-import { fetchBeachSafety, type BeachSafety } from "@/lib/alerts";
+import { fetchBeachWeek, beachIntro, beachFaq, type BeachWeek } from "@/lib/seo";
 import { noaaId } from "@/lib/stations";
-import { fmtClock, fmtDayLabel, stationNow, type Extremum } from "@/lib/tides";
+import { fmtDayLabel, stationNow } from "@/lib/tides";
 
-// Re-generate each beach page hourly so "today" stays today.
-export const revalidate = 3600;
+// Every beach page is a static file, built with the site (and again nightly):
+// no page outside the list, and nothing live baked in. Conditions and NWS
+// safety data are fetched by the page itself; the tide table is rebuilt in the
+// browser for today (docs/specs/2026-11-27-workers-hosting.md).
+export const dynamicParams = false;
 
 export function generateStaticParams() {
   return BEACHES.map((b) => ({ slug: b.slug }));
@@ -52,6 +48,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       siteName: "Tide & Tumble",
       type: "website",
     },
+    // The day this page was built (UTC). The daily check reads it to see that
+    // the nightly refresh is still releasing (npm run health --built-within-days).
+    other: { "tide-table-built": new Date().toISOString().slice(0, 10) },
   };
 }
 
@@ -78,54 +77,6 @@ function breadcrumbJsonLd(beach: Beach) {
   };
 }
 
-function TideTable({ days }: { days: BeachDay[] }) {
-  return (
-    <div className="mt-2 overflow-x-auto rounded-2xl bg-shell/70 shadow-[var(--shadow-card)]">
-      <table className="w-full border-collapse font-body text-xs text-ink">
-        <thead>
-          <tr className="border-b border-ink/10 text-left font-display text-[11px] uppercase tracking-wide text-ink-soft">
-            <th className="px-2 py-2">Day</th>
-            <th className="px-2 py-2">High tides</th>
-            <th className="px-2 py-2">Low tides</th>
-            <th className="px-2 py-2">Sun</th>
-            <th className="px-2 py-2">Moon</th>
-          </tr>
-        </thead>
-        <tbody>
-          {days.map((d) => (
-            <tr key={d.dayStartMs} className="border-b border-ink/5 align-top">
-              <td className="px-2 py-1.5 font-semibold whitespace-nowrap">{d.label}</td>
-              <TideCell events={d.highs} />
-              <TideCell events={d.lows} />
-              <td className="px-2 py-1.5 whitespace-nowrap">
-                ↑ {d.sunrise ?? "—"}
-                <span className="block">↓ {d.sunset ?? "—"}</span>
-              </td>
-              <td className="px-2 py-1.5 whitespace-nowrap">
-                {d.moonEmoji} {d.moonName}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function TideCell({ events }: { events: Extremum[] }) {
-  if (!events.length) return <td className="px-2 py-1.5 text-ink-soft">—</td>;
-  return (
-    <td className="px-2 py-1.5">
-      {events.map((e) => (
-        <span key={e.time} className="block whitespace-nowrap">
-          {fmtClock(e.time)}{" "}
-          <span className="text-ink-soft">({fmtFt(e.height)} ft)</span>
-        </span>
-      ))}
-    </td>
-  );
-}
-
 export default async function BeachTidePage({ params }: Props) {
   const { slug } = await params;
   const beach = beachBySlug(slug);
@@ -133,23 +84,13 @@ export default async function BeachTidePage({ params }: Props) {
 
   const region = regionOf(beach);
 
-  // NOAA/NDBC fetches: tolerate failure — the page must still render
-  // (stale ISR copies keep serving; a fresh failure gets a friendly note).
+  // NOAA fetch at build time: tolerate failure — the page must still build,
+  // and the browser fills the table in from the live chart's predictions.
   let week: BeachWeek | null = null;
   try {
     week = await fetchBeachWeek(beach, 30);
   } catch {}
-  let marine: Marine | null = null;
-  try {
-    marine = await fetchMarine({ noaaId: noaaId(beach), lat: beach.lat, lng: beach.lng });
-  } catch {}
-  let safety: BeachSafety = { alerts: [], ripRisk: null, uvIndex: null, source: null };
-  try {
-    safety = await fetchBeachSafety(beach.lat, beach.lng);
-  } catch {}
-  const alerts = safety.alerts;
 
-  const today = week?.days[0];
   const faq = beachFaq(beach, week);
 
   return (
@@ -175,20 +116,14 @@ export default async function BeachTidePage({ params }: Props) {
           Tides Today &amp; Tomorrow in {beach.label}, {beach.state}
         </h1>
         <p className="mt-1 font-body text-sm text-ink-soft">
-          {fmtDayLabel(stationNow())} · live tide chart, 7-day tide table, sun
+          <TodayLabel built={fmtDayLabel(stationNow())} /> · live tide chart, 7-day tide table, sun
           &amp; moon, and surf conditions for {beach.label}.
         </p>
       </header>
 
       {/* The live, whimsical app — seeded to this beach. Safety alerts render
-          INSIDE TideApp only (it SSRs them into the initial HTML from these
-          props) — a separate server-rendered strip here would show twice. */}
-      <TideApp
-        initialStation={beach}
-        seeded
-        initialAlerts={alerts}
-        initialUv={safety.uvIndex}
-      />
+          INSIDE TideApp only, fetched live; a static page never carries them. */}
+      <TideApp initialStation={beach} seeded />
 
       {/* Tide table: 7 days visible + the rest of the 30-day forecast behind a
           native disclosure (server-rendered either way, so crawlers see it all) */}
@@ -196,74 +131,26 @@ export default async function BeachTidePage({ params }: Props) {
         <h2 className="font-display text-lg font-bold text-ink">
           {beach.label} tide table — next 7 days
         </h2>
-        {week ? (
-          <>
-            <TideTable days={week.days.slice(0, 7)} />
-            {week.days.length > 7 && (
-              <details className="group mt-2">
-                <summary className="cursor-pointer list-none rounded-2xl bg-shell/70 px-4 py-2.5 font-display text-sm font-semibold text-ocean-deep shadow-[var(--shadow-card)] active:scale-[0.99]">
-                  <span className="group-open:hidden">
-                    ▸ Show the full 30-day tide forecast for {beach.label}
-                  </span>
-                  <span className="hidden group-open:inline">
-                    ▾ {beach.label} tide forecast — days 8–{week.days.length}
-                  </span>
-                </summary>
-                <TideTable days={week.days.slice(7)} />
-              </details>
-            )}
-          </>
-        ) : (
-          <p className="mt-2 rounded-2xl bg-coral-soft/40 p-3 font-body text-sm text-ink">
-            The live tide table is temporarily unavailable — the interactive
-            chart above has the latest NOAA predictions.
-          </p>
-        )}
+        <BeachTideTable beach={beach} initialWeek={week} days={30} />
         <p className="mt-1.5 font-body text-[11px] text-ink-soft/80">
           Times are local ({beach.label}). Heights in feet above MLLW. Source:
           NOAA CO-OPS, station {noaaId(beach)} ({beach.stationName}).
         </p>
       </section>
 
-      {/* Marine snapshot */}
-      {marine &&
-        (marine.waterTempF != null || marine.windMph != null || marine.surfFt != null) && (
-          <section className="px-5 pt-4 lg:max-w-3xl lg:px-8">
-            <h2 className="font-display text-lg font-bold text-ink">
-              Current conditions
-            </h2>
-            <p className="mt-1 font-body text-sm text-ink">
-              {marine.waterTempF != null && (
-                <>Water {Math.round(marine.waterTempF)}°F. </>
-              )}
-              {marine.windMph != null && (
-                <>
-                  Wind {Math.round(marine.windMph)} mph
-                  {marine.windDir ? ` ${marine.windDir}` : ""}.{" "}
-                </>
-              )}
-              {marine.surfFt != null && (
-                <>
-                  Surf {marine.surfFt.toFixed(1)} ft
-                  {marine.surfPeriodS != null
-                    ? ` at ${Math.round(marine.surfPeriodS)}s`
-                    : ""}
-                  .
-                </>
-              )}
-            </p>
-            {safety.uvIndex && (
-              <p className="mt-1 font-body text-sm text-ink">
-                UV index today: <strong>{safety.uvIndex}</strong>.
-              </p>
-            )}
-            {(marine.source || safety.source) && (
-              <p className="mt-0.5 font-body text-[11px] text-ink-soft/80">
-                Source: {[marine.source, safety.source].filter(Boolean).join(" · ")}
-              </p>
-            )}
-          </section>
-        )}
+      {/* Where the live numbers come from. They are fetched by the app above,
+          never baked into this static page: a stale reading would mislead. */}
+      <section className="px-5 pt-4 lg:max-w-3xl lg:px-8">
+        <h2 className="font-display text-lg font-bold text-ink">
+          Live conditions at {beach.label}
+        </h2>
+        <p className="mt-1 font-body text-sm leading-relaxed text-ink">
+          Water temperature, wind and surf in the chart above come from the
+          nearest NOAA NDBC buoys and NOAA&apos;s gauge at {beach.stationName}. The
+          day&apos;s rip current risk and UV index come from the National Weather
+          Service, checked each time the page loads.
+        </p>
+      </section>
 
       {/* Location intro */}
       <section className="px-5 pt-4 lg:max-w-3xl lg:px-8">
@@ -312,13 +199,10 @@ export default async function BeachTidePage({ params }: Props) {
             </div>
           ))}
         </dl>
-        {today && (
-          <p className="mt-4 font-body text-[11px] text-ink-soft/70">
-            Updated {fmtDayLabel(week!.computedFor)} at {fmtClock(week!.computedFor)}{" "}
-            local · Tide predictions courtesy of NOAA CO-OPS ·{" "}
-            <strong>not for navigation</strong>.
-          </p>
-        )}
+        <p className="mt-4 font-body text-[11px] text-ink-soft/70">
+          Tide predictions courtesy of NOAA CO-OPS ·{" "}
+          <strong>not for navigation</strong>.
+        </p>
       </section>
     </main>
   );

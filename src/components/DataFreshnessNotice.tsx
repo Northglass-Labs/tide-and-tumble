@@ -21,6 +21,26 @@ export default function DataFreshnessNotice({
 
   return (
     <>
+      {/* The static page is this loading state; without JavaScript it never changes. */}
+      <noscript>
+        <style>{"[data-needs-script]{display:none}"}</style>
+        <p className="mx-5 mb-2 rounded-2xl border border-coral/40 bg-coral-soft/25 px-3.5 py-2 font-body text-xs text-ink">
+          Beach warnings need JavaScript. Check the National Weather Service at weather.gov and the local lifeguards
+          before entering the water.
+        </p>
+      </noscript>
+
+      {safetyStatus === "loading" && !offline && (
+        <p
+          role="status"
+          aria-live="polite"
+          data-needs-script=""
+          className="mx-5 mb-2 px-3.5 font-body text-xs text-ink-soft"
+        >
+          Checking NWS beach warnings…
+        </p>
+      )}
+
       {(offline || tideCachedAt != null) && (
         <div
           role="status"

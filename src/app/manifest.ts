@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 
+// Written once at build time into the static export.
+export const dynamic = "force-static";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Tide & Tumble — US Beach Tide Charts",

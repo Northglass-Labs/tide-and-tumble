@@ -27,6 +27,11 @@ import {
 } from "@/lib/stations";
 import { BEACHES, SITE_URL } from "@/lib/slugs";
 import { pushRecent } from "@/lib/recents";
+import { publishExtrema } from "@/lib/tide-feed";
+import { readSafety } from "@/lib/safety";
+
+/** How long the page waits for the beach-safety answer before saying it is unavailable. */
+const ALERTS_TIMEOUT_MS = 10_000;
 import type { BeachAlert } from "@/lib/alerts";
 import type { Marine } from "@/lib/marine";
 import { statusLine } from "@/lib/copy";
@@ -64,7 +69,9 @@ const getServerOnlineStatus = () => true;
 interface ApiResp {
   station: { id: string; label: string };
   extrema: Extremum[];
+  /** On failure: a stable code and a sentence for people. */
   error?: string;
+  message?: string;
 }
 
 /** Feet with a clean zero (never "-0.0"). */
@@ -134,20 +141,11 @@ interface TideAppProps {
    * its own H1). The picker still works for on-page exploration.
    */
   seeded?: boolean;
-  /**
-   * Server-fetched NWS safety data (beach pages). Renders in the initial SSR
-   * HTML — the single alert strip for the page (never render alerts outside
-   * TideApp too, or they show twice). The client refetch replaces it fresh.
-   */
-  initialAlerts?: BeachAlert[];
-  initialUv?: string | null;
 }
 
 export default function TideApp({
   initialStation,
   seeded = false,
-  initialAlerts,
-  initialUv,
 }: TideAppProps) {
   const [station, setStation] = useState<ActiveStation>(
     () => initialStation ?? findStation(DEFAULT_ID) ?? STATIONS[0],
@@ -162,11 +160,13 @@ export default function TideApp({
   const [manualTheme, setManualTheme] = useState<Phase | null>(null);
 
   const [shareMsg, setShareMsg] = useState<string | null>(null);
-  const [alerts, setAlerts] = useState<BeachAlert[]>(initialAlerts ?? []);
-  const [uvIndex, setUvIndex] = useState<string | null>(initialUv ?? null);
+  // NWS safety data is always fetched live, never baked into a static page:
+  // this is the single alert strip for the page.
+  const [alerts, setAlerts] = useState<BeachAlert[]>([]);
+  const [uvIndex, setUvIndex] = useState<string | null>(null);
+  const [ripNote, setRipNote] = useState<string | null>(null);
   const [tideCachedAt, setTideCachedAt] = useState<number | null>(null);
   const [safetyStatus, setSafetyStatus] = useState<SafetyStatus>("loading");
-  const alertsSeededRef = useRef(initialAlerts != null);
   const online = useSyncExternalStore(
     subscribeOnlineStatus,
     getOnlineStatus,
@@ -180,6 +180,7 @@ export default function TideApp({
     setMarine(null);
     setAlerts([]);
     setUvIndex(null);
+    setRipNote(null);
     setTideCachedAt(null);
     setSafetyStatus("loading");
     setStation(s);
@@ -276,21 +277,20 @@ export default function TideApp({
       }
 
       // First visit → try to find the beach closest to the user automatically.
+      // Computed on the device: the station list loads on demand, and the
+      // coordinates never leave the browser.
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             try {
-              const response = await fetch("/api/nearest", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  lat: position.coords.latitude,
-                  lng: position.coords.longitude,
-                }),
-              });
-              const data = await response.json();
-              if (!cancelled && response.ok && data.nearest) {
-                selectStation(activeFromNoaa(data.nearest));
+              const { nearestStations } = await import("@/lib/nearest");
+              const [nearest] = nearestStations(
+                position.coords.latitude,
+                position.coords.longitude,
+                1,
+              );
+              if (!cancelled && nearest) {
+                selectStation(activeFromNoaa(nearest));
               }
             } catch {}
           },
@@ -312,7 +312,8 @@ export default function TideApp({
     fetch(`/api/tides?station=${encodeURIComponent(station.id)}`)
       .then(async (r) => {
         const data: ApiResp = await r.json();
-        if (!r.ok) throw new Error(data.error || "Failed to load tides");
+        if (!r.ok) throw new Error(data.message || "Failed to load tides");
+        publishExtrema(station.id, data.extrema);
         if (!cancelled) {
           const cachedAt = Number(r.headers.get(TIDE_CACHED_AT_HEADER));
           setTideCachedAt(
@@ -340,9 +341,8 @@ export default function TideApp({
   // Live marine conditions (surf / wind / water temp) for the selected beach.
   useEffect(() => {
     let cancelled = false;
-    fetch(
-      `/api/marine?station=${encodeURIComponent(station.id)}&lat=${station.lat}&lng=${station.lng}`,
-    )
+    // By station only: the Worker knows each station's coordinates.
+    fetch(`/api/marine?station=${encodeURIComponent(station.id)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((m) => {
         if (!cancelled && m) setMarine(m as Marine);
@@ -356,26 +356,29 @@ export default function TideApp({
   // Beach safety (NWS): formal alerts + daily rip-current risk + UV index.
   useEffect(() => {
     let cancelled = false;
-    // First run with server-seeded alerts: keep them on screen while the
-    // fresh fetch replaces them (no flash). Any later station change clears
-    // immediately — the previous beach's advisory must never linger.
-    const retainedSeed = alertsSeededRef.current;
-    if (retainedSeed) {
-      alertsSeededRef.current = false;
-    }
-    fetch(`/api/alerts?lat=${station.lat}&lng=${station.lng}`)
+    // A station change clears the previous beach's advisory at once
+    // (selectStation) — it must never linger.
+    // A request NWS's answer never ends would leave "Checking…" up for good:
+    // after ten seconds it is given up, and the page says the data is unavailable.
+    fetch(`/api/alerts?station=${encodeURIComponent(station.id)}`, {
+      signal: AbortSignal.timeout(ALERTS_TIMEOUT_MS),
+    })
       .then(async (r) => {
         if (!r.ok) throw new Error("Beach safety request failed");
         return r.json();
       })
       .then((d) => {
-        if (cancelled || !d) return;
-        setAlerts(Array.isArray(d.alerts) ? (d.alerts as BeachAlert[]) : []);
-        setUvIndex(typeof d.uvIndex === "string" ? d.uvIndex : null);
-        setSafetyStatus("fresh");
+        if (cancelled) return;
+        // "fresh" only when NWS answered in full: a failed lookup must never
+        // read as "no warnings". Whatever warnings did arrive are still shown.
+        const safety = readSafety(d);
+        setAlerts(safety.alerts);
+        setUvIndex(safety.uvIndex);
+        setRipNote(safety.ripNote);
+        setSafetyStatus(safety.status);
       })
       .catch(() => {
-        if (!cancelled) setSafetyStatus(retainedSeed ? "stale" : "unavailable");
+        if (!cancelled) setSafetyStatus("unavailable");
       });
     return () => {
       cancelled = true;
@@ -562,6 +565,11 @@ export default function TideApp({
               </span>
             </button>
           ))}
+
+        {/* No rip-current forecast for today is said, not left blank. */}
+        {dayOffset === 0 && ripNote && (
+          <p className="mx-5 mb-2 px-3.5 font-body text-xs text-ink-soft">{ripNote}</p>
+        )}
 
         {/* Day switcher (30-day window) */}
         <DayStrip

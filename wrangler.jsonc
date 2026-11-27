@@ -1,0 +1,50 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // The site: Next's static export in ./out, served as static files, and one
+  // small Worker for /api/*. docs/specs/2026-11-27-workers-hosting.md gives
+  // the reasons; test/scripts/project.test.ts holds this file to them.
+  "name": "tide-and-tumble",
+  "main": "./src/worker/index.ts",
+  "compatibility_date": "2026-11-10",
+
+  // workers.dev is the Worker's own address: the first release is checked
+  // there, and so is a release while production cannot answer. Version URLs
+  // stay off, written out (design note, Decisions, D3).
+  "workers_dev": true,
+  "preview_urls": false,
+
+  // Errors the Worker logs itself, as fixed labels. Invocation logs are off:
+  // they would record each request, and the privacy page says the API routes
+  // keep no record of who asked.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": { "invocation_logs": false }
+  },
+  "upload_source_maps": true,
+
+  // Static files are served first and cost nothing. Only /api/* runs the
+  // Worker first; an unknown path gets out/404.html with status 404.
+  "assets": {
+    "directory": "./out",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "version_metadata": { "binding": "VERSION" },
+
+  "vars": {
+    // The only address where the data API answers. Elsewhere (workers.dev)
+    // only GET /api/health does. `npm run preview` sets the local address.
+    "APP_ORIGIN": "https://tideandtumble.app"
+  }
+
+  // No routes and no custom domain, ever: production is reached through a
+  // zone route that the operator attaches outside this repository. Declared
+  // here, a route would go live with any deploy, and Wrangler run without a
+  // terminal replaces a hostname's DNS record when it attaches a custom
+  // domain. No "cache" block either: Workers Cache bills every request,
+  // static files included. A test refuses all three.
+}

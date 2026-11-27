@@ -19,13 +19,17 @@ import { STATIONS, noaaId } from "../src/lib/stations";
 const LIST_URL =
   "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type=tidepredictions";
 
+/** @typedef {{ id: string, name: string, lat: number, lng: number, type: string }} NoaaListed */
+
+/** @type {{ stations: NoaaListed[] }} */
 const raw = process.env.NOAA_STATIONS_JSON
   ? JSON.parse(readFileSync(process.env.NOAA_STATIONS_JSON, "utf8"))
   : await (await fetch(LIST_URL)).json();
-const byId = new Map(raw.stations.map((s) => [s.id, s]));
+const byId = new Map(raw.stations.map((/** @type {NoaaListed} */ s) => [s.id, s]));
 
 const R = 3958.8; // earth radius, miles
-const rad = (d) => (d * Math.PI) / 180;
+const rad = (/** @type {number} */ d) => (d * Math.PI) / 180;
+/** @param {number} aLat @param {number} aLng @param {number} bLat @param {number} bLng */
 function miles(aLat, aLng, bLat, bLng) {
   const dLat = rad(bLat - aLat), dLng = rad(bLng - aLng);
   const h = Math.sin(dLat / 2) ** 2 +
@@ -41,7 +45,7 @@ for (const s of STATIONS) {
   if (n.type !== s.type) { console.log(`FAIL  ${s.id}  ${s.label}: type ${s.type} but NOAA says ${n.type}`); fails++; }
   const d = miles(s.lat, s.lng, n.lat, n.lng);
   if (d > 30) { console.log(`WARN  ${s.id}  ${s.label}: entry coords ${d.toFixed(1)} mi from gauge "${n.name}"`); warns++; }
-  const norm = (x) => x.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const norm = (/** @type {string} */ x) => x.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   if (!norm(n.name).includes(norm(s.stationName).slice(0, 12)) && !norm(s.stationName).includes(norm(n.name).slice(0, 12))) {
     console.log(`WARN  ${s.id}  ${s.label}: stationName "${s.stationName}" vs NOAA "${n.name}"`); warns++;
   }

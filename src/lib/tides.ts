@@ -163,6 +163,14 @@ function fmtDate(d: Date): string {
   return `${y}${mo}${da}`;
 }
 
+/** NOAA answered, but with no predictions for the station (as opposed to not answering). */
+export class NoPredictionsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NoPredictionsError";
+  }
+}
+
 interface NoaaResponse {
   predictions?: { t: string; v: string; type?: "H" | "L" }[];
   error?: { message: string };
@@ -200,11 +208,7 @@ export async function fetchExtrema(
 
   const res = await fetchWithTimeout(
     `${NOAA}?${params.toString()}`,
-    {
-      // Cache tide predictions for 15 min at the edge; they're deterministic.
-      next: { revalidate: 900 },
-      signal,
-    },
+    { signal },
     NOAA_FETCH_TIMEOUT_MS,
   );
   if (!res.ok) {
@@ -215,10 +219,10 @@ export async function fetchExtrema(
     NOAA_RESPONSE_MAX_BYTES,
   );
   if (data.error) {
-    throw new Error(`NOAA: ${data.error.message}`);
+    throw new NoPredictionsError(`NOAA: ${data.error.message}`);
   }
   if (!data.predictions?.length) {
-    throw new Error("No tide predictions returned for this station.");
+    throw new NoPredictionsError("No tide predictions returned for this station.");
   }
   return data.predictions
     .filter((p) => p.type === "H" || p.type === "L")

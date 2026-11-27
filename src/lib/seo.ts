@@ -1,13 +1,13 @@
-// Server-side builders for the SEO beach pages: the 7-day tide table model,
-// the location-specific intro paragraph, and data-driven FAQ copy.
-// Everything here runs at SSG/ISR time (no client code).
+// Builders for the SEO beach pages: the tide table model, the location-specific
+// intro paragraph, and data-driven FAQ copy. They run when the static pages are
+// built; `buildBeachWeek` also runs in the browser, which rebuilds the table for
+// today from the predictions the live chart loads (BeachTideTable).
 
 import {
   fetchExtrema,
   buildTideDay,
   stationNow,
   startOfDay,
-  fmtClock,
   fmtDayLabel,
   DAY_MS,
   type Extremum,
@@ -42,13 +42,37 @@ export interface BeachWeek {
   weekMax: number;
 }
 
+/** Build-time NOAA calls get three tries: one failed call would leave a page without its table for a day. */
+const BUILD_ATTEMPTS = 3;
+const BUILD_RETRY_MS = 2_000;
+
 /**
- * Fetch NOAA extrema and shape them into a 7-day, server-renderable table model.
- * Throws on NOAA failure — caller decides the fallback rendering.
+ * Fetch NOAA extrema and shape them into a server-renderable table model.
+ * Throws on NOAA failure after three tries — caller decides the fallback rendering.
  */
 export async function fetchBeachWeek(beach: Beach, days = 7): Promise<BeachWeek> {
-  const extrema = await fetchExtrema(noaaId(beach), new Date(), 1, days + 1);
-  const nowMs = stationNow();
+  let failure: unknown;
+  for (let attempt = 1; attempt <= BUILD_ATTEMPTS; attempt += 1) {
+    try {
+      const extrema = await fetchExtrema(noaaId(beach), new Date(), 1, days + 1);
+      return buildBeachWeek(extrema, beach, stationNow(), days);
+    } catch (error) {
+      failure = error;
+      if (attempt < BUILD_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, BUILD_RETRY_MS * attempt));
+      }
+    }
+  }
+  throw failure;
+}
+
+/** Shape NOAA extrema into the table model for `days` days from the station's day containing `nowMs`. */
+export function buildBeachWeek(
+  extrema: Extremum[],
+  beach: Pick<Beach, "lat" | "lng">,
+  nowMs: number,
+  days = 7,
+): BeachWeek {
   const todayStart = startOfDay(nowMs);
 
   const out: BeachDay[] = [];
@@ -129,28 +153,20 @@ export interface FaqItem {
   a: string;
 }
 
-function listTimes(events: Extremum[]): string {
-  if (!events.length) return "—";
-  return events
-    .map((e) => `${fmtClock(e.time)} (${fmtFt(e.height)} ft)`)
-    .join(" and ");
-}
-
-/** Data-driven FAQ copy (rendered as plain content — no FAQPage schema on purpose). */
+/**
+ * Data-driven FAQ copy (rendered as plain content — no FAQPage schema on
+ * purpose). It is baked into the static page, which is up to a day old, so it
+ * states nothing as today's: no times and no moon phase. The question people
+ * ask about today is answered by pointing at the table, which the browser
+ * rebuilds for today (BeachTideTable).
+ */
 export function beachFaq(beach: Beach, week: BeachWeek | null): FaqItem[] {
-  const today = week?.days[0];
   const faqs: FaqItem[] = [];
 
-  if (today) {
-    faqs.push({
-      q: `What time is high tide in ${beach.label} today?`,
-      a: `High tide in ${beach.label}, ${beach.state} today (${today.label}) is at ${listTimes(today.highs)}, based on NOAA predictions for ${beach.stationName}.`,
-    });
-    faqs.push({
-      q: `What time is low tide in ${beach.label} today?`,
-      a: `Low tide today is at ${listTimes(today.lows)}. Low tide is the best window for shelling, tide pools, and wide-beach walks.`,
-    });
-  }
+  faqs.push({
+    q: `What time are high and low tide in ${beach.label} today?`,
+    a: `The tide table on this page lists today's high and low tides in ${beach.label}, ${beach.state}, with their heights, from NOAA predictions for ${beach.stationName}. Your browser builds it for today's date when the page opens. Low tide is the best window for shelling, tide pools, and wide-beach walks.`,
+  });
   faqs.push({
     q: `Is the tide coming in or going out in ${beach.label} right now?`,
     a: `The live chart at the top of this page shows the current direction — chevrons flow shoreward when the tide is coming in and seaward when it's going out, with the live rate in ft/hr. Tides here reverse roughly every six hours.`,
@@ -158,9 +174,7 @@ export function beachFaq(beach: Beach, week: BeachWeek | null): FaqItem[] {
   if (week && week.weekMax > week.weekMin) {
     faqs.push({
       q: `How big are the tides in ${beach.label}?`,
-      a: `Over the next ${week.days.length} days, ${beach.label} ranges from about ${fmtFt(week.weekMin)} ft at the lowest lows to ${fmtFt(week.weekMax)} ft at the highest highs (MLLW datum). ${
-        today ? `The moon is currently ${today.moonName.toLowerCase()} — tides run largest near full and new moons (spring tides) and smallest near the quarters (neap tides).` : ""
-      }`,
+      a: `Over a month of NOAA predictions, ${beach.label} ranges from about ${fmtFt(week.weekMin)} ft at the lowest lows to ${fmtFt(week.weekMax)} ft at the highest highs (MLLW datum). Tides run largest near full and new moons (spring tides) and smallest near the quarters (neap tides).`,
     });
   }
   faqs.push({

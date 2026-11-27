@@ -6,7 +6,9 @@
 // - cached navigation keys never retain URL query parameters;
 // - every cached response is successful and carries an explicit cache timestamp.
 
-const CACHE = "tnt-v2";
+// v3: the move to static files on Cloudflare. Activation deletes every older
+// tnt- cache, so nothing saved from the previous host is served again.
+const CACHE = "tnt-v3";
 const CACHE_PREFIX = "tnt-";
 const CACHED_AT = "X-Tide-Cached-At";
 const OFFLINE = "X-Tide-Offline";
@@ -130,9 +132,7 @@ async function handleNavigation(request, url) {
   }
 }
 
-async function handleStatic(request, url) {
-  // Never turn arbitrary query strings into durable cache keys.
-  if (url.search) return fetch(request);
+async function handleStatic(request) {
   const cache = await caches.open(CACHE);
   const cached = await cache.match(request);
   if (cached) return cached;
@@ -168,5 +168,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(handleStatic(request, url));
+  // Never turn arbitrary query strings into durable cache keys: leave such
+  // requests (Next's page payloads, ?_rsc=) to the browser and its own cache.
+  if (url.search) return;
+
+  event.respondWith(handleStatic(request));
 });
