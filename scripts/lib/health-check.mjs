@@ -14,6 +14,21 @@ export const PAGE_MARKER = '<meta name="application-name" content="Tide &amp; Tu
 export const NOT_A_PAGE = "/health-check-not-a-page";
 
 /**
+ * The data API request the check makes: a curated station's tides, which
+ * NOAA always predicts. At the site's address it must answer a table, or
+ * pass on NOAA's outage (502 upstream_unavailable), which is not the
+ * release's fault. At workers.dev the data routes never answer: 404.
+ */
+export const TIDES_CHECK = "/api/tides?station=8651370";
+
+/**
+ * The header a browser sends with the site's own requests. The data API is
+ * only for the site's pages, and a zone rule may refuse /api/ requests
+ * without it (docs/DELIVERY.md), so the check asks as the pages do.
+ */
+const SAME_ORIGIN = Object.freeze({ "Sec-Fetch-Site": "same-origin" });
+
+/**
  * @typedef {object} HealthOptions
  * @property {string} baseUrl       Address of the site, without a trailing slash.
  * @property {string | null} expectTag      The git commit that should be answering.
@@ -40,7 +55,7 @@ export const NOT_A_PAGE = "/health-check-not-a-page";
 
 /**
  * @typedef {object} HealthDeps
- * @property {(url: string) => Promise<Response>} fetch
+ * @property {(url: string, init?: { headers?: Record<string, string> }) => Promise<Response>} fetch
  * @property {() => number} now     Milliseconds, from any starting point.
  * @property {(ms: number) => Promise<void>} sleep
  */
@@ -229,9 +244,54 @@ async function checkPages(options, deps) {
 }
 
 /**
+ * Does the data API answer as it should at this address (TIDES_CHECK)?
+ *
+ * @param {HealthOptions} options
+ * @param {HealthDeps} deps
+ * @returns {Promise<{ failures: string[], blocked: boolean }>}
+ */
+async function checkData(options, deps) {
+  const url = `${options.baseUrl}${TIDES_CHECK}`;
+  let response;
+  try {
+    response = await deps.fetch(url, { headers: { ...SAME_ORIGIN } });
+  } catch (error) {
+    return { failures: [`${TIDES_CHECK} could not be reached: ${error instanceof Error ? error.message : String(error)}`], blocked: false };
+  }
+  if (challenged(response)) {
+    await response.body?.cancel();
+    return { failures: [blockedSentence(TIDES_CHECK)], blocked: true };
+  }
+  /** @type {any} */
+  let body = null;
+  try {
+    body = await response.json();
+  } catch {
+    // Not JSON: every answer of the API is, so this is not the API.
+  }
+  const error = typeof body?.error === "string" ? body.error : null;
+  if (new URL(options.baseUrl).hostname.endsWith(".workers.dev")) {
+    if (response.status === 404 && error === "not_found") return { failures: [], blocked: false };
+    return {
+      failures: [`${TIDES_CHECK} answered ${response.status} ${error ?? ""}, but the data API must never answer off the production address`.replace("  ", " ")],
+      blocked: false,
+    };
+  }
+  if (response.status === 200 && Array.isArray(body?.extrema) && body.extrema.length > 0) {
+    return { failures: [], blocked: false };
+  }
+  if (response.status === 502 && error === "upstream_unavailable") {
+    // NOAA did not answer the Worker, and the Worker said so: the release is not at fault.
+    return { failures: [], blocked: false };
+  }
+  const said = body === null ? "an answer that is not JSON" : error !== null ? `"${error}"` : "no tide table";
+  return { failures: [`${TIDES_CHECK} answered ${response.status} with ${said}, not a tide table`], blocked: false };
+}
+
+/**
  * Checks a deployed site: the API is up, the right version is answering, the
- * pages are this app's with their headers, an unknown path is a 404, and the
- * API is fast enough.
+ * pages are this app's with their headers, an unknown path is a 404, the data
+ * API answers a known station, and the API is fast enough.
  *
  * @param {HealthOptions} options
  * @param {HealthDeps} deps
@@ -259,7 +319,9 @@ export async function checkHealth(options, deps) {
     };
   }
 
-  const pages = await checkPages(options, deps);
+  const checked = await checkPages(options, deps);
+  const data = checked.blocked ? { failures: [], blocked: false } : await checkData(options, deps);
+  const pages = { failures: [...checked.failures, ...data.failures], blocked: checked.blocked || data.blocked };
   const failures = [...first.failures, ...pages.failures];
 
   /** @type {number | null} */
@@ -367,10 +429,10 @@ export const FETCH_TIMEOUT_MS = 10_000;
  */
 export function networkDeps(timeoutMs = FETCH_TIMEOUT_MS) {
   return {
-    fetch: (url) =>
+    fetch: (url, init = {}) =>
       fetch(url, {
         redirect: "manual",
-        headers: { "User-Agent": "health-check" },
+        headers: { "User-Agent": "health-check", ...init.headers },
         signal: AbortSignal.timeout(timeoutMs),
       }),
     now: () => performance.now(),

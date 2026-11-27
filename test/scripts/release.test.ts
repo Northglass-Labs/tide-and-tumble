@@ -659,11 +659,14 @@ describe("promote", () => {
       }
     });
 
-    it("never releases a build that lacks a beach page's tide table", async () => {
+    it("never releases a build that lacks a beach page's tide table, and says which", async () => {
+      // NOAA misses one beach of 88 now and then during a build; production keeps the tables it has, and the run
+      // passes, so an outage of NOAA's does not read as a failed release.
       const fake = fakeTools({ ...nightly, tags: { [OLD]: SHA }, missingTables: ["tides/nags-head.html"] });
-      const error = await failure(promote(PROJECT, fake.tools));
-      expect(error.message).toContain("without their tide table");
-      expect(error.details).toBe("tides/nags-head.html");
+      const summary = await promote(PROJECT, fake.tools);
+      expect(summary).toMatchObject({ ok: true, released: false });
+      expect(String((summary as { reason: string }).reason)).toContain("1 beach page was built without its tide table");
+      expect(String((summary as { reason: string }).reason)).toContain("tides/nags-head.html");
       expect(fake.wranglerCommands()).toEqual([]);
     });
 

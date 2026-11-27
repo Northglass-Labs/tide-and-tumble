@@ -631,14 +631,15 @@ export async function promote(project, tools, { origin } = {}) {
     throw new StepFailed("check out/: it changed after prepare-release built and checked it. Run prepare-release again");
   }
   if (refresh) {
+    // A refresh exists to renew the baked tables, so a build missing one would make production worse.
     const missing = readOut("check out/", () => tools.missingTables());
     if (missing.length > 0) {
-      throw new StepFailed(
-        `refresh: ${missing.length} beach ${missing.length === 1 ? "page was" : "pages were"} built without their ` +
-          "tide table (NOAA did not answer the build), so this build is not released; production keeps the tables " +
-          "it has",
-        missing.join("\n"),
-      );
+      const reason =
+        `${missing.length} beach ${missing.length === 1 ? "page was built without its" : "pages were built without their"} ` +
+        `tide table (NOAA did not answer the build for ${missing.join(", ")}), so nothing was released; production ` +
+        "keeps the tables it has";
+      tools.say(`promote: ${reason}`);
+      return { ok: true, released: false, tag, reason, url: at.url };
     }
   }
 

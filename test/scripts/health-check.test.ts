@@ -8,6 +8,7 @@ import {
   NOT_A_PAGE,
   PAGE_MARKER,
   parseHealthArgs,
+  TIDES_CHECK,
 } from "../../scripts/lib/health-check.mjs";
 
 const BASE = "https://tideandtumble.app";
@@ -21,14 +22,18 @@ interface FakeSite {
   health?: () => Response;
   page?: () => Response;
   missing?: () => Response;
+  tides?: () => Response;
   /** How long each request takes, in order; the last value repeats. */
   durations?: number[];
 }
 
 /** A site that answers instantly, plus a clock that advances by a set amount per request. */
-function fakeSite({ health, page, missing, durations = [20] }: FakeSite = {}) {
+function fakeSite({ health, page, missing, tides, durations = [20] }: FakeSite = {}) {
   let now = 0;
   const requested: string[] = [];
+  const headers: Record<string, Record<string, string>> = {};
+  const tideTable = () =>
+    Response.json({ station: { id: "8651370" }, extrema: [{ time: 1_800_000_000_000, height: 3.1, type: "H" }] });
   const healthy = () => Response.json({ ok: true, version: { id: "version-1", tag: "abc123def456" }, time: "t" });
   const root = () =>
     new Response(`<!doctype html><head>${PAGE_MARKER}</head>`, { status: 200, headers: SECURITY_HEADERS });
@@ -36,15 +41,19 @@ function fakeSite({ health, page, missing, durations = [20] }: FakeSite = {}) {
 
   return {
     requested,
+    headers,
     deps: {
-      fetch: (url: string) => {
+      fetch: (url: string, init?: { headers?: Record<string, string> }) => {
         requested.push(url);
+        headers[url] = init?.headers ?? {};
         now += durations[Math.min(requested.length - 1, durations.length - 1)] ?? 0;
         const answer = url.endsWith("/api/health")
           ? (health ?? healthy)
           : url.endsWith(NOT_A_PAGE)
             ? (missing ?? notFound)
-            : (page ?? root);
+            : url.endsWith(TIDES_CHECK)
+              ? (tides ?? tideTable)
+              : (page ?? root);
         return Promise.resolve(answer());
       },
       now: () => now,
@@ -107,10 +116,52 @@ describe("checkHealth()", () => {
       limitMs: 300,
       failures: [],
     });
-    // One check of the API, one of the page, one of an unknown path, then the timed samples.
-    expect(site.requested).toHaveLength(23);
+    // One check of the API, one of the page, one of an unknown path, one of the data API, then the timed samples.
+    expect(site.requested).toHaveLength(24);
     expect(site.requested[1]).toBe(`${BASE}/`);
     expect(site.requested[2]).toBe(`${BASE}${NOT_A_PAGE}`);
+    expect(site.requested[3]).toBe(`${BASE}${TIDES_CHECK}`);
+  });
+
+  describe("the data API", () => {
+    const json = (status: number, body: unknown) => () => Response.json(body, { status });
+    const failuresFor = async (tides: () => Response, baseUrl = BASE) =>
+      (await checkHealth({ ...defaults, baseUrl, samples: 1 }, fakeSite({ tides }).deps)).failures;
+
+    it("asks for a known station's tides, as the site's own pages ask", async () => {
+      const site = fakeSite();
+      await checkHealth({ ...defaults, samples: 1 }, site.deps);
+      expect(TIDES_CHECK).toBe("/api/tides?station=8651370");
+      // A zone rule may refuse /api/ requests that are not the site's own (docs/DELIVERY.md).
+      expect(site.headers[`${BASE}${TIDES_CHECK}`]).toMatchObject({ "Sec-Fetch-Site": "same-origin" });
+    });
+
+    it("passes a tide table, and NOAA's outage passed on as upstream_unavailable", async () => {
+      expect(await failuresFor(json(502, { error: "upstream_unavailable", message: "NOAA is down." }))).toEqual([]);
+    });
+
+    it("fails anything else: an error, an empty table, another 502, or an answer that is not JSON", async () => {
+      for (const tides of [
+        json(500, { error: "internal", message: "Something went wrong." }),
+        json(404, { error: "not_found", message: "No such route." }),
+        json(429, { error: "rate_limited", message: "Too many requests." }),
+        json(502, { error: "no_predictions", message: "No predictions." }),
+        json(200, { station: { id: "8651370" }, extrema: [] }),
+        () => new Response("<h1>Bad gateway</h1>", { status: 502 }),
+      ]) {
+        const failures = await failuresFor(tides);
+        expect(failures).toHaveLength(1);
+        expect(failures[0]).toContain(TIDES_CHECK);
+      }
+    });
+
+    it("expects the data routes' 404 at the workers.dev address, where they never answer", async () => {
+      const dev = "https://tide-and-tumble.example.workers.dev";
+      expect(await failuresFor(json(404, { error: "not_found", message: "No such route." }), dev)).toEqual([]);
+      const answered = await failuresFor(() => Response.json({ extrema: [{}] }), dev);
+      expect(answered).toHaveLength(1);
+      expect(answered[0]).toContain("off the production address");
+    });
   });
 
   it("fails when the API does not answer 200", async () => {
@@ -255,8 +306,8 @@ describe("checkHealth()", () => {
   });
 
   it("fails when the 95th percentile is at or over the limit", async () => {
-    // The three checks, then 20 samples of which two are slow.
-    const durations = [10, 10, 10, ...Array.from({ length: 18 }, () => 40), 450, 500];
+    // The four checks, then 20 samples of which two are slow.
+    const durations = [10, 10, 10, 10, ...Array.from({ length: 18 }, () => 40), 450, 500];
 
     const slow = await checkHealth(defaults, fakeSite({ durations }).deps);
     const atLimit = await checkHealth({ ...defaults, p95Ms: 40 }, fakeSite({ durations: [40] }).deps);
@@ -378,9 +429,9 @@ describe("the network the checks use", () => {
 });
 
 describe("what the checks ask for", () => {
-  it("is only pages and GET /api/health, which the Worker's workers.dev address still answers", async () => {
+  it("is only pages, GET /api/health and one GET of the data API, whose 404 the workers.dev address answers", async () => {
     // The first release and a release while production cannot answer are checked at workers.dev, where the
-    // Worker answers nothing else under /api.
+    // Worker answers nothing else under /api: there the data API's request expects that 404.
     const asked: string[] = [];
     const deps = {
       fetch: (url: string, init?: RequestInit) => {
@@ -400,6 +451,6 @@ describe("what the checks ask for", () => {
     await checkHealth({ baseUrl: BASE, expectTag: "t", expectVersion: null, samples: 3, p95Ms: 300, waitMs: 0 }, deps);
     await answeringVersion(BASE, deps);
 
-    expect(new Set(asked)).toEqual(new Set(["GET /", `GET ${NOT_A_PAGE}`, "GET /api/health"]));
+    expect(new Set(asked)).toEqual(new Set(["GET /", `GET ${NOT_A_PAGE}`, "GET /api/health", "GET /api/tides"]));
   });
 });
