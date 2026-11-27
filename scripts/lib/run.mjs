@@ -112,14 +112,19 @@ export function must(step, result) {
   return result;
 }
 
-/** Prints one progress line. Progress goes to stderr; stdout carries only the final JSON line. */
+/**
+ * Prints one progress line, scrubbed by `redact`: a line can name the
+ * Worker's workers.dev address, and this repository's Actions logs are
+ * public. Progress goes to stderr; stdout carries only the final JSON line.
+ */
 export function say(/** @type {string} */ line) {
-  console.error(line);
+  console.error(redact(line));
 }
 
 /**
  * Runs a delivery command's `main`, printing a failed step's details and
- * setting a failing exit status instead of a stack trace.
+ * setting a failing exit status instead of a stack trace. What it prints is
+ * scrubbed by `redact`, as `say` is.
  *
  * @param {() => Promise<void>} main
  */
@@ -129,11 +134,11 @@ export async function runMain(main) {
   } catch (error) {
     if (error instanceof StepFailed) {
       if (error.details) {
-        console.error(error.details);
+        console.error(redact(error.details));
       }
-      console.error(error.message);
+      console.error(redact(error.message));
     } else {
-      console.error(error instanceof Error ? error.message : String(error));
+      console.error(redact(error instanceof Error ? error.message : String(error)));
     }
     process.exitCode = 1;
   }

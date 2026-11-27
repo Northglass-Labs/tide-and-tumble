@@ -24,10 +24,11 @@
 import { readProject } from "./lib/project.mjs";
 import { prepareRelease, realTools } from "./lib/release.mjs";
 import { runMain } from "./lib/run.mjs";
+import { redact } from "./lib/wrangler-output.mjs";
 
 await runMain(async () => {
   if (process.argv.length > 2) {
     throw new Error("Usage: node scripts/prepare-release.mjs");
   }
-  console.log(JSON.stringify(await prepareRelease(readProject(), realTools)));
+  console.log(redact(JSON.stringify(await prepareRelease(readProject(), realTools))));
 });

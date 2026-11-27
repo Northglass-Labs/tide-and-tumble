@@ -1,9 +1,11 @@
 import { existsSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   jsonFrom,
   must,
   run,
+  runMain,
+  say,
   StepFailed,
   wrangler,
   WRANGLER_BIN,
@@ -101,3 +103,40 @@ describe("a command that never finishes", () => {
     expect(result.output).toContain("did not finish within");
   });
 });
+
+describe("what the delivery scripts print", () => {
+  // The scripts are run with --origin naming the Worker's workers.dev address, which carries the account's
+  // subdomain, and Actions logs are public: progress lines and failures are scrubbed like Wrangler's output.
+  const ADDRESS = "https://tide-and-tumble.example-account.workers.dev";
+
+  it("scrubs the workers.dev subdomain and email addresses from progress lines", () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((line: string) => {
+      lines.push(line);
+    });
+    try {
+      say(`promote: checking ${ADDRESS} for someone@example.org`);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(lines).toEqual(["promote: checking https://tide-and-tumble.[subdomain].workers.dev for [email]"]);
+  });
+
+  it("scrubs a failed step's message and details, and any other error", async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((line: string) => {
+      lines.push(line);
+    });
+    const before = process.exitCode;
+    try {
+      await runMain(() => Promise.reject(new StepFailed(`check ${ADDRESS}`, `GET ${ADDRESS}/api/health answered 500`)));
+      await runMain(() => Promise.reject(new Error(`Usage: --origin ${ADDRESS}`)));
+    } finally {
+      spy.mockRestore();
+      process.exitCode = before;
+    }
+    expect(lines.join("\n")).not.toContain("example-account");
+    expect(lines).toHaveLength(3);
+  });
+});
+
