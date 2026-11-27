@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import BeachTideTable from "@/components/BeachTideTable";
 import TideApp from "@/components/TideApp";
 import TodayLabel from "@/components/TodayLabel";
+import { stationTimeZone } from "@/lib/time-zones";
 import {
   BEACHES,
   beachBySlug,
@@ -116,7 +117,7 @@ export default async function BeachTidePage({ params }: Props) {
           Tides Today &amp; Tomorrow in {beach.label}, {beach.state}
         </h1>
         <p className="mt-1 font-body text-sm text-ink-soft">
-          <TodayLabel built={fmtDayLabel(stationNow())} /> · live tide chart, 7-day tide table, sun
+          <TodayLabel built={fmtDayLabel(stationNow(new Date(), stationTimeZone(beach)))} timeZone={stationTimeZone(beach)} /> · live tide chart, 7-day tide table, sun
           &amp; moon, and surf conditions for {beach.label}.
         </p>
       </header>

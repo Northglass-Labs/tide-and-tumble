@@ -11,9 +11,9 @@ function toDeg(r: number) {
 }
 
 /** Day-of-year for a real Date, in the station timezone. */
-function dayOfYear(date: Date): { doy: number; year: number } {
+function dayOfYear(date: Date, timeZone: string): { doy: number; year: number } {
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: STATION_TZ,
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -39,8 +39,8 @@ export interface SunTimes {
  * Standard-time offset for Eastern is -5; we detect DST by comparing the zone's
  * current offset so summer at OBX reads correctly.
  */
-export function sunTimes(lat: number, lng: number, date = new Date()): SunTimes {
-  const { doy } = dayOfYear(date);
+export function sunTimes(lat: number, lng: number, date = new Date(), timeZone: string = STATION_TZ): SunTimes {
+  const { doy } = dayOfYear(date, timeZone);
 
   // Fractional gamma
   const gamma = ((2 * Math.PI) / 365) * (doy - 1 + 0.5);
@@ -72,7 +72,7 @@ export function sunTimes(lat: number, lng: number, date = new Date()): SunTimes 
   const sunriseUTC = 720 - 4 * (lng + ha) - eqtime;
   const sunsetUTC = 720 - 4 * (lng - ha) - eqtime;
 
-  const offsetMin = tzOffsetMinutes(date);
+  const offsetMin = tzOffsetMinutes(date, timeZone);
 
   const fmt = (utcMin: number): string => {
     let mins = Math.round(utcMin + offsetMin);
@@ -89,9 +89,9 @@ export function sunTimes(lat: number, lng: number, date = new Date()): SunTimes 
 }
 
 /** Current offset (minutes) of the station timezone vs UTC, DST-aware. */
-function tzOffsetMinutes(date: Date): number {
+function tzOffsetMinutes(date: Date, timeZone: string): number {
   const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone: STATION_TZ,
+    timeZone,
     hour12: false,
     year: "numeric",
     month: "2-digit",
@@ -182,8 +182,9 @@ export function moonTimes(
   lat: number,
   lng: number,
   wallDayStartMs: number,
+  timeZone: string = STATION_TZ,
 ): MoonTimes {
-  const offsetMin = tzOffsetMinutes(new Date(wallDayStartMs + 12 * 3_600_000));
+  const offsetMin = tzOffsetMinutes(new Date(wallDayStartMs + 12 * 3_600_000), timeZone);
   const realMidnight = wallDayStartMs - offsetMin * 60_000;
   const hc = 0.133 * RAD;
   const HOUR = 3_600_000;

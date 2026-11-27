@@ -4,6 +4,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { buildBeachWeek, fmtFt, type BeachDay, type BeachWeek } from "@/lib/seo";
 import type { Beach } from "@/lib/slugs";
 import { latestExtrema, subscribeExtrema } from "@/lib/tide-feed";
+import { stationTimeZone } from "@/lib/time-zones";
 import { fmtClock, startOfDay, stationNow, type Extremum } from "@/lib/tides";
 
 const noSubscription = () => () => {};
@@ -33,12 +34,12 @@ export default function BeachTideTable({
   // render in the browser both show the table as built.
   const today = useSyncExternalStore(
     noSubscription,
-    () => startOfDay(stationNow()),
+    () => startOfDay(stationNow(new Date(), stationTimeZone(beach))),
     () => null,
   );
 
   const week = useMemo(() => {
-    if (live) return buildBeachWeek(live, beach, stationNow(), days);
+    if (live) return buildBeachWeek(live, beach, stationNow(new Date(), stationTimeZone(beach)), days);
     if (!initialWeek || today == null) return initialWeek;
     const remaining = initialWeek.days.filter((day) => day.dayStartMs >= today);
     return remaining.length > 0 ? { ...initialWeek, days: remaining } : null;

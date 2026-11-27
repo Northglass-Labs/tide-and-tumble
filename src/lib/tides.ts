@@ -64,7 +64,7 @@ export interface TideDay {
 
 const NOAA = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter";
 
-/** OBX is Eastern. All stations share this zone. */
+/** The zone used when a station's own is not given (src/lib/time-zones.ts gives each station's). */
 export const STATION_TZ = "America/New_York";
 
 /**
@@ -72,9 +72,9 @@ export const STATION_TZ = "America/New_York";
  * convention parseNoaaTime uses. This makes the current-time comparisons line up
  * with NOAA's lst_ldt timestamps no matter where the viewer's device is.
  */
-export function stationNow(realNow: Date = new Date()): number {
+export function stationNow(realNow: Date = new Date(), timeZone: string = STATION_TZ): number {
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: STATION_TZ,
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

@@ -29,6 +29,7 @@ import { BEACHES, SITE_URL } from "@/lib/slugs";
 import { pushRecent } from "@/lib/recents";
 import { publishExtrema } from "@/lib/tide-feed";
 import { readSafety } from "@/lib/safety";
+import { stationTimeZone } from "@/lib/time-zones";
 
 /** How long the page waits for the beach-safety answer before saying it is unavailable. */
 const ALERTS_TIMEOUT_MS = 10_000;
@@ -154,7 +155,9 @@ export default function TideApp({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [nowMs, setNowMs] = useState<number>(() => stationNow());
+  // The station's own zone: NOAA's times are its local wall clock (src/lib/time-zones.ts).
+  const timeZone = useMemo(() => stationTimeZone(station), [station]);
+  const [nowMs, setNowMs] = useState<number>(() => stationNow(new Date(), timeZone));
   const [dayOffset, setDayOffset] = useState(0);
   const [marine, setMarine] = useState<Marine | null>(null);
   const [manualTheme, setManualTheme] = useState<Phase | null>(null);
@@ -322,7 +325,7 @@ export default function TideApp({
               : null,
           );
           setExtrema(data.extrema);
-          setNowMs(stationNow());
+          setNowMs(stationNow(new Date(), stationTimeZone(station)));
           setLoading(false);
         }
       })
@@ -387,9 +390,10 @@ export default function TideApp({
 
   // Live clock: recompute "now" every 30s so the marker + creatures stay current.
   useEffect(() => {
-    const id = setInterval(() => setNowMs(stationNow()), 30_000);
+    // A new station's zone is applied by its tides load (setNowMs above) and every 30 s here.
+    const id = setInterval(() => setNowMs(stationNow(new Date(), timeZone)), 30_000);
     return () => clearInterval(id);
-  }, []);
+  }, [timeZone]);
 
   const isToday = dayOffset === 0;
   const todayStartMs = useMemo(() => startOfDay(nowMs), [nowMs]);
@@ -408,13 +412,13 @@ export default function TideApp({
     [focusMs],
   );
   const sun = useMemo(
-    () => sunTimes(station.lat, station.lng, sunMoonDate),
-    [station, sunMoonDate],
+    () => sunTimes(station.lat, station.lng, sunMoonDate, timeZone),
+    [station, sunMoonDate, timeZone],
   );
   const moon = useMemo(() => moonPhase(sunMoonDate), [sunMoonDate]);
   const moonRS = useMemo(
-    () => moonTimes(station.lat, station.lng, startOfDay(focusMs)),
-    [station, focusMs],
+    () => moonTimes(station.lat, station.lng, startOfDay(focusMs), timeZone),
+    [station, focusMs, timeZone],
   );
 
   const autoTheme = useMemo(() => {

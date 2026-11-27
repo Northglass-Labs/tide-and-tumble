@@ -5,6 +5,7 @@ interface RawStation {
   i: string;
   a: number;
   o: number;
+  s?: string;
 }
 
 const NOAA_STATIONS = new Map(
@@ -186,6 +187,8 @@ export interface ResolvedStation {
   noaaId: string;
   lat: number;
   lng: number;
+  /** The state NOAA gives the station, for its time zone; "" when it gives none. */
+  state: string;
   curated: Station | undefined;
 }
 
@@ -201,7 +204,8 @@ export function resolveStation(
     ? parseCoordinates(curated.lat, curated.lng)
     : parseCoordinates((source as RawStation).a, (source as RawStation).o);
   if (!coordinates) return null;
-  return { ...station, ...coordinates, curated };
+  const state = NOAA_STATIONS.get(station.noaaId)?.s ?? "";
+  return { ...station, ...coordinates, state, curated };
 }
 
 export type ApiScope = "alerts" | "marine" | "tides";
