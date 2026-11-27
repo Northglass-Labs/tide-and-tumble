@@ -61,6 +61,7 @@ export function marineRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
           }),
         lifetime: (value) => ({ freshMs: isEmpty(value) ? MINUTE : 10 * MINUTE, staleMs: 0 }),
         waitUntil: (promise) => c.executionCtx.waitUntil(promise),
+        refreshing: deps.refreshing,
       });
     } catch (error) {
       // Every reading is optional: the page shows what it has.

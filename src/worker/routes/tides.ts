@@ -67,6 +67,7 @@ export function tidesRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
         }),
         lifetime: () => ({ freshMs: 15 * MINUTE, staleMs: 60 * MINUTE }),
         waitUntil: (promise) => c.executionCtx.waitUntil(promise),
+        refreshing: deps.refreshing,
       });
       return c.json(body, 200, { "Cache-Control": "public, s-maxage=900, stale-while-revalidate=3600" });
     } catch (error) {

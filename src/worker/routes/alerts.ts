@@ -46,6 +46,7 @@ export function alertsRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
       produce: () => fetchBeachSafetyChecked(station.lat, station.lng, AbortSignal.timeout(DEADLINE_MS)),
       lifetime: (value) => ({ freshMs: value.complete ? 15 * MINUTE : MINUTE, staleMs: 0 }),
       waitUntil: (promise) => c.executionCtx.waitUntil(promise),
+      refreshing: deps.refreshing,
     });
     return c.json({ ...result.safety, complete: result.complete }, 200, PRIVATE_NO_STORE_HEADERS);
   });

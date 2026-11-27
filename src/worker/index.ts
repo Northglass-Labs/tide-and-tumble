@@ -11,7 +11,7 @@ import { tidesRoute } from "./routes/tides";
 /** The cache the API keeps its answers in (named, so it never meets the zone's own cache keys). */
 const CACHE_NAME = "tide-and-tumble-api";
 
-const realDeps: AppDeps = {
+const realDeps: Omit<AppDeps, "refreshing"> = {
   now: () => Date.now(),
   cache: () => caches.open(CACHE_NAME),
 };
@@ -64,10 +64,11 @@ const guard = createMiddleware<AppEnv>(async (c, next) => {
  * runs (`assets` in wrangler.jsonc), so page views cost no Worker requests.
  *
  * Tests pass their own clock and cache; production uses `realDeps`. Each app
- * keeps its own per-client limits, so a Worker instance has one set.
+ * keeps its own per-client limits and its own record of running refreshes,
+ * so a Worker instance has one of each.
  */
 export function createApp(overrides: Partial<AppDeps> = {}) {
-  const deps: AppDeps = { ...realDeps, ...overrides };
+  const deps: AppDeps = { ...realDeps, refreshing: new Map(), ...overrides };
   const limiter = new FixedWindowRateLimiter();
 
   const api = new Hono<AppEnv>();

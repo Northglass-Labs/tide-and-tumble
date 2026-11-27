@@ -103,6 +103,44 @@ describe("GET /api/tides", () => {
     expect(upstream.calls).toHaveLength(2);
   });
 
+  it("runs one refresh per station however many requests arrive while it runs", async () => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let calls = 0;
+    const upstream = stubUpstream([
+      [
+        NOAA,
+        async () => {
+          calls += 1;
+          // The first answer is immediate; the refresh waits until the test lets it go.
+          if (calls > 1) await held;
+          return json(predictions);
+        },
+      ],
+    ]);
+    const t = testApp();
+    await t.request("/api/tides?station=8651370");
+    await t.settle();
+    t.clock.now += 20 * MINUTE;
+
+    // Five requests while the entry is stale: each is answered at once from the cache, and only one refresh runs.
+    const answers = await Promise.all(Array.from({ length: 5 }, () => t.request("/api/tides?station=8651370")));
+    expect(answers.map((response) => response.status)).toEqual([200, 200, 200, 200, 200]);
+    expect(upstream.calls).toHaveLength(2);
+
+    release();
+    await t.settle();
+    expect(upstream.calls).toHaveLength(2);
+
+    // Once it is done, the next stale period may refresh again.
+    t.clock.now += 20 * MINUTE;
+    await t.request("/api/tides?station=8651370");
+    await t.settle();
+    expect(upstream.calls).toHaveLength(3);
+  });
+
   it("asks NOAA again, and waits for it, once the entry is more than 75 minutes old", async () => {
     const upstream = noaaAnswers();
     const t = testApp();
@@ -179,6 +217,21 @@ describe("GET /api/tides", () => {
     const other = await t.request("/api/tides?station=8651370", undefined, "203.0.113.9");
     expect(other.status).toBe(200);
     expect(CLIENT).not.toBe("203.0.113.9");
+  });
+
+  it("never lets one client flooding past its limit use up the shared cap and starve the others", async () => {
+    noaaAnswers();
+    const t = testApp();
+    // 400 requests in a minute from one client: more than the instance's whole cap of 300.
+    const statuses: number[] = [];
+    for (let index = 0; index < 400; index += 1) {
+      statuses.push((await t.request("/api/tides?station=8651370")).status);
+    }
+    expect(statuses.filter((status) => status === 200)).toHaveLength(60);
+    // Its refused requests counted nowhere, so other clients are still answered.
+    for (const client of ["203.0.113.9", "203.0.113.10", "203.0.113.11"]) {
+      expect((await t.request("/api/tides?station=8651370", undefined, client)).status).toBe(200);
+    }
   });
 
   it("counts an IPv6 client by its /64, since it can pick any address in it", async () => {

@@ -17,4 +17,6 @@ export interface AppDeps {
   now: () => number;
   /** Where answers are kept between requests: one Cloudflare location's cache. */
   cache: () => Promise<Cache>;
+  /** Background refreshes running in this app, by cache key (`readThrough`). */
+  refreshing: Map<string, Promise<void>>;
 }

@@ -27,12 +27,15 @@ export interface ReadThrough<T> {
   lifetime: (value: T) => Lifetime | null;
   /** Keeps a refresh running after the answer has gone (`ctx.waitUntil`). */
   waitUntil: (promise: Promise<unknown>) => void;
+  /** The refreshes running in this Worker instance, by key: one at a time per key. */
+  refreshing: Map<string, Promise<void>>;
 }
 
 /**
  * The answer for `key`: from the cache while it is fresh; from the cache while
- * it is stale, with one refresh started behind it; otherwise fetched now and
- * stored. A failed refresh leaves the stale answer in place until it expires.
+ * it is stale, with one refresh started behind it unless one is running in
+ * this instance already; otherwise fetched now and stored. A failed refresh
+ * leaves the stale answer in place until it expires.
  */
 export async function readThrough<T>(options: ReadThrough<T>): Promise<T> {
   const { cache, key, now } = options;
@@ -41,12 +44,15 @@ export async function readThrough<T>(options: ReadThrough<T>): Promise<T> {
     const age = now - entry.storedAt;
     if (age >= 0 && age < entry.freshMs) return entry.value;
     if (age >= 0 && age < entry.freshMs + entry.staleMs) {
-      options.waitUntil(
-        options
+      if (!options.refreshing.has(key)) {
+        const refresh = options
           .produce()
           .then((value) => store(options, value))
-          .catch(() => undefined),
-      );
+          .catch(() => undefined)
+          .finally(() => options.refreshing.delete(key));
+        options.refreshing.set(key, refresh);
+        options.waitUntil(refresh);
+      }
       return entry.value;
     }
   }
