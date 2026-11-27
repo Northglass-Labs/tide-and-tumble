@@ -1,29 +1,47 @@
+# Weekly update pull requests. Each ecosystem gets at most two: everything
+# that should be safe together (minor and patch), and major versions, which
+# need reading. A release must be three days old before it is proposed, so a
+# bad or malicious publish has time to be caught and withdrawn.
 version: 2
 
-# Grouped from the start. This repo had 20 open Dependabot alerts and no config,
-# so nothing was opening PRs to clear them. Grouping keeps routine minor/patch
-# bumps to one PR per run and isolates majors, which are the ones worth reading.
-# Same shape as Slink's, which is the only repo in the estate sitting at zero.
-
 updates:
-  - package-ecosystem: npm
-    directory: /
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: "weekly"
+    cooldown:
+      default-days: 3
     groups:
-      minor-patch:
+      minor-and-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
       major:
         patterns: ["*"]
         update-types: ["major"]
+    # Held on purpose, each with the date it was decided and why. Remove a hold
+    # once its reason is gone; security updates are not held by these.
+    ignore:
+      # 2026-11-27: typescript-eslint 8.74 (through eslint-config-next)
+      # supports TypeScript below 6.1, and TypeScript 7 ships without the
+      # compiler API that it and Next's type check call. 6.0 is taken.
+      - dependency-name: "typescript"
+        versions: [">=6.1.0"]
+      # 2026-11-27: eslint-config-next 16.4's React, import and jsx-a11y
+      # plugins declare ESLint 9 at most; ESLint 10 would mean dropping the
+      # accessibility and React rules.
+      - dependency-name: "eslint"
+        versions: [">=10.0.0"]
 
-  - package-ecosystem: github-actions
-    directory: /
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: "weekly"
+    cooldown:
+      default-days: 3
     groups:
-      actions:
+      minor-and-patch:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
+      major:
+        patterns: ["*"]
+        update-types: ["major"]

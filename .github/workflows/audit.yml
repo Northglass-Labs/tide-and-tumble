@@ -1,0 +1,80 @@
+name: Audit
+
+# Once a day, and on demand, on main: the strict vulnerability check (any
+# advisory at any level fails), and a check that production runs the head of
+# main. GitHub emails a failed scheduled run to the person who last changed
+# the cron line, the owner. This is how what the bots could not finish
+# reaches a person (docs/DELIVERY.md, "Releasing from GitHub").
+
+on:
+  schedule:
+    # 11:41 UTC, early morning in New York; off the hour, when GitHub's
+    # scheduler is least busy.
+    - cron: "41 11 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run audit -- --strict
+
+  # A fix that merged but never reached production (its release failed, or
+  # was never started) would otherwise reach nobody: Dependabot and the
+  # workflow's token are not people. This needs no npm ci: the health check
+  # uses Node alone.
+  production:
+    # Production runs main. Started by hand on another branch, this would
+    # compare production with that branch's head and fail for nothing.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # deploy.yml's test, without the token itself: releases are automatic
+      # once the CLOUDFLARE_API_TOKEN secret is set. Until then deploy.yml
+      # releases nothing, and this check would fail every day for that alone.
+      - name: Check whether releases are automatic
+        id: releases
+        env:
+          AUTOMATIC: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+        run: |
+          if [ "$AUTOMATIC" = "true" ]; then
+            echo "automatic=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Production is not released automatically yet::The CLOUDFLARE_API_TOKEN secret is not set, so deploy.yml releases nothing and production was not compared with main. Release from a workstation with npm run promote."
+            echo "automatic=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.releases.outputs.automatic == 'true'
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.releases.outputs.automatic == 'true'
+        with:
+          node-version-file: .node-version
+
+      # promote tags a release with the same short commit. The address is the
+      # site's own: the workers.dev one carries the account's subdomain, which
+      # this public repository and its public logs never name. Bot Fight Mode
+      # is off for the zone, so GitHub's runners are not challenged; if it is
+      # ever turned on, this check reports itself blocked and fails.
+      - name: Production runs the head of main
+        if: steps.releases.outputs.automatic == 'true'
+        run: npm run health -- https://tideandtumble.app --expect-tag "$(git rev-parse --short=12 HEAD)"

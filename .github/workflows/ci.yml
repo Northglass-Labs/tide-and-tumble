@@ -1,15 +1,16 @@
 name: CI
 
-# The suite and the lint baseline already existed; nothing ran them. This is the
-# guard for a repo that is public and live, so a regression cannot reach
-# tideandtumble.app unnoticed.
+# Every pull request, and every push to main, must pass the same
+# `npm run verify` a developer runs: types, lint, tests, the static export
+# and its check. Then `npm run audit` checks for known vulnerabilities (it
+# needs the network, so it is not part of verify).
+# Dependabot's own patch and minor updates that pass are merged and released
+# by the second job (docs/DELIVERY.md, "Releasing from GitHub").
 
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -20,26 +21,195 @@ concurrency:
 
 jobs:
   verify:
-    name: Test, lint, build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
           cache: npm
 
       - run: npm ci
 
-      # Includes tests/brand-contract.test.ts and tests/opsec.test.ts — the
-      # guards that keep the endorsement, the glyph, and the public/private
-      # boundary from drifting.
-      - name: Test
-        run: npm test
+      - run: npm run verify
 
-      - name: Lint
-        run: npm run lint
+      - run: npm run audit
 
-      - name: Build
-        run: npm run build
+  # Merges a passing patch or minor npm update from Dependabot and starts the
+  # release. Only for a pull request Dependabot opened into main from one of
+  # its npm branches and pushed this commit to; a person's push to it, or a
+  # reopen, leaves it for review, and a push to main never runs it. It never
+  # checks out the pull request or runs its npm code. It does run one action,
+  # and a pull_request run uses the pull request's own copy of this file, so
+  # that action runs at the commit the pull request pins: for an npm update,
+  # main's pin. An Actions update could change the pin, so only npm branches
+  # get this job (named by what is allowed, so a new kind of branch waits for
+  # review too), and everything else waits for review.
+  merge-dependabot:
+    needs: verify
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.actor == 'dependabot[bot]' &&
+      startsWith(github.head_ref, 'dependabot/npm_and_yarn/') &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # merge
+      pull-requests: write # merge
+      actions: write # start deploy.yml
+    steps:
+      # Until deploy.yml can release, a merge would not reach production and
+      # merges would pile up unreleased, so updates wait for review. A run
+      # Dependabot starts sees no Actions secrets, so this reads the Deploy
+      # runs on main with this job's token instead: the newest run that
+      # released or tried to decides, by its Release step. Runs that say
+      # nothing are passed over: one for an older commit (its head check
+      # passed and it released nothing on purpose) and one cancelled before
+      # it started. A run that failed before its steps (no Release step, not
+      # cancelled) says "did not release". Any error reading them means not
+      # automatic.
+      - name: Check that releases are automatic
+        id: releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          automatic=false
+          reason="no Deploy run on main has released or tried to"
+          if runs="$(gh api "repos/$GH_REPO/actions/workflows/deploy.yml/runs?branch=main&status=completed&per_page=30")" &&
+            found="$(jq -r '.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch")) | "\(.id):\(.conclusion)"' <<< "$runs")"; then
+            for run in $found; do
+              id="${run%%:*}"
+              conclusion="${run#*:}"
+              if ! jobs="$(gh api "repos/$GH_REPO/actions/runs/$id/jobs")" ||
+                ! release="$(jq -r '[.jobs[].steps[]? | select(.name == "Release") | .conclusion] | first // "absent"' <<< "$jobs")" ||
+                ! head="$(jq -r '[.jobs[].steps[]? | select(.name == "Check the head of main") | .conclusion] | first // "absent"' <<< "$jobs")"; then
+                reason="the Actions API could not be read"
+                break
+              fi
+              # No Release step: passed over only if the run was cancelled before it started. Any other such
+              # run failed before its steps (an invalid workflow, an action that cannot be resolved).
+              if [ "$release" = "absent" ] && [ "$conclusion" != "cancelled" ]; then
+                reason="the newest Deploy run on main that tried to release, $id, did not: it ended ($conclusion) before its Release step"
+                break
+              fi
+              if [ "$release" = "absent" ] || { [ "$release" = "skipped" ] && [ "$head" = "success" ]; }; then
+                continue
+              fi
+              if [ "$release" = "success" ]; then
+                automatic=true
+                reason="Deploy run $id on main released"
+              else
+                reason="the newest Deploy run on main that tried to release, $id, did not: its Release step was $release"
+              fi
+              break
+            done
+          else
+            reason="the Actions API could not be read"
+          fi
+          echo "automatic=$automatic" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+
+      # For a group, the largest change in the group.
+      - name: Read the update type
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      # Below 1.0, semver lets a minor update change anything (drizzle-orm is
+      # 0.x), so a package below 1.0 merges by itself only for a patch, and
+      # below 0.1 not even then (^0.0.3 allows only 0.0.3). In a group, one
+      # such package leaves the whole update for review, and a version that
+      # cannot be read (missing or empty) counts as below 0.1, so even a
+      # patch waits. A name is kept
+      # to npm's characters, so it cannot add a line to the step's output.
+      - name: Look for a minor update below 1.0
+        id: below_one
+        env:
+          UPDATES: ${{ steps.metadata.outputs.updated-dependencies-json }}
+        run: |
+          if ! jq -e 'type == "array" and length > 0' > /dev/null <<< "$UPDATES"; then
+            echo "::error::fetch-metadata named no updated packages, so the update waits for review."
+            exit 1
+          fi
+          packages="$(jq -r '[.[]
+            | (.prevVersion // "" | if . == "" then "0.0." else . end) as $prev
+            | (.newVersion // "" | if . == "" then "0.0." else . end) as $new
+            | select(
+                ($prev | test("^v?0\\.0\\.")) or ($new | test("^v?0\\.0\\.")) or
+                (.updateType != "version-update:semver-patch" and (($prev | test("^v?0\\.")) or ($new | test("^v?0\\.")))))
+            | .dependencyName | gsub("[^A-Za-z0-9@/._-]"; "?")] | unique | join(", ")' <<< "$UPDATES")"
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+
+      # Majors and releases whose maintainers changed wait for review. So does
+      # an update whose description was truncated: fetch-metadata finds
+      # maintainer changes by reading it, and the sections cut off are not
+      # read. `--match-head-commit` merges only the commit the checks ran on.
+      - name: Merge the tested commit
+        id: merge
+        if: >-
+          steps.releases.outputs.automatic == 'true' &&
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor') &&
+          steps.metadata.outputs.maintainer-changes != 'true' &&
+          steps.below_one.outputs.packages == '' &&
+          !contains(github.event.pull_request.body, '_Description has been truncated_')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: gh pr merge "$PR_URL" --squash --match-head-commit "$HEAD_SHA"
+
+      # A merge made with this job's token starts no push workflow, so the
+      # release is started by name (a dispatch is GitHub's exception).
+      - name: Start the release
+        id: release
+        if: steps.merge.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run deploy.yml --ref main
+
+      # Nobody is emailed about this run (Dependabot started it), so the
+      # summary says what happened, and audit.yml checks every day that
+      # production runs the head of main.
+      - name: Say what happened
+        if: always()
+        env:
+          AUTOMATIC: ${{ steps.releases.outputs.automatic }}
+          REASON: ${{ steps.releases.outputs.reason }}
+          METADATA: ${{ steps.metadata.outcome }}
+          PACKAGES: ${{ steps.below_one.outcome }}
+          BELOW_ONE: ${{ steps.below_one.outputs.packages }}
+          MERGE: ${{ steps.merge.outcome }}
+          RELEASE: ${{ steps.release.outcome }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          MAINTAINER_CHANGES: ${{ steps.metadata.outputs.maintainer-changes }}
+          TRUNCATED: ${{ contains(github.event.pull_request.body, '_Description has been truncated_') }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$MERGE" = "success" ] && [ "$RELEASE" = "success" ]; then
+            line="Merged $PR_URL at $HEAD_SHA, and started the release (deploy.yml on main)."
+          elif [ "$MERGE" = "success" ]; then
+            line="Merged $PR_URL at $HEAD_SHA, but the release did not start ($RELEASE), so production does not have it. Run the Deploy workflow on main from the Actions tab."
+          elif [ "$AUTOMATIC" != "true" ]; then
+            line="Left for review: $PR_URL. Releases are not automatic yet ($REASON), so a merge would not reach production. Merge it after review and release it from a workstation (docs/DELIVERY.md)."
+          elif [ "$METADATA" != "success" ]; then
+            line="Left for review: $PR_URL. Its update type could not be read ($METADATA)."
+          elif [ "$PACKAGES" = "failure" ]; then
+            line="Left for review: $PR_URL. Its list of updated packages could not be read ($PACKAGES)."
+          elif [ -n "$BELOW_ONE" ]; then
+            line="Left for review: $PR_URL updates $BELOW_ONE, below 1.0, where semver lets a minor update (below 0.1, even a patch) change anything."
+          elif [ "$MERGE" = "skipped" ]; then
+            line="Left for review: $PR_URL is $UPDATE_TYPE, maintainer changes: $MAINTAINER_CHANGES, description truncated: $TRUNCATED. Only a patch or minor update whose maintainers did not change and whose description is complete is merged."
+          else
+            line="Left for review: GitHub did not merge $PR_URL ($MERGE). The merge step's log says why."
+          fi
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"

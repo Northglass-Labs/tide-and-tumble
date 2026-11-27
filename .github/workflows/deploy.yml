@@ -1,0 +1,108 @@
+name: Deploy
+
+# A push to main is a release: verify, check for known vulnerabilities, then
+# `npm run promote`, which checks production afterwards and rolls back by
+# itself if it is unhealthy. So is the nightly run: the beach pages carry a
+# tide table built with them, and rebuilding main's head each night keeps
+# what crawlers see at most a day old (docs/DELIVERY.md, "The nightly
+# release"). promote checks production at https://tideandtumble.app, which
+# it first confirms is served by this Worker (the zone route is attached).
+#
+# It needs a Cloudflare API token in the repository secret
+# CLOUDFLARE_API_TOKEN and the account id in the repository variable
+# CLOUDFLARE_ACCOUNT_ID (docs/DELIVERY.md, "Releasing from GitHub"). Without
+# the secret the job does nothing and says so; releases are then made from
+# a workstation.
+
+on:
+  push:
+    branches: [main]
+  # The merge job in ci.yml starts a release this way: a merge made with a
+  # workflow's own token starts no push workflow.
+  workflow_dispatch:
+  # 08:17 UTC: after midnight in every US mainland time zone, so "today" in
+  # the rebuilt tables is today everywhere; off the hour, when GitHub's
+  # scheduler is least busy.
+  schedule:
+    - cron: "17 8 * * *"
+
+permissions:
+  contents: read
+
+# One release at a time, and never cancel one halfway. GitHub keeps one
+# waiting run per group and cancels the one already waiting, so the group is
+# per branch: a dispatch on another branch, which releases nothing, cannot
+# displace a release waiting for main.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Started by hand on another branch, it releases nothing.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check for a Cloudflare token
+        id: token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::notice title=Deploy skipped::The CLOUDFLARE_API_TOKEN secret is not set, so nothing was verified or released. Release from a workstation with npm run promote."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.token.outputs.present == 'true'
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.token.outputs.present == 'true'
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install
+        if: steps.token.outputs.present == 'true'
+        run: npm ci
+
+      - name: Verify
+        if: steps.token.outputs.present == 'true'
+        run: npm run verify
+
+      - name: Audit
+        if: steps.token.outputs.present == 'true'
+        run: npm run audit
+
+      # A re-run of an old run runs for the commit it first ran for
+      # (GITHUB_SHA), and would put that commit over a newer production.
+      # Release only main's head; a later run releases it.
+      - name: Check the head of main
+        id: head
+        if: steps.token.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [ "$main" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Deploy skipped::This run is for $GITHUB_SHA, but main is at $main now, so this run released nothing. The run for main's head releases it; if none is queued, run Deploy on main (a push with [skip ci] starts none)."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Only this step can see the token. ci.yml's merge job reads this step's
+      # result by its name, as do the steps above it.
+      - name: Release
+        if: steps.token.outputs.present == 'true' && steps.head.outputs.current == 'true'
+        run: npm run promote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
