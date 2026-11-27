@@ -142,7 +142,12 @@ describe("GitHub workflows", () => {
     expect(withToken).toHaveLength(2);
     expect(withToken[0]).toContain("Deploy skipped");
     expect(withToken[1]).toContain("npm run promote");
-    expect(deploy).toContain("vars.CLOUDFLARE_ACCOUNT_ID");
+    // The account id is not a credential, but it is an identifier this public repository and its public logs never
+    // show: as a secret, GitHub masks it in the logs; a variable is printed in the clear.
+    expect(withToken[1]).toContain("CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}");
+    for (const { text } of workflows) {
+      expect(text).not.toMatch(/vars\.CLOUDFLARE/);
+    }
     for (const step of steps.filter((candidate) => /npm (ci|run verify)/.test(candidate))) {
       expect(step).not.toContain("CLOUDFLARE_API_TOKEN");
     }
