@@ -67,7 +67,7 @@ async function fetchBuoy(
   try {
     const res = await fetchWithTimeout(
       `https://www.ndbc.noaa.gov/data/realtime2/${id}.txt`,
-      { next: { revalidate: 600 }, signal },
+      { signal },
       UPSTREAM_TIMEOUT_MS,
     );
     if (!res.ok) return null;
@@ -105,7 +105,7 @@ async function fetchCoopsWind(id: string, signal?: AbortSignal) {
     });
     const res = await fetchWithTimeout(
       `${COOPS}?${p}`,
-      { next: { revalidate: 600 }, signal },
+      { signal },
       UPSTREAM_TIMEOUT_MS,
     );
     if (!res.ok) return null;
@@ -137,7 +137,7 @@ async function fetchCoopsWaterTemp(
     });
     const res = await fetchWithTimeout(
       `${COOPS}?${p}`,
-      { next: { revalidate: 600 }, signal },
+      { signal },
       UPSTREAM_TIMEOUT_MS,
     );
     if (!res.ok) return null;

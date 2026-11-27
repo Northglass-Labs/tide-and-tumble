@@ -1,10 +1,3 @@
-type NextFetchInit = RequestInit & {
-  next?: {
-    revalidate?: number;
-    tags?: string[];
-  };
-};
-
 export class UpstreamResponseTooLargeError extends Error {
   constructor(maxBytes: number) {
     super(`Upstream response exceeded ${maxBytes} bytes`);
@@ -41,7 +34,7 @@ function combineSignals(
 /** Fetch with a real abort signal so slow upstreams cannot hold a route indefinitely. */
 export async function fetchWithTimeout(
   input: string | URL | Request,
-  init: NextFetchInit = {},
+  init: RequestInit = {},
   timeoutMs: number,
 ): Promise<Response> {
   const controller = new AbortController();

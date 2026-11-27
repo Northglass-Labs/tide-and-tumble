@@ -59,24 +59,33 @@ const isBeachRelevant = (event: string) => {
   return BEACH_EVENTS.some((keyword) => normalized.includes(keyword));
 };
 
+/** Whether every NWS call a lookup made was answered. */
+interface Outcome {
+  failed: boolean;
+}
+
 async function nws<T = unknown>(
   url: string,
-  signal?: AbortSignal,
+  signal: AbortSignal | undefined,
+  outcome: Outcome,
 ): Promise<T | null> {
   try {
     const response = await fetchWithTimeout(
       url,
       {
         headers: { "User-Agent": UA, Accept: "application/geo+json" },
-        next: { revalidate: 900 },
         signal,
       },
       NWS_FETCH_TIMEOUT_MS,
     );
-    return response.ok
-      ? await readJsonBounded<T>(response, NWS_JSON_MAX_BYTES)
-      : null;
+    if (!response.ok) {
+      await response.body?.cancel();
+      outcome.failed = true;
+      return null;
+    }
+    return await readJsonBounded<T>(response, NWS_JSON_MAX_BYTES);
   } catch {
+    outcome.failed = true;
     return null;
   }
 }
@@ -145,19 +154,26 @@ function nwsProductUrl(value: unknown): string | null {
   }
 }
 
-export async function fetchBeachSafety(
+/**
+ * The beach's safety data, and whether NWS answered every call it took. An
+ * incomplete answer (a timeout, an error status) can be missing a warning, so
+ * the API Worker never keeps one in its cache.
+ */
+export async function fetchBeachSafetyChecked(
   lat: number,
   lng: number,
   signal?: AbortSignal,
-): Promise<BeachSafety> {
+): Promise<{ safety: BeachSafety; complete: boolean }> {
+  const outcome: Outcome = { failed: false };
   const pt = `${lat.toFixed(4)},${lng.toFixed(4)}`;
 
   // Run the point lookup + formal alerts together.
   const [point, alertData] = await Promise.all([
-    nws<PointProps>(`https://api.weather.gov/points/${pt}`, signal),
+    nws<PointProps>(`https://api.weather.gov/points/${pt}`, signal, outcome),
     nws<AlertResp>(
       `https://api.weather.gov/alerts/active?point=${pt}&status=actual`,
       signal,
+      outcome,
     ),
   ]);
 
@@ -195,11 +211,12 @@ export async function fetchBeachSafety(
     const list = await nws<ProductList>(
       `https://api.weather.gov/products/types/SRF/locations/${office}`,
       signal,
+      outcome,
     );
     const graph = Array.isArray(list?.["@graph"]) ? list["@graph"] : [];
     const latest = nwsProductUrl(record(graph[0])?.["@id"]);
     if (latest) {
-      const prod = await nws<{ productText?: unknown }>(latest, signal);
+      const prod = await nws<{ productText?: unknown }>(latest, signal, outcome);
       const productText = nonEmptyString(prod?.productText);
       if (productText) {
         const parsed = parseSrf(productText, zoneCode);
@@ -223,7 +240,15 @@ export async function fetchBeachSafety(
   }
 
   const source = office ? `NWS (${office})` : alerts.length ? "NWS" : null;
-  return { alerts, ripRisk, uvIndex, source };
+  return { safety: { alerts, ripRisk, uvIndex, source }, complete: !outcome.failed };
+}
+
+export async function fetchBeachSafety(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<BeachSafety> {
+  return (await fetchBeachSafetyChecked(lat, lng, signal)).safety;
 }
 
 /** Back-compat helper: just the alert list (used by the client fetch shape). */
