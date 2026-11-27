@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
@@ -122,7 +122,8 @@ const OPERATOR_PROCEDURE: { name: string; pattern: RegExp }[] = [
   { name: "Cloudflare API paths", pattern: /\/(?:zones|accounts)\/[^\s]*\/|workers\/routes|dns_records|rulesets\/phases/i },
   { name: "DNS record administration", pattern: /\b(?:A record|CNAME record|AAAA record)\b/i },
   { name: "how a credential is created or stored", pattern: /create token|api tokens? page|token's? permissions?: /i },
-  { name: "the previous host's names", pattern: /\bvercel\b/i },
+  // vercel.json, the file that keeps the previous host from deploying, may be named; nothing else of that host.
+  { name: "the previous host's names", pattern: /\bvercel\b(?!\.json\b)/i },
 ];
 
 /**
@@ -174,13 +175,18 @@ describe("public-release OPSEC boundary", () => {
     expect(tracked).not.toBeNull();
     expect(walked).toEqual(expect.arrayContaining(tracked!));
     const extra = walked.filter((path) => !tracked!.includes(path));
-    const ignoredExtra =
-      extra.length === 0
-        ? ""
-        : execFileSync("git", ["check-ignore", "--no-index", "--stdin"], { cwd: root, encoding: "utf8", input: extra.join("\n") }).trim();
-    expect(ignoredExtra).toBe("");
+    // git check-ignore exits 1 when none of the paths is ignored, 0 when some are (and lists them).
+    const check = spawnSync("git", ["check-ignore", "--no-index", "--stdin"], { cwd: root, encoding: "utf8", input: extra.join("\n") });
+    expect([0, 1]).toContain(check.status);
+    expect(extra.length === 0 ? "" : check.stdout.trim()).toBe("");
     expect(walked).not.toContain("worker-configuration.d.ts");
     expect(walked.filter((path) => path.startsWith(".claude/"))).toEqual([".claude/context/progress.md"]);
+  });
+
+  test("names the file that turns the previous host's deployments off, and nothing else of that host", () => {
+    const host = OPERATOR_PROCEDURE.find(({ name }) => name === "the previous host's names")!.pattern;
+    expect(host.test("The root vercel.json turns its Git deployments off.")).toBe(false);
+    expect(host.test("The Vercel project's settings.")).toBe(true);
   });
 
   test("catches the kinds of leak line the review found, in made-up text", () => {

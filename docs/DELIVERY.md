@@ -203,7 +203,11 @@ commit on `main` (`git revert`, through a pull request); its release puts
 production on `main`'s head again.
 
 **Hosting.** Going back to the previous host is the operator's; the steps are
-in the private operations record.
+in the private operations record. That host's Git deployments are off: the
+root `vercel.json` sets `git.deploymentEnabled` to false, which it reads from
+each pushed commit, so no push or merge deploys there; its last production
+deployment stays as the hosting rollback, and removing the file would turn
+them on again.
 
 ## What the free plan allows
 
