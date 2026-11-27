@@ -34,8 +34,12 @@ cutover are the operator's, after an adversarial review.
 
 ## Verification
 
-- `npm run verify` passes locally: types, lint, 242 tests (app, Workers
+- `npm run verify` passes locally: types, lint, 243 tests (app, Workers
   runtime, scripts), the export (107 routes, 586 files) and its check.
+- Headless Chrome against `npm run preview`, fresh profile: home, a beach
+  page, a region hub and the privacy page load with no console message (no
+  CSP refusal, hydration error or failed fetch); the beach page rendered the
+  live tide state, buoy conditions and the 30-day table.
 - `npm audit`, all dependencies and production only: no advisories.
 - `npm run preview` (`wrangler dev`): pages, headers, the 404 page and the API
   against the real NOAA, NDBC and NWS answer as expected; a path matching no

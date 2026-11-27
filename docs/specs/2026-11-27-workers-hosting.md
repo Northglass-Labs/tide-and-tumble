@@ -353,5 +353,7 @@ Both holds are pinned in `.github/dependabot.yml` with the date and reason.
 - **Two small redirect differences.** A trailing slash (`/tides/nags-head/`)
   and the segment files Next fetches during client-side navigation, whose
   names contain `$`, get Cloudflare's 307 to the canonical form; the previous
-  host used 308 for the first and served the second directly. Both work.
+  host used 308 for the first and served the second directly. Both work; the
+  service worker leaves requests with a query to the browser, because its own
+  fetch of a redirected payload failed in headless Chrome.
 - **Retiring the previous host**, after the hold.
