@@ -83,10 +83,12 @@ HTML, the page says it is checking NWS beach warnings; without JavaScript a
 given up after ten seconds. A Surf Zone Forecast counts only when it was
 issued on the beach's own calendar day: NWS lists a week of them, and an
 office that stops issuing for the season would otherwise leave a week-old
-rip-current risk on the page as today's. Without one, the page says so: "No
-NWS rip-current forecast for today yet" when the newest is from the last two
-days, and that none are being issued this season when it is older or none is
-listed.
+rip-current risk on the page as today's. Today's forecast speaks for the
+beach only through its own zone's section. Silence never stands for a
+forecast: a Low risk is shown ("Low rip current risk today (NWS)"), Moderate
+and High as advisories, and otherwise the page says which case it is: today's
+forecast gives no risk for this beach, none yet today (the newest is from the
+last two days), or none being issued this season.
 
 ### D3. Version URLs off; a release is checked in production
 

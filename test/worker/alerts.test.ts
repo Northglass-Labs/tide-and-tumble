@@ -11,7 +11,7 @@ interface SafetyBody {
   uvIndex: string | null;
   source: string | null;
   complete: boolean;
-  ripForecast: "today" | "not-yet" | "out-of-season" | null;
+  ripForecast: "today" | "none" | "not-yet" | "out-of-season" | null;
 }
 
 const point = json({
@@ -181,6 +181,28 @@ describe("GET /api/alerts", () => {
     ]);
     const body = await (await testApp().request("/api/alerts?station=8651370")).json<SafetyBody>();
     expect(body).toMatchObject({ ripRisk: null, ripForecast: "out-of-season", complete: true });
+  });
+
+  it("says today's forecast speaks for the beach only when its own zone gives a rip-current risk", async () => {
+    const answer = async (productText: string) => {
+      stubUpstream([
+        [`${NWS}points/`, () => point.clone()],
+        [`${NWS}alerts/active`, () => json({ features: [] })],
+        [`${NWS}products/types/SRF/locations/MHX`, () => json(TODAY_SRF)],
+        [PRODUCT, () => json({ productText })],
+      ]);
+      return (await testApp().request("/api/alerts?station=8651370")).json<SafetyBody>();
+    };
+    // A Low risk is a forecast too: it is said, not left blank.
+    expect(await answer("NCZ203-\n.TODAY...\nRip Current Risk*..........Low.\n$$\n")).toMatchObject({
+      ripRisk: "Low",
+      ripForecast: "today",
+    });
+    // Today's forecast, but no rip-current risk for this beach's zone.
+    expect(await answer("NCZ204-\n.TODAY...\nRip Current Risk*..........High.\n$$\n")).toMatchObject({
+      ripRisk: null,
+      ripForecast: "none",
+    });
   });
 });
 

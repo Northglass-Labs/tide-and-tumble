@@ -42,11 +42,13 @@ export interface BeachSafety {
   /** e.g. "NWS Wakefield (AKQ)" — attribution for whatever we found. */
   source: string | null;
   /**
-   * Whether the office's Surf Zone Forecast speaks for today: "today"; "not-yet"
-   * (the newest is from the last two days, so today's is still to come);
-   * "out-of-season" (none listed, or none for longer); null when unknown.
+   * Whether the office's Surf Zone Forecast speaks for this beach today:
+   * "today" (its zone's section gives a rip-current risk); "none" (today's
+   * forecast gives none for this zone); "not-yet" (the newest is from the
+   * last two days, so today's is still to come); "out-of-season" (none listed,
+   * or none for longer); null when unknown.
    */
-  ripForecast: "today" | "not-yet" | "out-of-season" | null;
+  ripForecast: "today" | "none" | "not-yet" | "out-of-season" | null;
 }
 
 const EMPTY: BeachSafety = { alerts: [], ripRisk: null, uvIndex: null, source: null, ripForecast: null };
@@ -243,9 +245,9 @@ export async function fetchBeachSafetyChecked(
     const today = Number.isFinite(issued) && localDate(issued, zone) >= localDate(now, zone);
     if (list && !newest) {
       ripForecast = "out-of-season";
-    } else if (Number.isFinite(issued)) {
+    } else if (Number.isFinite(issued) && !today) {
       const daysOld = (Date.parse(localDate(now, zone)) - Date.parse(localDate(issued, zone))) / 86_400_000;
-      ripForecast = today ? "today" : daysOld <= 2 ? "not-yet" : "out-of-season";
+      ripForecast = daysOld <= 2 ? "not-yet" : "out-of-season";
     }
     if (latest && today) {
       const prod = await nws<{ productText?: unknown }>(latest, signal, outcome);
@@ -254,6 +256,8 @@ export async function fetchBeachSafetyChecked(
         const parsed = parseSrf(productText, zoneCode);
         ripRisk = parsed.rip;
         uvIndex = parsed.uv;
+        // Today's forecast speaks for this beach only through its own zone's section.
+        ripForecast = ripRisk ? "today" : "none";
       }
     }
   }
