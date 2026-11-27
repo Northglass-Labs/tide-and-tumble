@@ -67,7 +67,9 @@ export function marineRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
         admit: sharedCapacity(limiter, "marine", now),
       });
     } catch (error) {
-      if (error instanceof CapacityReached) return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.");
+      if (error instanceof CapacityReached) return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.", {
+          "Retry-After": String(error.retryAfterSeconds),
+        });
       // Every reading is optional: the page shows what it has.
       logFailure("marine_failed", error);
     }

@@ -75,7 +75,9 @@ export function tidesRoute(deps: AppDeps, limiter: FixedWindowRateLimiter) {
       return c.json(body, 200, { "Cache-Control": "public, s-maxage=900, stale-while-revalidate=3600" });
     } catch (error) {
       // The instance's shared cap is used up and this station is not cached: NOAA is not asked.
-      if (error instanceof CapacityReached) return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.");
+      if (error instanceof CapacityReached) return fail(c, 429, "rate_limited", "Too many requests. Try again in a minute.", {
+          "Retry-After": String(error.retryAfterSeconds),
+        });
       if (error instanceof NoPredictionsError) {
         return fail(c, 502, "no_predictions", "NOAA has no tide predictions for this station right now.");
       }

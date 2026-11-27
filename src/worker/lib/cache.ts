@@ -29,15 +29,19 @@ export interface ReadThrough<T> {
   waitUntil: (promise: Promise<unknown>) => void;
   /** The refreshes running in this Worker instance, by key: one at a time per key. */
   refreshing: Map<string, Promise<void>>;
-  /** Asked before each upstream call (a miss, or a refresh); false refuses it (the instance's shared cap). */
-  admit?: () => boolean;
+  /** Asked before each upstream call (a miss, or a refresh); not allowed refuses it (the instance's shared cap). */
+  admit?: () => { allowed: boolean; retryAfterSeconds: number };
 }
 
 /** A miss the instance's shared cap refused: the upstream was not asked. */
 export class CapacityReached extends Error {
-  constructor() {
+  /** When the cap opens again. */
+  readonly retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds: number) {
     super("the instance's shared cap for this scope is used up");
     this.name = "CapacityReached";
+    this.retryAfterSeconds = Math.max(1, retryAfterSeconds);
   }
 }
 
@@ -54,7 +58,7 @@ export async function readThrough<T>(options: ReadThrough<T>): Promise<T> {
     const age = now - entry.storedAt;
     if (age >= 0 && age < entry.freshMs) return entry.value;
     if (age >= 0 && age < entry.freshMs + entry.staleMs) {
-      if (!options.refreshing.has(key) && (options.admit?.() ?? true)) {
+      if (!options.refreshing.has(key) && (options.admit?.().allowed ?? true)) {
         const refresh = options
           .produce()
           .then((value) => store(options, value))
@@ -66,7 +70,8 @@ export async function readThrough<T>(options: ReadThrough<T>): Promise<T> {
       return entry.value;
     }
   }
-  if (options.admit && !options.admit()) throw new CapacityReached();
+  const admitted = options.admit?.();
+  if (admitted && !admitted.allowed) throw new CapacityReached(admitted.retryAfterSeconds);
   const value = await options.produce();
   await store(options, value);
   return value;

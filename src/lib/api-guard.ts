@@ -257,9 +257,9 @@ export function checkApiRateLimit(
   return limiter.checkClient(scope, clientKey(request), POLICIES[scope], now);
 }
 
-/** Takes a share of the instance's cap for `scope`: false when it is used up. */
-export function sharedCapacity(limiter: FixedWindowRateLimiter, scope: ApiScope, now?: number): () => boolean {
-  return () => limiter.takeShared(scope, POLICIES[scope], now).allowed;
+/** Takes a share of the instance's cap for `scope`: not allowed, with when it opens, once it is used up. */
+export function sharedCapacity(limiter: FixedWindowRateLimiter, scope: ApiScope, now?: number): () => RateDecision {
+  return () => limiter.takeShared(scope, POLICIES[scope], now);
 }
 
 export function rateLimitHeaders(
