@@ -69,12 +69,15 @@ jobs:
       # Dependabot starts sees no Actions secrets, so this reads the Deploy
       # runs on main (a push, a dispatch or the nightly schedule) with this
       # job's token, a hundred to a page, newest first: the newest run that
-      # released or tried to decides, by its Release step. Runs that say
-      # nothing are passed over: one for an older commit (its head check
-      # passed and it built and released nothing on purpose) and one
-      # cancelled before it started. A run whose build failed, or that failed
-      # before its steps (no Release step, not cancelled), says "did not
-      # release". Any error reading them means not automatic.
+      # released or tried to decides. Released succeeds only for a real
+      # release. Passed over: a run for an older commit (it built nothing on
+      # purpose), one cancelled before it started, and one whose promote
+      # released nothing on purpose (a nightly refresh while production runs
+      # another commit). A run whose build or release failed, or that ended
+      # without a Release step, says "did not release". Then production must
+      # run main's head, the merge commit's parent: after a rollback it runs
+      # an older commit, and a merge would release main over it. Any error
+      # reading either means not automatic.
       - name: Check that releases are automatic
         id: releases
         env:
@@ -99,24 +102,29 @@ jobs:
               decided=true
               if ! jobs="$(gh api "repos/$GH_REPO/actions/runs/$id/jobs")" ||
                 ! release="$(step "Release" <<< "$jobs")" ||
+                ! released="$(step "Released" <<< "$jobs")" ||
                 ! prepare="$(step "Prepare the release" <<< "$jobs")" ||
                 ! head="$(step "Check the head of main" <<< "$jobs")"; then
                 reason="the Actions API could not be read"
                 break
               fi
-              # No Release step: passed over only if the run was cancelled before it started. Any other such
-              # run failed before its steps (an invalid workflow, an action that cannot be resolved).
-              if [ "$release" = "absent" ] && [ "$conclusion" != "cancelled" ]; then
-                reason="the newest Deploy run on main that tried to release, $id, did not: it ended ($conclusion) before its Release step"
-                break
-              fi
-              # Release skipped after a build that ran: the build failed. Skipped with the build, after a
-              # passing head check: an older commit's run, which built and released nothing on purpose.
-              if [ "$release" = "skipped" ] && [ "$prepare" != "skipped" ] && [ "$prepare" != "absent" ]; then
+              # The build ran and failed, or was stopped: it tried to release and did not.
+              if [ "$prepare" != "absent" ] && [ "$prepare" != "success" ] && [ "$prepare" != "skipped" ]; then
                 reason="the newest Deploy run on main that tried to release, $id, did not: its Prepare the release step was $prepare"
                 break
               fi
-              if [ "$release" = "absent" ] || { [ "$release" = "skipped" ] && [ "$head" = "success" ]; }; then
+              if [ "$release" = "absent" ]; then
+                # The head check passed and no build ran: a run for an older commit. Or a run cancelled
+                # before it started. Any other run without a Release step released nothing.
+                if { [ "$head" = "success" ] && [ "$prepare" = "absent" ]; } || [ "$conclusion" = "cancelled" ]; then
+                  decided=false
+                  continue
+                fi
+                reason="the newest Deploy run on main, $id, released nothing: it ended ($conclusion) without a Release step"
+                break
+              fi
+              if [ "$release" = "success" ] && [ "$released" != "success" ]; then
+                # promote released nothing on purpose; it says nothing about whether releases work.
                 decided=false
                 continue
               fi
@@ -134,6 +142,18 @@ jobs:
             fi
             page=$((page + 1))
           done
+          if [ "$automatic" = true ]; then
+            live=""
+            if ! main="$(gh api "repos/$GH_REPO/commits/main" --jq .sha)"; then
+              automatic=false
+              reason="the Actions API could not be read"
+            elif ! health="$(curl -sf --max-time 10 https://tideandtumble.app/api/health)" ||
+              ! live="$(jq -r '.version.tag // empty' <<< "$health")" ||
+              [ "$live" != "${main:0:12}" ]; then
+              automatic=false
+              reason="production runs ${live:-an unknown version}, not main's head ${main:0:12}: a rollback may be in place, and a merge would release main over it"
+            fi
+          fi
           echo "automatic=$automatic" >> "$GITHUB_OUTPUT"
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
 

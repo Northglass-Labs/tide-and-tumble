@@ -114,6 +114,19 @@ function fakeGhRoutes(routes: Record<string, string | null>) {
   return `${dir}:${process.env.PATH ?? ""}`;
 }
 
+/** A PATH entry whose `curl` prints `body` (production's /api/health answer), or fails for null. */
+function fakeCurl(body: string | null) {
+  const dir = mkdtempSync(join(tmpdir(), "fake-curl-"));
+  const curl = join(dir, "curl");
+  if (body !== null) writeFileSync(join(dir, "body.json"), body);
+  writeFileSync(
+    curl,
+    body === null ? "#!/bin/sh\necho 'curl: (6) Could not resolve host' >&2\nexit 6\n" : `#!/bin/sh\ncat "${dir}/body.json"\n`,
+  );
+  chmodSync(curl, 0o755);
+  return dir;
+}
+
 /** The step of a job whose `name` or `run` contains the text. */
 const stepWith = (job: string, text: string) =>
   stepsOf(job).find((step) => stepValue(step, "name").includes(text) || stepValue(step, "run").includes(text)) ?? "";
@@ -153,19 +166,48 @@ describe("GitHub workflows", () => {
     }
   });
 
-  it("build the release in a step without the token, and give the token to a step that runs only Wrangler", () => {
-    // The build runs project and dependency code; promote runs no build, no npm and no package code but
-    // Wrangler's, on the out/ prepare-release built and checked (scripts/lib/release.mjs).
-    const steps = stepsOf(jobSection(workflow("deploy.yml"), "deploy"));
-    const prepare = steps.findIndex((step) => stepValue(step, "run") === "node scripts/prepare-release.mjs");
-    const release = steps.findIndex((step) => stepValue(step, "name") === "Release");
-    expect(prepare).toBeGreaterThan(-1);
-    expect(release).toBe(prepare + 1);
-    expect(steps[prepare]).not.toContain("secrets.");
-    expect(stepValue(steps[release]!, "run")).toBe("node scripts/promote.mjs");
-    // Nothing else in the job installs or builds: prepare-release does both, in a clean copy of the commit.
-    for (const step of steps) {
-      expect(stepValue(step, "run")).not.toMatch(/npm (ci|install|run (verify|build))/);
+  it("build on a runner with no secret, and release on a fresh one that ran no package code but Wrangler's", () => {
+    // The build runs every package's code. On the runner that later held the token it could read it from a
+    // leftover process, plant a program on the PATH, or rewrite the scripts promote runs; a job of its own, with
+    // no secret, cannot.
+    const deploy = workflow("deploy.yml");
+    const build = jobSection(deploy, "build");
+    const release = jobSection(deploy, "release");
+    expect(build).not.toContain("secrets.");
+    expect(jobValue(build, "needs")).toBe("gate");
+    expect(jobValue(release, "needs")).toBe("build");
+
+    // The build job: audit, prepare-release, then keep out/ and its record.
+    const built = stepsOf(build);
+    expect(built.map((step) => stepValue(step, "run")).filter(Boolean)).toEqual([
+      "npm run audit",
+      "node scripts/prepare-release.mjs",
+    ]);
+    const keep = built.find((step) => stepValue(step, "name") === "Keep the build")!;
+    expect(keep).toMatch(/uses: actions\/upload-artifact@[0-9a-f]{40} # v/);
+    expect(keep).toContain("out/");
+    expect(keep).toContain("node_modules/.cache/tide-and-tumble-release.json");
+
+    // The release job: the same commit, Wrangler installed with install scripts off and no npm cache from the
+    // build, the build fetched, and promote, which re-checks the commit and out/'s digest before uploading.
+    const steps = stepsOf(release);
+    expect(steps.map((step) => stepValue(step, "name"))).toEqual([
+      "Check out",
+      "Set up Node",
+      "Install Wrangler",
+      "Fetch the build",
+      "Release",
+      "Released",
+    ]);
+    expect(steps[1]).not.toContain("cache:");
+    expect(stepValue(steps[2]!, "run")).toBe("npm ci --ignore-scripts");
+    expect(steps[3]).toMatch(/uses: actions\/download-artifact@[0-9a-f]{40} # v/);
+    expect(stepValue(steps[4]!, "run")).toBe("node scripts/promote.mjs");
+    expect(stepValue(steps[4]!, "env")).toContain("CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}");
+    // Read by the merge job: success only when a version was released.
+    expect(stepValue(steps[5]!, "if")).toBe("steps.release.outputs.released == 'true'");
+    for (const step of steps.slice(0, 4)) {
+      expect(step).not.toContain("secrets.");
     }
   });
 
@@ -178,7 +220,11 @@ describe("GitHub workflows", () => {
         .filter((line) => !/^\s*#/.test(line) && /\bnpm (?:ci|install|i)\b/.test(line))
         .map((line) => `${name}: ${line.trim()}`),
     );
-    expect(installs).toEqual(["audit.yml: - run: npm ci --ignore-scripts", "ci.yml: - run: npm ci --ignore-scripts"]);
+    expect(installs).toEqual([
+      "audit.yml: - run: npm ci --ignore-scripts",
+      "ci.yml: - run: npm ci --ignore-scripts",
+      "deploy.yml: run: npm ci --ignore-scripts",
+    ]);
   });
 
   it("ask for no more than read access to the repository", () => {
@@ -188,13 +234,12 @@ describe("GitHub workflows", () => {
   });
 
   it("check a release for known vulnerabilities before it is built and released, without the token", () => {
-    const deploy = stepsOf(jobSection(workflow("deploy.yml"), "deploy"));
-    const at = (command: string) => deploy.findIndex((step) => stepValue(step, "run") === command);
+    const build = stepsOf(jobSection(workflow("deploy.yml"), "build"));
+    const at = (command: string) => build.findIndex((step) => stepValue(step, "run") === command);
     const audit = at("npm run audit");
     expect(audit).toBeGreaterThan(-1);
     expect(audit).toBeLessThan(at("node scripts/prepare-release.mjs"));
-    expect(audit).toBeLessThan(at("node scripts/promote.mjs"));
-    expect(deploy[audit]).not.toContain("CLOUDFLARE_API_TOKEN");
+    expect(build[audit]).not.toContain("CLOUDFLARE_API_TOKEN");
   });
 
   it("queue releases per branch, never cancelling one halfway", () => {
@@ -209,24 +254,22 @@ describe("GitHub workflows", () => {
     // no push workflow.
     const deploy = workflow("deploy.yml");
     expect(deploy).toMatch(/\non:\n(?: {2}.*\n|\s*#.*\n|\s*\n)* {2}workflow_dispatch:/);
-    expect(jobSection(deploy, "deploy")).toMatch(/\n {4}if: github\.ref == 'refs\/heads\/main'\n/);
+    expect(jobSection(deploy, "gate")).toMatch(/\n {4}if: github\.ref == 'refs\/heads\/main'\n/);
   });
 
   it("release only main's head, so a re-run of an old run cannot put its old commit over a newer one", () => {
     // A re-run runs for the commit it first ran for: GITHUB_SHA, which main may have left since.
-    const steps = stepsOf(jobSection(workflow("deploy.yml"), "deploy"));
-    const index = steps.findIndex((step) => stepValue(step, "run").includes("/commits/main"));
-    const prepare = steps.findIndex((step) => stepValue(step, "run") === "node scripts/prepare-release.mjs");
-    const promote = steps.findIndex((step) => stepValue(step, "run") === "node scripts/promote.mjs");
-    // Checked before the build, so a run for an old commit builds nothing either.
-    expect(index).toBe(prepare - 1);
-    expect(prepare).toBe(promote - 1);
-    const head = steps[index]!;
+    const deploy = workflow("deploy.yml");
+    const gate = jobSection(deploy, "gate");
+    const steps = stepsOf(gate);
+    const head = steps.find((step) => stepValue(step, "run").includes("/commits/main"))!;
     expect(stepValue(head, "env")).toContain("GH_TOKEN: ${{ github.token }}");
     expect(stepValue(head, "if")).toBe("steps.token.outputs.present == 'true'");
-    for (const step of [steps[prepare]!, steps[promote]!]) {
-      expect(stepValue(step, "if")).toBe("steps.token.outputs.present == 'true' && steps.head.outputs.current == 'true'");
-    }
+    // Decided before the build, so a run for an old commit builds nothing either.
+    expect(jobValue(gate, "outputs")).toContain(
+      "release: ${{ steps.token.outputs.present == 'true' && steps.head.outputs.current == 'true' }}",
+    );
+    expect(jobValue(jobSection(deploy, "build"), "if")).toBe("needs.gate.outputs.release == 'true'");
 
     const main = "0123456789abcdef0123456789abcdef01234567";
     const old = "fedcba9876543210fedcba9876543210fedcba98";
@@ -343,17 +386,10 @@ describe("GitHub workflows", () => {
 
   it("name every Deploy step, so the merge job can read a run's steps by name", () => {
     // Unnamed steps get generated names, and the checkout step's would change with its pin.
-    const steps = stepsOf(jobSection(workflow("deploy.yml"), "deploy"));
-    expect(steps.map((step) => stepValue(step, "name"))).toEqual([
-      "Check for a Cloudflare token",
-      "Check out",
-      "Set up Node",
-      "Audit",
-      "Check the head of main",
-      "Prepare the release",
-      "Release",
-    ]);
-    expect(stepValue(steps.at(-1)!, "run")).toBe("node scripts/promote.mjs");
+    const names = (job: string) => stepsOf(jobSection(workflow("deploy.yml"), job)).map((step) => stepValue(step, "name"));
+    expect(names("gate")).toEqual(["Check for a Cloudflare token", "Check the head of main"]);
+    expect(names("build")).toEqual(["Check out", "Set up Node", "Audit", "Prepare the release", "Keep the build"]);
+    expect(names("release")).toEqual(["Check out", "Set up Node", "Install Wrangler", "Fetch the build", "Release", "Released"]);
   });
 
   describe("the merge job's check that releases are automatic", () => {
@@ -383,23 +419,27 @@ describe("GitHub workflows", () => {
       };
       return { run, jobs };
     }
-    const released = { "Check for a Cloudflare token": "success", "Check the head of main": "success", Release: "success" };
-    const noToken = { "Check for a Cloudflare token": "success", "Check the head of main": "skipped", Release: "skipped" };
-    const olderCommit = { "Check for a Cloudflare token": "success", "Check the head of main": "success", Release: "skipped" };
-    const failed = { "Check for a Cloudflare token": "success", "Check the head of main": "success", Release: "failure" };
-    const buildFailed = {
-      "Check for a Cloudflare token": "success",
-      "Check the head of main": "success",
-      "Prepare the release": "failure",
-      Release: "skipped",
-    };
+    const gated = { "Check for a Cloudflare token": "success", "Check the head of main": "success" };
+    const released = { ...gated, "Prepare the release": "success", Release: "success", Released: "success" };
+    // promote ran and released nothing on purpose: a nightly refresh while production runs another commit.
+    const releasedNothing = { ...gated, "Prepare the release": "success", Release: "success", Released: "skipped" };
+    const noToken = { "Check for a Cloudflare token": "success", "Check the head of main": "skipped" };
+    // The head check passed and said the run is for an older commit: the build and release jobs never ran.
+    const olderCommit = gated;
+    const failed = { ...gated, "Prepare the release": "success", Release: "failure", Released: "skipped" };
+    const buildFailed = { ...gated, "Prepare the release": "failure" };
+    const MAIN = "0123456789abcdef0123456789abcdef01234567";
 
     /**
      * Runs the check with a stand-in gh that answers these Deploy runs, a hundred to a page as the API pages them
      * (null: that call fails).
      */
-    function decide(runs: ReturnType<typeof deployRun>[] | null, failingJobs: number[] = []) {
-      const routes: Record<string, string | null> = {};
+    function decide(
+      runs: ReturnType<typeof deployRun>[] | null,
+      failingJobs: number[] = [],
+      production: string | null = JSON.stringify({ ok: true, version: { id: "v", tag: MAIN.slice(0, 12) } }),
+    ) {
+      const routes: Record<string, string | null> = { "api repos/example/app/commits/main --jq .sha": MAIN };
       if (runs === null) {
         routes[RUNS(1)] = null;
       } else {
@@ -411,7 +451,7 @@ describe("GitHub workflows", () => {
       for (const { run, jobs } of runs ?? []) {
         routes[jobsOf(run.id)] = failingJobs.includes(run.id) ? null : JSON.stringify(jobs);
       }
-      const result = runStep(check(), { PATH: fakeGhRoutes(routes), GH_REPO: "example/app" });
+      const result = runStep(check(), { PATH: `${fakeCurl(production)}:${fakeGhRoutes(routes)}`, GH_REPO: "example/app" });
       expect(result.status).toBe(0);
       return result.output;
     }
@@ -430,9 +470,29 @@ describe("GitHub workflows", () => {
 
     it("says not automatic when that run released nothing, as without a token, or failed", () => {
       expect(decide([deployRun(101, noToken)])).toBe(
-        "automatic=false\nreason=the newest Deploy run on main that tried to release, 101, did not: its Release step was skipped\n",
+        "automatic=false\nreason=the newest Deploy run on main, 101, released nothing: it ended (success) without a Release step\n",
       );
       expect(decide([deployRun(102, failed), deployRun(101, released)])).toContain("automatic=false\n");
+    });
+
+    it("tells a release apart from a run that released nothing on purpose, and looks past the latter", () => {
+      expect(decide([deployRun(102, releasedNothing, "schedule"), deployRun(101, released)])).toBe(
+        "automatic=true\nreason=Deploy run 101 on main released\n",
+      );
+      expect(decide([deployRun(102, releasedNothing, "schedule")])).toBe(
+        "automatic=false\nreason=no Deploy run on main has released or tried to\n",
+      );
+    });
+
+    it("merges only while production runs main's head, the merge commit's parent, so a rollback stays in place", () => {
+      // After a rollback production runs an older commit; a merge would release main, the bad commit with it.
+      const rolledBack = JSON.stringify({ ok: true, version: { id: "v", tag: "fedcba987654" } });
+      expect(decide([deployRun(101, released)], [], rolledBack)).toBe(
+        "automatic=false\nreason=production runs fedcba987654, not main's head 0123456789ab: a rollback may be in place, and a merge would release main over it\n",
+      );
+      expect(decide([deployRun(101, released)], [], null)).toBe(
+        "automatic=false\nreason=production runs an unknown version, not main's head 0123456789ab: a rollback may be in place, and a merge would release main over it\n",
+      );
     });
 
     it("passes over runs that say nothing: one for an older commit, and one cancelled before it started", () => {
@@ -448,10 +508,10 @@ describe("GitHub workflows", () => {
     it("says not automatic when the newest run failed before its steps, rather than passing over it", () => {
       // An invalid workflow, or an action that cannot be resolved: no Release step, but not cancelled either.
       expect(decide([deployRun(103, null, "push", "startup_failure"), deployRun(101, released)])).toBe(
-        "automatic=false\nreason=the newest Deploy run on main that tried to release, 103, did not: it ended (startup_failure) before its Release step\n",
+        "automatic=false\nreason=the newest Deploy run on main, 103, released nothing: it ended (startup_failure) without a Release step\n",
       );
       expect(decide([deployRun(102, { "Set up job": "failure" }, "push", "failure"), deployRun(101, released)])).toBe(
-        "automatic=false\nreason=the newest Deploy run on main that tried to release, 102, did not: it ended (failure) before its Release step\n",
+        "automatic=false\nreason=the newest Deploy run on main, 102, released nothing: it ended (failure) without a Release step\n",
       );
     });
 
@@ -583,9 +643,9 @@ describe("GitHub workflows", () => {
     // 08:00 UTC is midnight in the Pacific (standard time); the daily production check runs at 11:41 UTC.
     expect(Number(hour)).toBeGreaterThanOrEqual(8);
     expect(Number(hour)).toBeLessThan(11);
-    // A scheduled run takes the same path as a push: audit, main's head, prepare-release, promote, which only
-    // refreshes what production runs on a scheduled run (GITHUB_EVENT_NAME; test/scripts/release.test.ts).
-    expect(stepsOf(jobSection(deploy, "deploy")).map((step) => stepValue(step, "name"))).toContain("Check the head of main");
+    // A scheduled run takes the same path as a push: main's head, the build, promote, which only refreshes what
+    // production runs on a scheduled run (GITHUB_EVENT_NAME; test/scripts/release.test.ts).
+    expect(stepsOf(jobSection(deploy, "gate")).map((step) => stepValue(step, "name"))).toContain("Check the head of main");
   });
 
   it("check every day, strictly", () => {

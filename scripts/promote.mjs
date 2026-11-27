@@ -33,6 +33,7 @@
  * line per health check and a final summary line, scrubbed of account
  * details. The steps themselves are in scripts/lib/release.mjs.
  */
+import { appendFileSync } from "node:fs";
 import { readProject } from "./lib/project.mjs";
 import { ORIGIN_USAGE, promote, realTools } from "./lib/release.mjs";
 import { runMain } from "./lib/run.mjs";
@@ -47,6 +48,10 @@ await runMain(async () => {
     throw new Error(`Usage: npm run promote [-- --origin <address>]\n${ORIGIN_USAGE}`);
   }
   const summary = await promote(readProject(), realTools, { origin });
+  if (process.env.GITHUB_OUTPUT) {
+    // deploy.yml's Released step, which the Dependabot merge job reads, runs only for a real release.
+    appendFileSync(process.env.GITHUB_OUTPUT, `released=${summary.released}\n`);
+  }
   if (!summary.released && process.env.GITHUB_ACTIONS === "true") {
     // Shown in the run's summary: a scheduled run that changed nothing says why.
     console.log(redact(`::notice title=Nothing released::${summary.reason}`));

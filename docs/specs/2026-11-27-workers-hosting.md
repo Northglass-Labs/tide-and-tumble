@@ -102,13 +102,22 @@ never undoes a rollback, and it never ships a build in which NOAA missed a
 beach's table. A bad commit is fixed by a revert on `main`. Visitors are
 unaffected if it fails or skips; only the baked copy ages.
 
-### D5. The build never holds the release token
+### D5. The build never shares a machine with the release token
 
-The build runs every package's code, so it runs in `prepare-release`, in a
-clean copy of the commit, with install scripts off and no Cloudflare
-credential in its environment. `promote` holds the token and runs only
-Wrangler, on the `out/` that was checked, by digest. The cost: a workstation
-release is two commands, and the dependencies are installed twice.
+The build runs every package's code. On the machine that later holds the
+token it could read the token from a process it left running, put a program
+of its own on the `PATH`, or rewrite the scripts the release runs, so on
+GitHub it runs in a job of its own with no secret (`prepare-release`: a
+clean copy of the commit, install scripts off), and the release runs in
+another job on a fresh runner, which installs only the locked dependencies
+with install scripts off, takes the built `out/` and its record, re-checks
+the commit and the digest, and bundles the Worker from its own checkout. The
+artifact can carry only static files. On a workstation the two steps are
+two commands on one machine, and `prepare-release` refuses to run with a
+Cloudflare credential in its environment; a saved Wrangler sign-in is a
+file the build could still read, so release from a workstation only after
+`npx wrangler logout`. The cost: two commands, three jobs, and the
+dependencies installed more than once.
 
 ### D6. Dependency holds
 

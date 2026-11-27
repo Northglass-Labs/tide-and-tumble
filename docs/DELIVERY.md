@@ -250,14 +250,20 @@ minor update below 1.0, an update whose maintainers changed, or one whose
 description was cut short wait for review; the run's summary says why.
 
 **The release (`deploy.yml`).** On a push to `main`, a dispatch, and every
-night at 08:17 UTC. It runs `npm run audit`, asks GitHub for `main`'s head (a
-run for an older commit builds and releases nothing), then `node
-scripts/prepare-release.mjs` with no credential, then `node
-scripts/promote.mjs`, the only step that sees the token. Releases queue one
-at a time and are never cancelled halfway. Without the secret
-`CLOUDFLARE_API_TOKEN` it prints a notice and does nothing. Every workflow
-installs with `npm ci --ignore-scripts`: nothing here needs an install
-script.
+night at 08:17 UTC, in three jobs, each on a fresh runner. `gate` checks that
+the token is set and that the run is for `main`'s head (a run for an older
+commit builds and releases nothing). `build`, with no secret, runs
+`npm run audit` and `node scripts/prepare-release.mjs` and keeps `out/` and
+its record as an artifact. `release` checks out the same commit, installs
+with `npm ci --ignore-scripts` and no npm cache, fetches the build, and runs
+`node scripts/promote.mjs`, the only step that sees the token; promote
+re-checks that the record names this commit and that `out/` still has its
+digest, and bundles the Worker from this checkout, so the artifact can only
+carry static files. Its `Released` step runs only when a version was
+released. Releases queue one at a time and are never cancelled halfway.
+Without the secret `CLOUDFLARE_API_TOKEN` it prints a notice and does
+nothing. Every workflow installs with `npm ci --ignore-scripts`: nothing here
+needs an install script.
 
 **The nightly release.** The beach pages carry a tide table built with them.
 Visitors' browsers rebuild it for today, but crawlers and readers without
@@ -292,8 +298,9 @@ checks `https://tideandtumble.app`): the release credentials go into the
 repository's Actions secrets, Dependabot security updates are turned on, and
 Deploy is run once on `main` (the merge job merges only once a Deploy run on
 `main` has released). How the credentials are made and kept is in the
-private operations record. The release credential can deploy this Worker and
-nothing else: no DNS, routes or custom domains.
+private operations record. The release credential edits Workers and nothing
+else: no DNS, routes or custom domains. Cloudflare cannot limit a token to one
+Worker, so it can change every Worker in the account, not only this one.
 
 ### Where the release credential reaches
 
