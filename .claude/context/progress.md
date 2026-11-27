@@ -50,6 +50,14 @@ cutover are the operator's, after an adversarial review.
    only upstream calls take the shared cap; the opsec scan reads tracked
    files with high-signal patterns everywhere; the daily check fails when
    the beach pages are more than two days old.
+10. Round-3 fixes (2026-11-27): done. The release job downloads the build
+    into an empty temporary folder and takes only out/'s regular files and
+    the record (scripts/take-build.mjs); it checks main's head again just
+    before Release; the merge job starts a release only when the merge
+    commit's parent is the head it checked; the opsec canaries are made-up
+    text, and the git comparison is skipped in an export; the page says when
+    NWS has no rip-current forecast for today; the shared cap's 429 carries
+    Retry-After; the checking line is hidden without JavaScript.
 
 ## Verification
 
