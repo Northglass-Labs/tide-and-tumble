@@ -1,0 +1,67 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "example-banner": {
+      "name": "example-banner",
+      "severity": "info",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1000004,
+          "name": "example-banner",
+          "dependency": "example-banner",
+          "title": "Synthetic advisory: prints the install path",
+          "url": "https://github.com/advisories/GHSA-0000-0000-0004",
+          "severity": "info",
+          "cwe": [],
+          "cvss": { "score": 0, "vectorString": null },
+          "range": "<0.3.0"
+        }
+      ],
+      "effects": [],
+      "range": "<0.3.0",
+      "nodes": ["node_modules/example-banner"],
+      "fixAvailable": true
+    },
+    "example-colors": {
+      "name": "example-colors",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1000005,
+          "name": "example-colors",
+          "dependency": "example-colors",
+          "title": "Synthetic advisory: a long colour code is slow to parse",
+          "url": "https://github.com/advisories/GHSA-0000-0000-0005",
+          "severity": "low",
+          "cwe": ["CWE-1333"],
+          "cvss": { "score": 3.1, "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:N/I:N/A:L" },
+          "range": "<4.1.2"
+        }
+      ],
+      "effects": [],
+      "range": "<4.1.2",
+      "nodes": ["node_modules/example-colors"],
+      "fixAvailable": true
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 1,
+      "low": 1,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 2
+    },
+    "dependencies": {
+      "prod": 3,
+      "dev": 9,
+      "optional": 0,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 12
+    }
+  }
+}

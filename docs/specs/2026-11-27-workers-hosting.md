@@ -268,8 +268,14 @@ security headers on its own answers.
 | `Cross-Origin-Opener-Policy` | none | `same-origin` |
 | `X-Robots-Tag` | none | `noindex` on the `workers.dev` address only, so the copy there never competes with the real one |
 
-Next's hashed files under `/_next/static/` are cached for a year as
-immutable; everything else revalidates (Cloudflare's default).
+Next's hashed files under `/_next/static/` are cached for four hours
+(`must-revalidate`); the previous host sent a year as `immutable`. A year was
+rejected because a `_headers` rule also applies to the 404 for a file that is
+not there (checked in `wrangler dev`): while a release spreads, a browser can get
+a page from a location on the new version and ask for its files at one still on
+the old version, and would then keep that 404 for a year. The service worker
+already keeps these files for visitors who return. Everything else revalidates
+(Cloudflare's default).
 
 ## Release
 

@@ -31,7 +31,8 @@ const UPSTREAM_FIXTURES = /^test\/fixtures\/upstream\//;
 
 /** The patterns that would carry private operations detail (ADR-007). */
 const PRIVATE_DETAIL: { name: string; pattern: RegExp; skip?: RegExp }[] = [
-  { name: "Cloudflare account, zone or route ids", pattern: /\b[0-9a-f]{32}\b/, skip: /^package-lock\.json$|^test\/fixtures\// },
+  // The tests' canary account id, 0123456789abcdef0123456789abcdef, is allowed: no account has it.
+  { name: "Cloudflare account, zone or route ids", pattern: /\b(?!0123456789abcdef0123456789abcdef\b)[0-9a-f]{32}\b/, skip: /^package-lock\.json$|^test\/fixtures\// },
   { name: "Vercel team, project or deployment ids", pattern: /\b(?:team|prj|dpl)_[A-Za-z0-9]{16,}\b/ },
   { name: "workers.dev account subdomains", pattern: /\b[a-z0-9-]+\.(?!example\.)[a-z0-9-]+\.workers\.dev\b/i },
   { name: "nameservers", pattern: /\b[a-z0-9-]+\.ns\.[a-z]+\.com\b/i },
@@ -42,8 +43,14 @@ const PRIVATE_DETAIL: { name: string; pattern: RegExp; skip?: RegExp }[] = [
   { name: "private paths", pattern: /\/Users\/[A-Za-z]|~\/Projects\b/ },
 ];
 
-/** Addresses that may appear: the public contact and GitHub's no-reply addresses. */
-const ALLOWED_EMAIL = /^(?:hello@northglass\.io|[\w.+-]+@users\.noreply\.github\.com)$/i;
+/**
+ * Addresses that may appear: the public contact, GitHub's no-reply addresses, and
+ * addresses at the reserved example domains (RFC 2606) that tests use as canaries.
+ */
+function allowedEmail(address: string): boolean {
+  if (/^(?:hello@northglass\.io|[\w.+-]+@users\.noreply\.github\.com)$/i.test(address)) return true;
+  return (address.split("@")[1] ?? "").toLowerCase().split(".").includes("example");
+}
 
 /** RFC 5737 documentation ranges and the loopback and unspecified addresses. */
 const ALLOWED_IPV4 = /^(?:127\.\d+\.\d+\.\d+|0\.0\.0\.0|192\.0\.2\.\d+|198\.51\.100\.\d+|203\.0\.113\.\d+)$/;
@@ -71,13 +78,13 @@ describe("public-release OPSEC boundary", () => {
     expect(found).toEqual([]);
   });
 
-  test("publishes no email address but the public contact and GitHub's no-reply addresses", () => {
+  test("publishes no email address but the public contact, GitHub's no-reply addresses and example ones", () => {
     const found = files
       .filter((file) => !UPSTREAM_FIXTURES.test(file.path) && file.path !== "package-lock.json")
       .flatMap((file) =>
         [...file.text.matchAll(/[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}/g)]
           .map((match) => match[0])
-          .filter((address) => !ALLOWED_EMAIL.test(address))
+          .filter((address) => !allowedEmail(address))
           .map((address) => `${file.path}: ${address}`),
       );
     expect(found).toEqual([]);
