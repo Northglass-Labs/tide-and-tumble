@@ -61,38 +61,44 @@ export async function fetchWithTimeout(
   }
 }
 
-/** Read a response without ever buffering more than maxBytes. */
 /**
- * The first line of a text body that is neither blank nor a "#" header,
- * reading no further: the rest of the body is cancelled. NDBC's realtime
- * files put the newest row first and run to a megabyte. Throws when no such
- * line ends within `maxBytes`.
+ * The data lines (neither blank nor "#" headers) at the start of a text body,
+ * read only while `wanted` accepts them: the first line it refuses ends the
+ * read, and the rest of the body is cancelled. At most `maxBytes` are read;
+ * what was read by then is returned.
  */
-export async function readFirstDataLine(response: BoundedBody, maxBytes: number): Promise<string | null> {
-  if (!response.body) return null;
+export async function readDataLines(
+  response: BoundedBody,
+  maxBytes: number,
+  wanted: (line: string) => boolean,
+): Promise<string[]> {
+  if (!response.body) return [];
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  const lines: string[] = [];
   let total = 0;
-  let text = "";
+  let pending = "";
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (!done) {
         total += value.byteLength;
-        text += decoder.decode(value, { stream: true });
+        pending += decoder.decode(value, { stream: true });
       }
-      const lines = text.split("\n");
-      // Every line but the last is complete; at the end of the body, the last one is too.
-      const complete = done ? lines : lines.slice(0, -1);
-      const row = complete.find((line) => line.trim() !== "" && !line.startsWith("#"));
-      if (row !== undefined) {
-        if (!done) await reader.cancel();
-        return row;
+      const parts = pending.split("\n");
+      pending = done ? "" : (parts.pop() ?? "");
+      for (const line of parts) {
+        if (line.trim() === "" || line.startsWith("#")) continue;
+        if (!wanted(line)) {
+          if (!done) await reader.cancel();
+          return lines;
+        }
+        lines.push(line);
       }
-      if (done) return null;
+      if (done) return lines;
       if (total > maxBytes) {
         await reader.cancel();
-        throw new UpstreamResponseTooLargeError(maxBytes);
+        return lines;
       }
     }
   } finally {
@@ -100,6 +106,7 @@ export async function readFirstDataLine(response: BoundedBody, maxBytes: number)
   }
 }
 
+/** Read a response without ever buffering more than maxBytes. */
 export async function readTextBounded(
   response: BoundedBody,
   maxBytes: number,
