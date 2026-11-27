@@ -1,0 +1,27 @@
+# Headers Cloudflare adds to the static files (pages, scripts, styles, images).
+# They do not apply to /api/* answers: the Worker sets its own
+# (src/worker/index.ts). test/scripts/static-headers.test.ts pins every value;
+# the reasons are in docs/specs/2026-11-27-workers-hosting.md, "Headers".
+
+# Every file. HSTS as the previous host sent it; the rest is new.
+# Inline scripts: Next writes them into every exported page. Images: the map
+# picker's OpenStreetMap tiles. Connections: the API, and ZIP lookups.
+/*
+  Strict-Transport-Security: max-age=63072000
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; font-src 'self'; connect-src 'self' https://api.zippopotam.us; media-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+
+# Next puts a hash of the content in these names. Four hours, not a year as
+# immutable: this rule also covers the 404 for a file a location still on the
+# previous version does not have yet while a release spreads, and a year-long
+# cached 404 would break the page for that visitor.
+/_next/static/*
+  Cache-Control: public, max-age=14400, must-revalidate
+
+# The Worker's workers.dev address: never in search results.
+https://:worker.:subdomain.workers.dev/*
+  X-Robots-Tag: noindex

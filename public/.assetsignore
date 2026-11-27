@@ -1,0 +1,14 @@
+# Never uploaded, even if they reach the build: dotfiles (.env, .git, .DS_Store)
+# and private keys. Next copies this file into out/ with the rest of public/;
+# Wrangler reads it there and does not upload it. `npm run promote` refuses a
+# build that holds any of them, too.
+.*
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
