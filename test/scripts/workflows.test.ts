@@ -270,7 +270,9 @@ describe("GitHub workflows", () => {
     const release = stepsOf(jobSection(deploy, "release")).find((step) => stepValue(step, "name") === "Release")!;
     expect(stepValue(release, "env")).toContain("EXPECTED_LIVE: ${{ inputs.expected-live }}");
     const start = stepWith(jobSection(workflow("ci.yml"), "merge-dependabot"), "gh workflow run");
-    expect(stepValue(start, "run").trim().split("\n").at(-1)).toBe('gh workflow run deploy.yml --ref main -f expected-live="$CHECKED"');
+    expect(stepValue(start, "run").trim().split("\n").at(-1)?.trim()).toBe(
+      'gh workflow run deploy.yml --ref main -f expected-live="$CHECKED"',
+    );
   });
 
   it("check main's head again just before the release: a re-run of the failed release job reuses the old gate", () => {
